@@ -851,7 +851,7 @@ applyTheme();
             <div class="meter"><i id="camEv" style="width:0%"></i></div>
             <p class="note" id="camNums"></p>
             <p class="note">Hold a pen like a cigarette near your mouth: the bar fills up. When it's full, LazyTrack asks you.
-              The yellow box is your face.</p>
+              The yellow box is your face. A lit cigarette counts even more: each pull makes the tip flare up, and two pulls are enough.</p>
           </div>
         </div>
       </section>
@@ -1658,6 +1658,7 @@ const camLive = {
         $("camEv").style.width = pct.toFixed(0) + "%";
         $("camNums").textContent = c.status !== "watching" ? (CAM_TEXT[c.status] || ["", ""])[1] + "."
           : `${c.face ? "Face found." : "Looking for your face…"} Last score ${c.score.toFixed(2)} (counts from ${c.threshold.toFixed(2)}).`
+            + (c.ember === "pull" ? " 🔥 The tip just flared up: a pull!" : c.ember === "glow" ? " 🔥 Glowing tip seen." : "")
             + (c.light ? ` Color fix on: ${c.light}.` : "");
       }
     } catch (_) {}

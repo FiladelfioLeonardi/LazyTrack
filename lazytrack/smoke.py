@@ -22,6 +22,7 @@ import random
 import shutil
 import threading
 import time
+from collections import deque
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
@@ -208,6 +209,121 @@ def glowing_tip(crop) -> bool:
     return False
 
 
+class EmberTracker:
+    """The glowing tip of a cigarette or joint, and the pull.
+
+    A burning tip looks like a "ring of light" to a webcam: a tiny core blown out to white,
+    with an orange-red ring around it (or just a tiny orange-red spot when it's dimmer). We look
+    for that near the mouth and hands only, on the ORIGINAL picture (the ember makes its own
+    light, so the color fix for RGB lamps would only distort it).
+
+    The best clue is the pull: the tip flares up for a second or two, then dims again, every
+    15-60 seconds. Lamps don't do that. Spots that stay lit (lamps, LEDs, screens) or pulse too
+    regularly (RGB "breathing" effects) are remembered as lamps for a while and ignored."""
+
+    LAMP_MINUTES = 10
+
+    def __init__(self):
+        self.hist = deque(maxlen=60)    # (time, strength) of the best spot in each frame
+        self.pulls = deque()            # times of pulls
+        self.cells = {}                 # grid cell -> deque of times a spot was seen there
+        self.cell_pulses = {}           # grid cell -> deque of pulse times
+        self.lamps = {}                 # grid cell -> ignore until
+        self.last_pull = 0.0
+        self.state = ""                 # "", "glow" or "pull" (for the live view)
+        self.flaring = False
+
+    @staticmethod
+    def _cell(x: float, y: float):
+        return int(x // 32), int(y // 32)
+
+    def spots(self, frame, face):
+        """Bright tips near mouth and hands: [(x, y, strength)]"""
+        import cv2
+        import numpy as np
+        if face is None:
+            return []
+        x, y, fw, fh = face
+        H, W = frame.shape[:2]
+        cx = x + fw / 2
+        x0, x1 = int(max(0, cx - 1.6 * fw)), int(min(W, cx + 1.6 * fw))
+        y0, y1 = int(max(0, y + 0.45 * fh)), int(min(H, y + 2.3 * fh))   # from the nose down: mouth, hands
+        if x1 - x0 < 10 or y1 - y0 < 10:
+            return []
+        sub = frame[y0:y1, x0:x1]
+        hsv = cv2.cvtColor(sub, cv2.COLOR_BGR2HSV)
+        hue, sat, val = hsv[..., 0], hsv[..., 1], hsv[..., 2]
+        warm = ((hue <= 25) | (hue >= 165)) & (sat >= 80)
+        bright = (val >= 235).astype(np.uint8)
+        n, labels, stats, cents = cv2.connectedComponentsWithStats(bright)
+        max_area = max(12.0, (0.14 * fw) ** 2)   # a tip is tiny next to a face
+        out = []
+        for i in range(1, n):
+            a = stats[i, cv2.CC_STAT_AREA]
+            if not 2 <= a <= max_area:
+                continue
+            bx, by, bw, bh = stats[i, :4]
+            pad = max(3, int(max(bw, bh)))
+            sx0, sy0 = max(0, bx - pad), max(0, by - pad)
+            sx1, sy1 = min(sub.shape[1], bx + bw + pad), min(sub.shape[0], by + bh + pad)
+            blob = labels[sy0:sy1, sx0:sx1] == i
+            ring = cv2.dilate(blob.astype(np.uint8), np.ones((5, 5), np.uint8), iterations=1).astype(bool) & ~blob
+            core_warm = float(warm[sy0:sy1, sx0:sx1][blob].mean())
+            ring_warm = float(warm[sy0:sy1, sx0:sx1][ring].mean()) if ring.any() else 0.0
+            if core_warm < 0.5 and ring_warm < 0.35:
+                continue   # white or colored spot without the orange-red glow around it: not an ember
+            strength = float(a) * float(val[sy0:sy1, sx0:sx1][blob].mean()) / 255.0
+            out.append((x0 + cents[i][0], y0 + cents[i][1], strength))
+        return out
+
+    def update(self, frame, face, now: float) -> str:
+        """Call once per frame with the original picture. Returns "", "glow" or "pull"."""
+        spots = [sp for sp in self.spots(frame, face) if self.lamps.get(self._cell(sp[0], sp[1]), 0) < now]
+        # spots that are always there are lamps, not cigarettes
+        for sx, sy, _ in spots:
+            c = self._cell(sx, sy)
+            seen = self.cells.setdefault(c, deque())
+            seen.append(now)
+            while seen and now - seen[0] > 20:
+                seen.popleft()
+            frames_20s = sum(1 for t, _ in self.hist if now - t <= 20) + 1
+            if frames_20s >= 20 and len(seen) >= 0.7 * frames_20s:
+                self.lamps[c] = now + 60 * self.LAMP_MINUTES
+        spots = [sp for sp in spots if self.lamps.get(self._cell(sp[0], sp[1]), 0) < now]
+        best = max(spots, key=lambda sp: sp[2]) if spots else None
+        strength = best[2] if best else 0.0
+        before = [st for t, st in self.hist if 1.5 <= now - t <= 6]
+        self.hist.append((now, strength))
+        self.state = "glow" if best else ""
+        while self.pulls and now - self.pulls[0] > 180:
+            self.pulls.popleft()
+        base = sorted(before)[len(before) // 2] if before else None   # typical brightness a few seconds ago
+        flare = best is not None and base is not None and strength >= max(4.0, 1.6 * base)
+        starts = flare and not self.flaring
+        self.flaring = flare
+        if not starts:
+            return self.state
+        # every flare counts toward "too regular": a light that pulses every few seconds is a lamp effect
+        c = self._cell(best[0], best[1])
+        pulses = self.cell_pulses.setdefault(c, deque())
+        pulses.append(now)
+        while pulses and now - pulses[0] > 40:
+            pulses.popleft()
+        if len(pulses) >= 4:
+            self.lamps[c] = now + 60 * self.LAMP_MINUTES
+            self.state = ""
+            return ""
+        if now - self.last_pull < 8:   # people pull every 15-60 s, not faster
+            return self.state
+        self.last_pull = now
+        self.pulls.append(now)
+        self.state = "pull"
+        return self.state
+
+    def pulls_recent(self) -> int:
+        return len(self.pulls)
+
+
 class Evidence:
     """A score that goes up with each detection and decays exponentially over time."""
 
@@ -236,6 +352,9 @@ class Evidence:
         self.v = self.value() + gain
         return gain
 
+    def add_bonus(self, gain: float) -> None:
+        self.v = self.value() + gain
+
     def reset(self) -> None:
         self.v, self.t = 0.0, time.time()
 
@@ -250,7 +369,7 @@ def save_crop(crop, label: str) -> None:
 # ---------------------------------------------------------------- what the dashboard can see
 # The detector runs in the same program as the dashboard, so it shares its state through this
 # dict: status for Settings, and (only while someone looks at the live view) a small JPEG.
-LIVE = {"status": "off", "detail": "", "light": "", "score": 0.0, "threshold": 0.0, "evidence": 0.0, "trigger": 0.0,
+LIVE = {"status": "off", "detail": "", "light": "", "ember": "", "score": 0.0, "threshold": 0.0, "evidence": 0.0, "trigger": 0.0,
         "model": "", "face": False, "until": 0.0, "frame": None, "frame_t": 0.0, "want_until": 0.0}
 
 
@@ -293,6 +412,7 @@ class SmokeDetector(threading.Thread):
             import cv2
             self.scorer = make_scorer(self.scfg)
             self.faces = FaceTracker()
+            self.ember = EmberTracker()
         except Exception as e:
             log.exception("smoke detector disabled: could not load model / OpenCV")
             self.status = "disabled (load error)"
@@ -363,6 +483,7 @@ class SmokeDetector(threading.Thread):
                 self.stop_ev.wait(2)
                 continue
             n += 1
+            raw = frame   # the ember makes its own light: look for it on the original picture
             frame, LIVE["light"] = fix_light(frame, s.get("light_fix", "auto"))
 
             # --- stage 1: anyone there? ---
@@ -376,7 +497,17 @@ class SmokeDetector(threading.Thread):
             if LIVE["want_until"] > t0:   # someone has the live view open in the dashboard
                 _preview(frame, face, cv2)
 
-            # --- stage 2: score the face/hand area ---
+            # --- stage 2a: the glowing tip, every frame (cheap): a pull is strong evidence on its own ---
+            ember = self.ember.update(raw, face, t0) if t0 - last_presence < 5 else ""
+            LIVE["ember"] = ember
+            if ember == "pull":
+                hit_crop = roi(frame, face)[0].copy()
+                evidence.add_bonus(2.0)
+                if self.ember.pulls_recent() >= 2:   # two pulls within 3 minutes: that's smoking
+                    evidence.add_bonus(trigger)
+                log.info("smoke detector: tip flared up (pull #%d in 3 min)", self.ember.pulls_recent())
+
+            # --- stage 2b: the AI looks at the face/hand area ---
             if t0 - last_presence < 5 and n % every == 0:
                 crop, _ = roi(frame, face)
                 try:
@@ -384,11 +515,14 @@ class SmokeDetector(threading.Thread):
                 except Exception:
                     log.exception("scoring failed")
                     score = 0.0
-                glow = face is not None and glowing_tip(crop)
+                glow = ember in ("glow", "pull")
                 if evidence.add_score(score, self.scorer.threshold, glow) > 0:
                     hit_crop = crop.copy()
-                LIVE.update(score=float(score), evidence=float(evidence.value()))
-                # --- stage 3: enough evidence -> ask (the camera stays on while asking) ---
+                LIVE.update(score=float(score))
+            LIVE["evidence"] = float(evidence.value())
+
+            # --- stage 3: enough evidence -> ask (the camera stays on while asking) ---
+            if t0 - last_presence < 5:
                 if evidence.value() >= trigger and t0 >= quiet_until:
                     evidence.reset()
                     label = self._ask(hit_crop)
@@ -404,6 +538,7 @@ class SmokeDetector(threading.Thread):
                             cap.grab()
                     prev = None
                     evidence.reset()
+                    self.ember.pulls.clear()
                     continue
 
             self.stop_ev.wait(max(0.0, period - (time.time() - t0)))
@@ -474,15 +609,20 @@ def camtest(cfg: dict) -> None:
     print(f"Using the {scorer.name}. Press q in the window to quit.")
     evidence = Evidence(s["evidence_half_life"])
     trigger = float(s["trigger_score"])
+    ember_t = EmberTracker()
     while True:
         ok, frame = cap.read()
         if not ok:
             break
+        raw = frame
         frame, light = fix_light(frame, s.get("light_fix", "auto"))
         face, _ = faces.update(frame)
         crop, (x0, y0, x1, y1) = roi(frame, face)
         score = scorer.score(crop)
-        glow = face is not None and glowing_tip(crop)
+        ember = ember_t.update(raw, face, time.time())
+        glow = ember in ("glow", "pull")
+        if ember == "pull":
+            evidence.add_bonus(2.0 + (trigger if ember_t.pulls_recent() >= 2 else 0.0))
         evidence.add_score(score, scorer.threshold, glow)
         ev = evidence.value()
         hit = score >= scorer.threshold
@@ -490,7 +630,8 @@ def camtest(cfg: dict) -> None:
         out = frame.copy()
         cv2.rectangle(out, (x0, y0), (x1, y1), color, 2)
         _label(out, f"{scorer.name}", 32)
-        _label(out, f"this frame: {score:.2f}  (hit at {scorer.threshold:.2f})" + ("  + GLOW" if glow else ""), 64, color)
+        _label(out, f"this frame: {score:.2f}  (hit at {scorer.threshold:.2f})"
+               + ("  + PULL!" if ember == "pull" else "  + TIP GLOW" if glow else ""), 64, color)
         # evidence bar: fills up while you smoke, popup when full
         bar_w = 300
         filled = int(bar_w * min(1.0, ev / trigger))
