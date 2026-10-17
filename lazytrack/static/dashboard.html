@@ -89,7 +89,7 @@
   #tour .tskip { border: 0; background: none; color: var(--ink-3); font: 700 14px var(--body); cursor: pointer; text-decoration: underline; padding: 6px 4px; }
   #tour .tbtns .btn { padding: 8px 14px; }
   @media (max-width: 560px) { #tour .tcard { left: 16px !important; right: 16px; width: auto; top: auto !important; bottom: 96px; } .tourbtn { padding: 6px 9px; font-size: 13px; } }
-  @media (prefers-reduced-motion: reduce) { #tour .spot, #tour .tcard { transition: none; } }
+  html.still #tour .spot, html.still #tour .tcard { transition: none; }
 
   /* ------------------------------------------------------------ header + tabs */
   .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -540,7 +540,7 @@
     .btn:hover:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
     .logbtn:hover:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--line); }
   }
-  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+  html.still *, html.still *::before, html.still *::after { transition: none !important; animation: none !important; }
 
   /* ------------------------------------------------------------ welcome screen (every time the app opens) */
   html { overflow-x: hidden; }
@@ -684,6 +684,10 @@ function applyTheme(p = themePrefs()) {
   const t = THEMES[p.palette] || THEMES.lavender;
   for (const [k, v] of Object.entries(dark ? t.dark : t.light)) root.style.setProperty(k, v);
   root.dataset.palette = THEMES[p.palette] ? p.palette : "lavender";
+  // animations: on by default. "system" follows the computer's reduced-motion setting (on Windows it's often
+  // switched off without people knowing, which froze everything), "off" keeps everything still.
+  const motion = p.motion || "on";
+  root.classList.toggle("still", motion === "off" || (motion === "system" && matchMedia("(prefers-reduced-motion: reduce)").matches));
 }
 applyTheme();
 </script>
@@ -1102,7 +1106,7 @@ applyTheme();
         <li><b>Moods</b> follow your day: proud after lots of coding, smoky after more smoking than yesterday, sleepy late at night.</li>
         <li><b>States</b>: weed makes it high (red eyes, smoke, swaying, for a couple of hours), alcohol makes it drunk (more drinks = dizzier),
           cigarettes make it cough, especially on heavy days.</li>
-        <li><b>Idle</b>: it breathes, blinks, looks around and hops now and then. With "reduce motion" on in your system it stays still.</li>
+        <li><b>Idle</b>: it breathes, blinks, looks around and hops now and then. To keep everything still, set Settings → Look → Animations to Off (or "Like my computer").</li>
       </ul>
     </section>
 
@@ -1232,6 +1236,13 @@ applyTheme();
           <div class="field"><label>Background effect</label>
             <p class="hint">Every effect still follows Mochi: brighter and busier when you're doing great, fewer and greyer when not.</p>
             <div class="fxs" id="fxs" role="radiogroup" aria-label="Background effect"></div></div>
+          <div class="field"><label>Animations</label>
+            <p class="hint">Mochi moving, the background effects and the places. "Like my computer" turns them off when the computer is set to reduce motion.</p>
+            <div class="seg" role="radiogroup">
+              <label><input type="radio" name="ui_motion" value="on"> On</label>
+              <label><input type="radio" name="ui_motion" value="system"> Like my computer</label>
+              <label><input type="radio" name="ui_motion" value="off"> Off</label>
+            </div></div>
           <div class="field"><label>Light or dark</label>
             <div class="seg" role="radiogroup">
               <label><input type="radio" name="ui_mode" value="auto"> Auto</label>
@@ -3387,6 +3398,7 @@ function drawThemePicker() {
       <span class="nm">${esc(t.name)}<span aria-hidden="true">${k === cur ? "✓" : ""}</span></span></button>`;
   }).join("");
   document.querySelectorAll('[name="ui_mode"]').forEach(el => { el.checked = el.value === (p.mode || "auto"); });
+  document.querySelectorAll('[name="ui_motion"]').forEach(el => { el.checked = el.value === (p.motion || "on"); });
   const fx = FX[p.fx] ? p.fx : "mood";
   $("fxs").innerHTML = Object.entries(FX).map(([k, f]) => `<button type="button" class="fxb" role="radio" aria-checked="${k === fx}" data-fx="${k}">
       <span class="fxn">${esc(f.name)}</span><span class="fxd">${esc(f.desc)}</span></button>`).join("");
@@ -3394,6 +3406,7 @@ function drawThemePicker() {
 $("fxs").addEventListener("click", e => { const b = e.target.closest(".fxb"); if (b) saveTheme({fx: b.dataset.fx}); });
 $("themes").addEventListener("click", e => { const b = e.target.closest(".th"); if (b) saveTheme({palette: b.dataset.palette}); });
 document.querySelectorAll('[name="ui_mode"]').forEach(el => el.addEventListener("change", () => saveTheme({mode: el.value})));
+document.querySelectorAll('[name="ui_motion"]').forEach(el => el.addEventListener("change", () => { saveTheme({motion: el.value}); location.reload(); }));
 
 $("sForm").addEventListener("submit", async e => {
   e.preventDefault();
@@ -3420,7 +3433,7 @@ $("sForm").addEventListener("submit", async e => {
 });
 
 // ---------------------------------------------------------------- calm motion
-const calm = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+const calm = !document.documentElement.classList.contains("still");   // Settings > Look > Animations
 let animNext = true, animNow = false;   // animate when a page opens, never on the 60-second refresh
 
 function countUp(el, value, unit) {
