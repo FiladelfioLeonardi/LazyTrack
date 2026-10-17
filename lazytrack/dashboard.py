@@ -433,6 +433,9 @@ def make_handler(cfg: dict):
                 if path == "/api/cloud/remove":
                     cloud.remove(int(b.get("id", 0)))
                     return self._send(200, {"ok": True})
+                if path == "/api/cloud/poke":
+                    cloud.poke(str(b.get("to", "")), str(b.get("kind", "poke")))
+                    return self._send(200, {"ok": True})
                 if path == "/api/cloud/send":
                     cloud.send(str(b.get("to", "")), str(b.get("body", "")))
                     return self._send(200, {"ok": True})

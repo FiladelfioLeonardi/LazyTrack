@@ -319,6 +319,10 @@
   .sharechips button[aria-pressed="true"] { background: var(--green); color: #1d1b20; }
   .sharechips button[aria-pressed="false"] { opacity: .65; text-decoration: line-through; }
   .sharechips button:disabled { opacity: .35; cursor: default; }
+  .pokes { display: flex; flex-wrap: wrap; gap: 8px; }
+  #petcard.poked .pet { animation: poked .6s ease 2; }
+  @keyframes poked { 0%, 100% { transform: translateY(0) } 30% { transform: translateY(-10px) rotate(-4deg) } 60% { transform: translateY(0) rotate(3deg) } }
+  @media (prefers-reduced-motion: reduce) { #petcard.poked .pet { animation: none; } }
   .chatcard { display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); height: min(560px, calc(100dvh - 240px)); min-height: 340px; padding: 0; overflow: hidden; }
   .chatlog { min-width: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
   .msg { max-width: 78%; padding: 8px 12px; border: 2px solid var(--line); border-radius: 14px 14px 14px 4px; background: var(--soft); align-self: flex-start;
@@ -1427,6 +1431,7 @@ applyTheme();
       <div class="labbtns">
         <button type="button" class="btn" data-lab="nmsg">💬 New message</button>
         <button type="button" class="btn" data-lab="nreq">👋 New friend request</button>
+        <button type="button" class="btn" data-lab="npoke">👉 A friend pokes you</button>
       </div>
     </section>
   </main>
@@ -3343,6 +3348,7 @@ const sfx = {
   notes: {   // [frequency Hz, start s, length s]
     msg: {wave: "square", vol: .06, n: [[988, 0, .07], [1319, .08, .12]]},                      // bloop-bleep
     req: {wave: "triangle", vol: .16, n: [[523, 0, .09], [659, .09, .09], [784, .18, .09], [1047, .27, .2]]},   // ta-da
+    poke: {wave: "square", vol: .07, n: [[784, 0, .05], [1175, .06, .05], [784, .14, .05], [1175, .2, .08]]},    // boop-boop
   },
   play(kind, force) {
     if (!force && !this.on()) return;
@@ -3376,6 +3382,12 @@ async function updateBadge() {
       const inFriends = document.body.dataset.view === "friends";
       if ((u.requests || 0) > seenUnread.requests) { sfx.play("req"); if (!inFriends) toast("👋 New friend request", null); }
       else if ((u.messages || 0) > seenUnread.messages) { sfx.play("msg"); if (!inFriends) toast("💬 New message from a friend", null); }
+    }
+    for (const pk of u.pokes || []) {   // a friend poked / sent love / waved: always shown, once
+      sfx.play("poke");
+      toast(pk.kind === "love" ? `💖 ${pk.from} sent your Mochi love` : pk.kind === "wave" ? `👋 ${pk.from} waved at you` : `👉 ${pk.from} poked you`, null);
+      const card = document.getElementById("petcard");
+      if (card) { card.classList.remove("poked"); void card.offsetWidth; card.classList.add("poked"); }
     }
     seenUnread = {messages: u.messages || 0, requests: u.requests || 0};
   } catch (_) {}
@@ -3557,6 +3569,8 @@ async function renderFriends() {
     $("fProfile").innerHTML = `<div style="margin-top:22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn" data-go-friends>‹ Friends</button></div>
       <div class="grid2" style="margin-top:18px">
         <div class="stack"><div id="fProfileCard">${fcardHTML({...p, unread: 0}, {me: true})}</div>
+          <div class="pokes"><button type="button" class="btn primary" data-poke="poke" data-to="${esc(p.uid)}">👉 Poke</button><button type="button" class="btn" data-poke="love" data-to="${esc(p.uid)}">💖 Send love</button><button type="button" class="btn" data-poke="wave" data-to="${esc(p.uid)}">👋 Wave</button></div>
+          <p class="note" style="margin:0">Their Mochi reacts in their app, and their egg buzzes.</p>
           <button type="button" class="btn" id="fRemove" data-fid="${p.id}" style="justify-self:start">Remove friend</button></div>
         <div class="card chatcard"><div class="chatlog" id="chatLog"><p class="chatempty">No messages yet. Say hi to ${esc(p.display_name)}!</p></div>
           <form class="chatin" id="chatForm"><input id="chatText" maxlength="1000" placeholder="Message ${esc(p.display_name)}" autocomplete="off"><button class="btn primary" type="submit">Send</button></form></div>
@@ -3614,6 +3628,17 @@ document.addEventListener("click", async e => {
   if (rm) {
     if (!rm.dataset.sure) { rm.dataset.sure = 1; rm.textContent = "Sure? Tap again"; return; }
     await post("/api/cloud/remove", {id: +rm.dataset.fid}); go({tab: "friends"}); return;
+  }
+  const pk = e.target.closest("[data-poke]");
+  if (pk) {
+    pk.disabled = true;
+    try {
+      const r = await post("/api/cloud/poke", {to: pk.dataset.to, kind: pk.dataset.poke});
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) { sfx.play("poke"); toast(pk.dataset.poke === "love" ? "💖 Love sent" : pk.dataset.poke === "wave" ? "👋 Waved" : "👉 Poked!", null); }
+      else toast(j.error || "Couldn't send that", null);
+    } finally { setTimeout(() => { pk.disabled = false; }, 1500); }
+    return;
   }
   const sn = e.target.closest("[data-sharenow]");
   if (sn) {
@@ -4177,6 +4202,11 @@ const admin = {
     })();
     if (a === "idea") ideaBox.open();
     if (a === "nmsg") { sfx.play("msg", true); toast("💬 New message from a friend", null); }
+    if (a === "npoke") {
+      sfx.play("poke", true); toast("👉 Test Friend poked you", null);
+      const card = document.getElementById("petcard");
+      if (card) { card.classList.remove("poked"); void card.offsetWidth; card.classList.add("poked"); }
+    }
     if (a === "nreq") { sfx.play("req", true); toast("👋 New friend request", null); }
     if (a === "update") toast("✨ LazyTrack updated: this is what people see after an update", null);
     if (a === "toast") toast("Logged a test. (Undo does nothing here)", null);

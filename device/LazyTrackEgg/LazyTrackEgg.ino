@@ -6,7 +6,11 @@
   doing right now (drunk, high, coughing) and what you're up to. It reads your friend card from
   the friends server every minute, so it works anywhere with WiFi (a phone hotspot too).
 
-  Buttons:  A = next screen (Mochi / stats / info)   B = sync now   C = screen off / on
+  Buttons (like a Tamagotchi):  A = next / menu   B = OK / pet Mochi   C = back / screen off
+    Home:     A opens the menu, B pets Mochi (hearts!), C turns the screen off (any button wakes it)
+    Menu:     Log something (cigarette, water, gym... whatever you track), Friends (see their Mochi,
+              poke them), Today's stats, Info
+  Friends poking you make the egg buzz. Logs go to LazyTrack within a minute (needs supabase/egg.sql).
 
   Setup: see README.md next to this folder. Short version:
     1. Arduino IDE: board "ESP32 Dev Module", libraries "GFX Library for Arduino" + "ArduinoJson"
@@ -83,7 +87,8 @@ WiFiMulti wifi;   // tries every network in secrets.h and joins whichever is aro
 String token, refresh, uid;
 uint32_t tokenUntil = 0, lastSync = 0, lastTry = 0;
 String status = "Starting...";
-int view = 0;  // 0 Mochi, 1 stats, 2 info
+enum { V_HOME, V_STATS, V_INFO, V_MENU, V_LOG, V_FRIENDS };
+int view = V_HOME, menuSel = 0;
 bool screenOn = true;
 
 // Mochi before the first sync (the plain bean)
@@ -111,19 +116,25 @@ void tuneBoot() { beep(523, 70); beep(659, 70); beep(784, 120); }
 void tuneClick() { beep(1319, 25); }
 void tuneUp() { beep(523, 90); beep(659, 90); beep(784, 90); beep(1047, 200); }
 void tuneDown() { beep(392, 160); beep(330, 260); }
+void tunePet() { beep(1568, 40); beep(1976, 40); beep(2349, 70); }                         // happy chirp
+void tuneGood() { beep(784, 60); beep(1047, 60); beep(1319, 110); }                         // logged something good
+void tuneBad() { beep(659, 80); beep(523, 120); }                                          // logged a bad habit
+void tunePoke() { for (int i = 0; i < 2; i++) { beep(784, 50); beep(1175, 70); } }          // boop-boop, same as the app
+void tuneLove() { beep(1047, 80); beep(1319, 80); beep(1568, 80); beep(2093, 160); }
 
 // ---------------------------------------------------------------- talking to the friends server
 WiFiClientSecure tls;
 
 // POST/GET with the right headers. Returns the HTTP status (or a negative error), fills body.
-int http(const String &method, const String &path, const String &payload, String &body, bool auth) {
+int http(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer = nullptr) {
   HTTPClient h;
   h.setTimeout(12000);
   if (!h.begin(tls, String(SUPA_URL) + path)) return -1;
   h.addHeader("apikey", SUPA_KEY);
   h.addHeader("Content-Type", "application/json");
   if (auth && token.length()) h.addHeader("Authorization", "Bearer " + token);
-  int code = method == "POST" ? h.POST(payload) : h.GET();
+  if (prefer) h.addHeader("Prefer", prefer);
+  int code = method == "POST" ? h.POST(payload) : method == "GET" ? h.GET() : h.sendRequest(method.c_str(), payload);
   body = code > 0 ? h.getString() : "";
   h.end();
   return code;
@@ -238,6 +249,270 @@ void sync() {
   else if (code != 200) status = "Sync failed (" + String(code) + ")";
 }
 
+// a logged-in request: logs in (again) when needed. Returns the HTTP status or a negative error.
+int api(const String &method, const String &path, const String &payload, String &body, const char *prefer = nullptr) {
+  if (WiFi.status() != WL_CONNECTED) return -2;
+  if (!token.length() || millis() / 1000 > tokenUntil) { if (!login()) return -3; }
+  int code = http(method, path, payload, body, true, prefer);
+  if (code == 401) { token = ""; if (login()) code = http(method, path, payload, body, true, prefer); }
+  return code;
+}
+
+// "2026-10-17T19:22:11.123+00:00" (the server's UTC time) -> seconds since 1970
+time_t parseIso(const char *s) {
+  int Y, M, D, h, m, sec;
+  if (!s || sscanf(s, "%d-%d-%dT%d:%d:%d", &Y, &M, &D, &h, &m, &sec) != 6) return 0;
+  Y -= M <= 2;
+  long era = (Y >= 0 ? Y : Y - 399) / 400;
+  long yoe = Y - era * 400, doy = (153 * (M + (M > 2 ? -3 : 9)) + 2) / 5 + D - 1;
+  long days = era * 146097 + yoe * 365 + yoe / 4 - yoe / 100 + doy - 719468;
+  return (time_t)days * 86400 + h * 3600 + m * 60 + sec;
+}
+
+String isoAt(time_t t) {
+  struct tm g;
+  gmtime_r(&t, &g);
+  char b[24];
+  strftime(b, sizeof b, "%Y-%m-%dT%H:%M:%SZ", &g);
+  return b;
+}
+
+bool clockOk() { return time(nullptr) > 1700000000; }
+
+String agoText(time_t t) {
+  if (!t || !clockOk()) return "a while ago";
+  long s = (long)(time(nullptr) - t);
+  if (s < 90) return "just now";
+  if (s < 3600) return String(s / 60) + " min ago";
+  if (s < 86400) return String(s / 3600) + "h ago";
+  return String(s / 86400) + "d ago";
+}
+
+// ---------------------------------------------------------------- what's on top of Home for a moment
+String msgTitle, msgSub;
+uint32_t msgUntil = 0, petUntil = 0, shakeUntil = 0;
+long undoId = 0;            // the last log, while it can still be taken back (C)
+void drawFrame();
+
+void showMsg(const String &title, const String &sub, uint32_t ms) {
+  msgTitle = title; msgSub = sub; msgUntil = millis() + ms;
+  view = V_HOME;
+  drawFrame();
+}
+
+// ---------------------------------------------------------------- logging from the egg
+struct Habit { String k, n; bool bad = false; };
+Habit habits[16];
+int nhabits = 0, logSel = 0;
+uint32_t habitsAt = 0;
+
+void loadHabits() {   // which habits you track: LazyTrack puts them in egg_setup
+  habitsAt = millis();
+  String body;
+  if (api("GET", "/rest/v1/egg_setup?select=habits", "", body) != 200) return;
+  JsonDocument d;
+  if (deserializeJson(d, body)) return;
+  int n = 0;
+  for (JsonObject h : d[0]["habits"].as<JsonArray>()) {
+    if (n >= 16) break;
+    habits[n].k = h["k"] | "";
+    habits[n].n = h["n"] | "";
+    habits[n].bad = h["bad"] | false;
+    if (habits[n].k.length()) n++;
+  }
+  nhabits = n;
+  if (n) prefs.putString("habits", body);
+}
+
+// logs made without WiFi wait here ("kind,time" lines) and go out on the next sync
+void queueLog(const String &k, time_t t) {
+  String q = prefs.getString("queue", "");
+  if (q.length() < 1500) prefs.putString("queue", q + k + "," + String((long)t) + "\n");
+}
+
+bool sendLog(const String &k, time_t t, long *id) {
+  JsonDocument q;
+  q["kind"] = k;
+  if (t > 1700000000) q["ts"] = isoAt(t);
+  String pl, body;
+  serializeJson(q, pl);
+  int code = api("POST", "/rest/v1/egg_inbox", pl, body, "return=representation");
+  if (code != 201) return false;
+  if (id) { JsonDocument d; if (!deserializeJson(d, body)) *id = d[0]["id"] | 0; }
+  return true;
+}
+
+void flushQueue() {
+  String q = prefs.getString("queue", ""), left;
+  if (!q.length()) return;
+  int start = 0;
+  while (start < (int)q.length()) {
+    int nl = q.indexOf('\n', start);
+    if (nl < 0) nl = q.length();
+    String line = q.substring(start, nl);
+    start = nl + 1;
+    int comma = line.indexOf(',');
+    if (comma <= 0) continue;
+    if (!sendLog(line.substring(0, comma), (time_t)line.substring(comma + 1).toInt(), nullptr)) left += line + "\n";
+  }
+  prefs.putString("queue", left);
+}
+
+// Mochi reacts right away; LazyTrack's real numbers follow within a minute
+void reactTo(const String &k) {
+  if (k == "joint") card.high = min(3, card.high + 1);
+  else if (k == "alcohol") card.drunk = max(1, card.drunk);
+  else if (k == "cigarette" || k == "vape") card.coughy = max(1, card.coughy);
+}
+
+void doLog(int i) {
+  const Habit &h = habits[i];
+  time_t t = clockOk() ? time(nullptr) : 0;
+  long id = 0;
+  bool sent = sendLog(h.k, t, &id);
+  if (!sent) queueLog(h.k, t);
+  reactTo(h.k);
+  undoId = sent ? id : 0;
+  h.bad ? tuneBad() : tuneGood();
+  showMsg(h.bad ? "LOGGED" : "NICE!", "1 " + h.n + (sent ? "   C = undo" : "   (sends once online)"), 5000);
+}
+
+void undoLog() {
+  String body;
+  int code = api("DELETE", "/rest/v1/egg_inbox?id=eq." + String(undoId), "", body, "return=representation");
+  undoId = 0;
+  tuneClick();
+  showMsg("UNDONE", code == 200 && body.length() > 4 ? "Taken back" : "Already saved: undo it in the app", 3000);
+  sync();
+}
+
+// ---------------------------------------------------------------- friends
+struct Friend {
+  String id, name, user, tier = "okay", what, label;
+  int hp = 0, drunk = 0, high = 0, coughy = 0;
+  bool online = false, hasCard = false, sprite = false;
+  time_t seen = 0;
+  uint16_t pal[36];
+  char px[257];
+};
+Friend friends[12];
+int nfriends = 0, friendSel = 0;
+uint32_t friendsAt = 0;
+
+void loadFriends() {
+  friendsAt = millis();
+  String body;
+  if (api("GET", "/rest/v1/friendships?status=eq.accepted&select=requester,addressee", "", body) != 200) return;
+  JsonDocument d;
+  if (deserializeJson(d, body)) return;
+  String ids[12];
+  int n = 0;
+  for (JsonObject r : d.as<JsonArray>()) {
+    if (n >= 12) break;
+    String a = r["requester"] | "", b = r["addressee"] | "";
+    ids[n++] = a == uid ? b : a;
+  }
+  if (!n) { nfriends = 0; return; }
+  String in = "(";
+  for (int i = 0; i < n; i++) { if (i) in += ","; in += ids[i]; }
+  in += ")";
+  String pb, cb;
+  JsonDocument pd, cd;
+  if (api("GET", "/rest/v1/profiles?id=in." + in + "&select=id,username,display_name", "", pb) != 200 || deserializeJson(pd, pb)) return;
+  bool cards = api("GET", "/rest/v1/cards?user_id=in." + in + "&select=user_id,updated_at,hp:card->hp,tier:card->>tier,fx:card->fx,"
+                   "now:card->now,offline:card->offline,built:card->built,pal:card->sprite->p,px:card->sprite->n", "", cb) == 200
+               && !deserializeJson(cd, cb);
+  int k = 0;
+  for (JsonObject p : pd.as<JsonArray>()) {
+    if (k >= 12) break;
+    Friend &f = friends[k];
+    f = Friend();
+    f.id = p["id"] | "";
+    f.user = p["username"] | "";
+    f.name = p["display_name"] | "";
+    if (!f.name.length()) f.name = f.user;
+    if (cards) for (JsonObject c : cd.as<JsonArray>()) {
+      if (f.id != (const char *)(c["user_id"] | "")) continue;
+      f.hasCard = true;
+      f.hp = c["hp"] | 0;
+      f.tier = c["tier"] | "okay";
+      f.seen = parseIso(c["updated_at"] | "");
+      bool off = c["offline"] | false;
+      f.online = !off && clockOk() && f.seen && time(nullptr) - f.seen < 300;
+      time_t built = c["built"] | 0;
+      if (f.online && built && time(nullptr) - built < 1800) {   // older than 30 min: it may have worn off
+        f.drunk = c["fx"]["drunk"] | 0; f.high = c["fx"]["high"] | 0; f.coughy = c["fx"]["coughy"] | 0;
+      }
+      if (f.online) { f.what = c["now"]["what"] | ""; f.label = c["now"]["label"] | ""; }
+      const char *px = c["px"];
+      if (px && strlen(px) == 256) {
+        int i = 0;
+        for (JsonVariant v : c["pal"].as<JsonArray>()) { if (i < 36) f.pal[i++] = hexColor(v.as<const char *>()); }
+        memcpy(f.px, px, 256); f.px[256] = 0;
+        f.sprite = true;
+      }
+    }
+    k++;
+  }
+  nfriends = k;
+  // online first, then by name
+  for (int i = 1; i < nfriends; i++) for (int j = i; j > 0 && (friends[j].online > friends[j - 1].online ||
+       (friends[j].online == friends[j - 1].online && friends[j].name < friends[j - 1].name)); j--) std::swap(friends[j], friends[j - 1]);
+}
+
+String nameOf(const String &id) {
+  for (int i = 0; i < nfriends; i++) if (friends[i].id == id) return friends[i].name;
+  return "";
+}
+
+void sendPoke(const Friend &f) {
+  String body;
+  int code = api("POST", "/rest/v1/pokes", "{\"receiver\":\"" + f.id + "\",\"kind\":\"poke\"}", body, "return=minimal");
+  if (code == 201) { tunePoke(); status = "Poked " + f.name + "!"; }
+  else { tuneDown(); status = code == 403 ? "Easy! Try again in a minute" : code == 404 ? "Pokes need supabase/egg.sql" : "Couldn't poke (" + String(code) + ")"; }
+}
+
+// a friend poked you (from their egg or their app): buzz, wake up, show who
+void checkPokes() {
+  String body;
+  if (!uid.length() || api("GET", "/rest/v1/pokes?receiver=eq." + uid + "&seen_egg=is.null&order=id.asc&limit=5&select=id,kind,sender", "", body) != 200) return;
+  JsonDocument d;
+  if (deserializeJson(d, body)) return;
+  JsonArray a = d.as<JsonArray>();
+  if (!a.size()) return;
+  String ids;
+  for (JsonObject p : a) { if (ids.length()) ids += ","; ids += String((long)(p["id"] | 0)); }
+  String r;
+  api("PATCH", "/rest/v1/pokes?id=in.(" + ids + ")", "{\"seen_egg\":\"now\"}", r, "return=minimal");
+  JsonObject p = a[a.size() - 1];
+  String sender = p["sender"] | "", kind = p["kind"] | "poke";
+  String who = nameOf(sender);
+  if (!who.length()) { loadFriends(); who = nameOf(sender); }
+  if (!who.length()) who = "A friend";
+  if (!screenOn) { screenOn = true; if (PIN_BL >= 0) digitalWrite(PIN_BL, HIGH); gfx->displayOn(); }
+  if (kind == "love") { petUntil = millis() + 3000; showMsg(who.substring(0, 14), "sent Mochi love <3", 6000); tuneLove(); }
+  else if (kind == "wave") { shakeUntil = millis() + 1500; showMsg(who.substring(0, 14), "waved at you!", 6000); tunePoke(); }
+  else { shakeUntil = millis() + 2000; showMsg(who.substring(0, 14), a.size() > 1 ? "poked you " + String(a.size()) + " times!" : "poked you!", 6000); tunePoke(); }
+}
+
+// ---------------------------------------------------------------- petting
+int loveToday() {
+  long day = clockOk() ? (long)(time(nullptr) / 86400) : 0;
+  return prefs.getLong("loveDay", -1) == day ? prefs.getInt("love", 0) : 0;
+}
+
+void pet() {
+  long day = clockOk() ? (long)(time(nullptr) / 86400) : 0;
+  int n = loveToday() + 1;
+  prefs.putLong("loveDay", day);
+  prefs.putInt("love", n);
+  petUntil = millis() + 1800;
+  tunePet();
+  String sub = card.drunk ? "*hic* ...love you too" : card.high ? "duuude... so soft" : card.coughy ? "*cough* thanks <3"
+             : card.tier == "sick" ? "that helps a little" : n == 1 ? "first pet today!" : String(n) + " pets today";
+  showMsg("<3", sub, 2200);
+}
+
 // ---------------------------------------------------------------- drawing
 // The whole screen is Mochi's place (like Home in the app), Mochi stands on the ground in the middle,
 // with your name on top and HP at the bottom. Only the part around Mochi is redrawn when it moves.
@@ -296,8 +571,9 @@ void drawStage(int dx, bool blink, bool coughing = false) {
   if (view != 0) return;
   for (int y = 0; y < SH; y++) for (int x = 0; x < SW; x++) stage[y * SW + x] = bgAt(SX + x, SY + y);
   const char *px = DEFAULT_N;
+  bool petting = millis() < petUntil;
   if (card.sprite) {
-    px = blink ? card.fb : card.fn;
+    px = blink || petting ? card.fb : card.fn;   // eyes closed while being petted: happy
     if (card.fxFrames) {
       if (coughing) px = card.fc;
       else if (card.drunk) px = card.fd[constrain(card.drunk, 1, 3) - 1];
@@ -317,6 +593,19 @@ void drawStage(int dx, bool blink, bool coughing = false) {
         int xx = ox + cx * SCALE + x;
         if (xx >= 0 && xx < SW) stage[yy * SW + xx] = col;
       }
+    }
+  }
+  if (petting) {   // little hearts floating up on both sides
+    static const char *H = ".X.X.XXXXXXXXXX.XXX...X..";   // 5x5 heart
+    uint32_t left = petUntil - millis();
+    for (int k = 0; k < 3; k++) {
+      int life = (int)((1800 - left + k * 600) % 1800);
+      int hy = 70 - life * 70 / 1800, hx = (k % 2 ? SW - 26 : 8) + (k == 2 ? 6 : 0);
+      for (int i = 0; i < 25; i++) if (H[i] == 'X')
+        for (int y = 0; y < 3; y++) for (int x = 0; x < 3; x++) {
+          int yy = hy + (i / 5) * 3 + y, xx = hx + (i % 5) * 3 + x;
+          if (yy >= 0 && yy < SH && xx >= 0 && xx < SW) stage[yy * SW + xx] = RED;
+        }
     }
   }
   gfx->draw16bitRGBBitmap(SX, SY, stage, SW, SH);
@@ -357,13 +646,117 @@ void panel(int x, int y, int w, int h) {  // the app's card look: white, thick d
   gfx->drawRoundRect(x + 1, y + 1, w - 2, h - 2, 9, INK);
 }
 
-void drawFrame() {  // the background and everything on it; Mochi itself comes from drawStage
+// a list in the app's card style, the picked row in yellow
+void drawList(const char *title, const String *items, const bool *dots, const bool *bad, int n, int sel, const char *hint) {
   drawBackground();
-  if (view == 0) {
+  panel(8, 8, 221, 304);
+  text(20, 20, title, 2, INK);
+  int rows = 9, first = sel >= rows ? sel - rows + 1 : 0;
+  for (int i = first; i < n && i < first + rows; i++) {
+    int y = 48 + (i - first) * 27;
+    if (i == sel) { gfx->fillRoundRect(16, y - 4, 205, 24, 6, YELLOW); gfx->drawRoundRect(16, y - 4, 205, 24, 6, INK); }
+    int x = 24;
+    if (dots) { gfx->fillCircle(30, y + 7, 4, bad && bad[i] ? RED : GREEN); x = 42; }
+    text(x, y, items[i].substring(0, dots ? 14 : 15), 2, INK);
+  }
+  if (n > first + rows) text(206, 292, "v", 1, GREY);
+  text(20, 296, hint, 1, GREY);
+}
+
+uint16_t tierColor(const String &t) {
+  return t == "legend" ? rgb(0xffeeb0) : t == "tired" ? rgb(0xd9d3e6) : t == "sick" ? rgb(0xd3dbc4) : t == "shiny" ? rgb(0xbfe9ff) : rgb(0xc9b8ff);
+}
+
+void drawFriend() {
+  if (!nfriends) {
+    drawBackground();
+    panel(8, 8, 221, 120);
+    text(20, 20, "FRIENDS", 2, INK);
+    text(20, 52, WiFi.status() == WL_CONNECTED ? "No friends yet." : "No WiFi right now.", 1, INK);
+    text(20, 70, "Add some in the LazyTrack app", 1, GREY);
+    text(20, 86, "(Friends tab).", 1, GREY);
+    text(20, 110, "C  back", 1, GREY);
+    return;
+  }
+  Friend &f = friends[friendSel];
+  gfx->fillRect(0, 0, 240, 232, tierColor(f.tier));
+  gfx->fillRect(0, 232, 240, 88, rgb(0x7cc97f));
+  panel(8, 8, 221, 50);
+  text(18, 16, f.name.substring(0, 15), 2, INK);
+  text(18, 38, "@" + f.user.substring(0, 20), 1, GREY);
+  text(196, 38, String(friendSel + 1) + "/" + String(nfriends), 1, GREY);
+  // their Mochi, standing on the ground (same size as yours)
+  const char *px = f.sprite ? f.px : DEFAULT_N;
+  for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) {
+    char ch = px[cy * 16 + cx];
+    if (ch == '.') continue;
+    uint16_t col;
+    if (f.sprite) { int i = (ch >= '0' && ch <= '9') ? ch - '0' : (ch >= 'a' && ch <= 'z') ? ch - 'a' + 10 : -1; if (i < 0 || i >= 36) continue; col = f.pal[i]; }
+    else { col = cellColor(ch, false); if (!col) continue; }
+    gfx->fillRect(PX + cx * SCALE, PY + cy * SCALE, SCALE, SCALE, col);
+  }
+  panel(8, 246, 221, 66);
+  if (f.hasCard) {
+    text(18, 256, "HP " + String(f.hp), 2, INK);
+    String fx = f.drunk ? (f.drunk >= 3 ? "WASTED" : f.drunk == 2 ? "DRUNK" : "TIPSY") : f.high ? (f.high >= 3 ? "SO HIGH" : f.high == 2 ? "HIGH" : "BUZZED") : f.coughy ? "COUGHING" : "";
+    if (fx.length()) {
+      int fw = 10 + fx.length() * 6;
+      gfx->fillRoundRect(110, 257, fw, 14, 4, f.drunk ? rgb(0xffd28a) : f.high ? rgb(0x9be8a9) : rgb(0xd9d2e9));
+      gfx->drawRoundRect(110, 257, fw, 14, 4, INK);
+      text(115, 261, fx, 1, INK);
+    }
+  } else text(18, 256, "No card yet", 2, INK);
+  String line;
+  if (f.online) {
+    String w = f.label.length() ? f.label : f.what == "coding" ? "coding" : f.what == "gaming" ? "gaming" : f.what == "youtube" ? "watching YouTube"
+             : f.what == "away" ? "away from the computer" : f.what.length() ? "on the computer" : "";
+    if (w.length()) w.setCharAt(0, toupper(w[0]));
+    line = "Online" + (w.length() ? " - " + w : String(""));
+    gfx->fillCircle(22, 281, 4, GREEN);
+  } else {
+    line = f.seen ? "Last seen " + agoText(f.seen) : "Not seen yet";
+    gfx->fillCircle(22, 281, 4, GREY);
+  }
+  text(32, 278, line.substring(0, 31), 1, INK);
+  text(18, 296, status.startsWith("Poked") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes") ? status.substring(0, 33) : "A next   B poke   C back", 1, GREY);
+}
+
+void drawFrame() {  // the background and everything on it; Mochi itself comes from drawStage
+  if (view == V_MENU) {
+    static const String items[] = {"Log", "Friends", "Today", "Info"};
+    drawList("MENU", items, nullptr, nullptr, 4, menuSel, "A down   B open   C back");
+    return;
+  }
+  if (view == V_LOG) {
+    if (!nhabits) {
+      drawBackground();
+      panel(8, 8, 221, 150);
+      text(20, 20, "LOG", 2, INK);
+      text(20, 52, "Nothing to log yet.", 1, INK);
+      text(20, 70, "Update LazyTrack on your computer,", 1, GREY);
+      text(20, 86, "and run supabase/egg.sql once.", 1, GREY);
+      text(20, 140, "C  back", 1, GREY);
+      return;
+    }
+    String names[16]; bool dots[16], bad[16];
+    for (int i = 0; i < nhabits; i++) { names[i] = habits[i].n; names[i].setCharAt(0, toupper(names[i][0])); bad[i] = habits[i].bad; dots[i] = true; }
+    drawList("LOG", names, dots, bad, nhabits, logSel, "A down   B log it   C back");
+    return;
+  }
+  if (view == V_FRIENDS) { drawFriend(); return; }
+  drawBackground();
+  if (view == V_HOME) {
     String name = card.name.substring(0, 15);
     panel(8, 8, max(150, (int)name.length() * 12 + 22), 46);
     text(18, 16, name, 2, INK);
     text(18, 38, "MOCHI #" + String(card.gen) + " - " + (card.age ? String(card.age) + "D OLD" : String("BORN TODAY")), 1, GREY);
+    if (millis() < msgUntil) {   // a moment's message: logged, poked, petted
+      int tsz = msgTitle.length() <= 10 ? 3 : 2, tw = msgTitle.length() * 6 * tsz;
+      int w = constrain(max(tw, (int)min((int)msgSub.length(), 36) * 6) + 28, 120, 224);
+      panel((240 - w) / 2, 64, w, 50);
+      text((240 - tw) / 2, tsz == 3 ? 72 : 76, msgTitle, tsz, INK);
+      text((240 - (int)min((int)msgSub.length(), 36) * 6) / 2, 100, msgSub.substring(0, 36), 1, GREY);
+    }
     panel(8, 246, 221, 66);
     text(18, 256, "HP", 2, INK);
     int on = (card.hp + 5) / 10;
@@ -388,12 +781,13 @@ void drawFrame() {  // the background and everything on it; Mochi itself comes f
     text(31 + bw, 280, fx, 1, INK);
     text(18, 297, (doing().length() ? doing() : status).substring(0, 33), 1, GREY);
     drawStage(0, false);
-  } else if (view == 1) {
+  } else if (view == V_STATS) {
     panel(8, 8, 221, 304);
     text(20, 20, "TODAY", 2, INK);
     for (int i = 0; i < card.nstats; i++) text(20, 52 + i * 28, card.stats[i], 2, INK);
     if (!card.nstats) text(20, 52, "No stats shared yet", 1, GREY);
-    text(20, 292, "Record " + String(max(card.best, card.age)) + "d  Deaths " + String(card.deaths), 1, GREY);
+    text(20, 280, "Record " + String(max(card.best, card.age)) + "d  Deaths " + String(card.deaths), 1, GREY);
+    text(20, 296, "C  back", 1, GREY);
   } else {
     panel(8, 8, 221, 304);
     text(20, 20, "INFO", 2, INK);
@@ -401,9 +795,12 @@ void drawFrame() {  // the background and everything on it; Mochi itself comes f
     text(20, 70, "IP: " + WiFi.localIP().toString(), 1, INK);
     text(20, 88, "Status: " + status.substring(0, 26), 1, INK);
     text(20, 106, "Last sync: " + (lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never")), 1, INK);
-    text(20, 144, "A  next screen", 1, GREY);
-    text(20, 160, "B  sync now", 1, GREY);
-    text(20, 176, "C  screen off / on", 1, GREY);
+    String q = prefs.getString("queue", "");
+    int waiting = 0; for (char ch : q) if (ch == '\n') waiting++;
+    text(20, 124, "Pets today: " + String(loveToday()) + (waiting ? "   Logs waiting: " + String(waiting) : ""), 1, INK);
+    text(20, 160, "HOME:  A menu   B pet   C screen off", 1, GREY);
+    text(20, 176, "MENUS: A next   B ok    C back", 1, GREY);
+    text(20, 200, "B here  sync now", 1, GREY);
   }
 }
 
@@ -455,6 +852,15 @@ void setup() {
   size_t n = prefs.getBytesLength("card");
   if (n > 0 && n < 16384) { char *buf = (char *)malloc(n + 1); prefs.getBytes("card", buf, n); buf[n] = 0; saved = buf; free(buf); }
   if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, false); }
+  String hs = prefs.getString("habits", "");   // the Log menu works before the first sync too
+  if (hs.length()) {
+    JsonDocument d;
+    if (!deserializeJson(d, hs)) for (JsonObject h : d[0]["habits"].as<JsonArray>()) {
+      if (nhabits >= 16) break;
+      habits[nhabits].k = h["k"] | ""; habits[nhabits].n = h["n"] | ""; habits[nhabits].bad = h["bad"] | false;
+      if (habits[nhabits].k.length()) nhabits++;
+    }
+  }
   WiFi.mode(WIFI_STA);
   wifi.addAP(WIFI_SSID, WIFI_PASS);
 #ifdef WIFI2_SSID
@@ -466,23 +872,72 @@ void setup() {
   for (int i = 0; i < 20 && wifi.run(1000) != WL_CONNECTED; i++) {}
   configTime(0, 0, "pool.ntp.org");  // the clock, for "coding for 25 min"
   sync();
+  if (WiFi.status() == WL_CONNECTED) { flushQueue(); loadHabits(); loadFriends(); checkPokes(); }
   drawFrame();
+}
+
+void onButton(int b) {
+  if (!screenOn) { setScreen(true); drawFrame(); return; }   // any button wakes it up
+  tuneClick();
+  switch (view) {
+    case V_HOME:
+      if (b == 0) { view = V_MENU; menuSel = 0; drawFrame(); }
+      else if (b == 1) pet();
+      else if (undoId && millis() < msgUntil) undoLog();
+      else setScreen(false);
+      break;
+    case V_MENU:
+      if (b == 0) { menuSel = (menuSel + 1) % 4; drawFrame(); }
+      else if (b == 2) { view = V_HOME; drawFrame(); }
+      else if (menuSel == 0) {
+        if (!nhabits || millis() - habitsAt > 300000) { status = "Loading..."; loadHabits(); }
+        view = V_LOG; logSel = 0; drawFrame();
+      } else if (menuSel == 1) {
+        view = V_FRIENDS; friendSel = 0;
+        if (millis() - friendsAt > 60000 || !nfriends) {
+          drawBackground(); panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK);
+          loadFriends();
+        }
+        status = ""; drawFrame();
+      } else { view = menuSel == 2 ? V_STATS : V_INFO; drawFrame(); }
+      break;
+    case V_LOG:
+      if (b == 0 && nhabits) { logSel = (logSel + 1) % nhabits; drawFrame(); }
+      else if (b == 1 && nhabits) doLog(logSel);
+      else if (b == 2) { view = V_MENU; drawFrame(); }
+      break;
+    case V_FRIENDS:
+      if (b == 0 && nfriends) { friendSel = (friendSel + 1) % nfriends; status = ""; drawFrame(); }
+      else if (b == 1 && nfriends) { sendPoke(friends[friendSel]); drawFrame(); }
+      else if (b == 2) { view = V_MENU; status = ""; drawFrame(); }
+      break;
+    case V_INFO:
+      if (b == 1) { status = "Syncing..."; drawFrame(); sync(); checkPokes(); tuneClick(); if (view == V_INFO) drawFrame(); break; }
+      // fall through
+    default:
+      if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
+  }
 }
 
 void loop() {
   static uint32_t tick = 0, nextBlink = 4000, blinkEnd = 0;
   int b = pressed();
-  if (b == 2) { tuneClick(); setScreen(!screenOn); if (screenOn) drawFrame(); }
-  else if (b >= 0 && !screenOn) { setScreen(true); drawFrame(); }
-  else if (b == 0) { tuneClick(); view = (view + 1) % 3; drawFrame(); }
-  else if (b == 1) { tuneClick(); status = "Syncing..."; drawFrame(); sync(); tuneClick(); drawFrame(); }
+  if (b >= 0) onButton(b);
 
   if (millis() - lastTry > 30000) {   // every 30 s: LazyTrack sends changes (drunk, high, sober...) within a minute
     int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat + card.nowLabel;
     sync();
-    if (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat + card.nowLabel != what || view == 2) drawFrame();
+    if (WiFi.status() == WL_CONNECTED) {
+      flushQueue();
+      checkPokes();
+      if (!nhabits || millis() - habitsAt > 600000) loadHabits();
+      if (view == V_FRIENDS && millis() - friendsAt > 60000) { loadFriends(); if (friendSel >= nfriends) friendSel = 0; drawFrame(); }
+    }
+    if (view == V_HOME && (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat + card.nowLabel != what)) drawFrame();
+    if (view == V_INFO) drawFrame();
   }
   if (WiFi.status() != WL_CONNECTED && millis() - lastTry > 15000) { lastTry = millis(); if (wifi.run(3000) == WL_CONNECTED) sync(); }
+  if (msgUntil && millis() > msgUntil) { msgUntil = 0; undoId = 0; if (view == V_HOME) drawFrame(); }   // the message is done
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
   // Only redrawn when something changes, so the screen stays calm.
@@ -495,9 +950,12 @@ void loop() {
     if (card.drunk) dx = (int)(sin(t / (500.0 - card.drunk * 100)) * (3 + card.drunk * 2));
     else if (card.high) dx = (int)(sin(t / 1100.0) * 3);
     if (card.coughy && (t / 300) % (14 - card.coughy * 3) == 0) dx = ((t / 60) % 2) ? 3 : -3;
+    if (t < shakeUntil) dx = ((t / 70) % 2) ? 5 : -5;                       // poked: a little jolt
+    else if (t < petUntil) dx = ((t / 200) % 2) ? 2 : -2;                   // petted: happy wiggle
     bool blink = t < blinkEnd;
     bool cough = card.coughy && (t / 300) % (14 - card.coughy * 3) == 0;
     static bool lastCough = false;
-    if (dx != lastDx || blink != lastBlink || cough != lastCough) { drawStage(dx, blink, cough); lastDx = dx; lastBlink = blink; lastCough = cough; }
+    bool hearts = t < petUntil + 150;
+    if (dx != lastDx || blink != lastBlink || cough != lastCough || hearts) { drawStage(dx, blink, cough); lastDx = dx; lastBlink = blink; lastCough = cough; }
   }
 }

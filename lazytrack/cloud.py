@@ -422,7 +422,7 @@ def unread_detail() -> dict:
     tok, me = _token(), state()["uid"]
     msgs = _http("GET", f"/rest/v1/messages?receiver=eq.{me}&read_at=is.null&select=id", token=tok) or []
     reqs = _http("GET", f"/rest/v1/friendships?addressee=eq.{me}&status=eq.pending&select=id", token=tok) or []
-    return {"count": len(msgs) + len(reqs), "messages": len(msgs), "requests": len(reqs)}
+    return {"count": len(msgs) + len(reqs), "messages": len(msgs), "requests": len(reqs), "pokes": new_pokes()}
 
 
 def _uuid(s: str) -> str:
@@ -585,3 +585,99 @@ def delete_news(news_id: int) -> None:
 
 def delete_idea(idea_id: int) -> None:
     _http("DELETE", f"/rest/v1/ideas?id=eq.{int(idea_id)}", token=_need_admin(), prefer="return=minimal")
+
+
+# ---------------------------------------------------------------- the egg + pokes (supabase/egg.sql)
+_egg = {"setup": "", "missing_until": 0.0}
+POKE_KINDS = {"poke", "love", "wave"}
+
+
+def _egg_ready() -> bool:
+    return state()["connected"] and time.time() > _egg["missing_until"]
+
+
+def _egg_missing(e: Exception) -> bool:
+    """egg.sql not run yet: stay quiet and try again in 10 minutes."""
+    if _missing(e):
+        _egg["missing_until"] = time.time() + 600
+        return True
+    return False
+
+
+def egg_sync() -> int:
+    """Every ~30 s: tells the egg which habits it can log, and picks up what was logged on it.
+    Returns how many logs came in."""
+    if not _egg_ready():
+        return 0
+    from . import habits as _habits
+    tok = _token()
+    try:
+        def short(h):   # fits the egg's list: "glass of water", not "reading session" (-> "Reading")
+            one = h.get("one") or ""
+            return (one if one and len(one) <= 14 else (h.get("n") or h["k"]))[:14]
+        hs = [{"k": h["k"], "n": short(h), "bad": bool(h.get("bad"))} for h in _habits.get()["habits"]][:16]
+        body = json.dumps(hs, sort_keys=True)
+        if body != _egg["setup"]:
+            _http("POST", "/rest/v1/egg_setup", {"user_id": state()["uid"], "habits": hs, "updated_at": _now()},
+                  token=tok, prefer="resolution=merge-duplicates,return=minimal")
+            _egg["setup"] = body
+        rows = _http("GET", "/rest/v1/egg_inbox?select=id,kind,ts&order=id.asc&limit=50", token=tok) or []
+    except CloudError as e:
+        if not _egg_missing(e):
+            log.debug("egg sync failed: %s", e)
+        return 0
+    if not rows:
+        return 0
+    import datetime as _dt
+    known, n = set(_habits.keys()), 0
+    for r in rows:
+        if r.get("kind") not in known:
+            continue
+        try:
+            ts = _dt.datetime.fromisoformat(str(r["ts"]).replace("Z", "+00:00")).timestamp()
+        except ValueError:
+            ts = time.time()
+        db.add_event(r["kind"], "egg", source="egg", ts=min(ts, time.time()))
+        n += 1
+    _http("DELETE", f"/rest/v1/egg_inbox?id=in.({','.join(str(int(r['id'])) for r in rows)})", token=tok, prefer="return=minimal")
+    if n:
+        _last_card["t"] = 0.0      # Mochi changed (high, drunk...): friends and the egg get it on the next heartbeat
+        log.info("egg: %d log(s) came in", n)
+    return n
+
+
+def poke(other: str, kind: str = "poke") -> None:
+    kind = kind if kind in POKE_KINDS else "poke"
+    try:
+        _http("POST", "/rest/v1/pokes", {"sender": state()["uid"], "receiver": _uuid(other), "kind": kind},
+              token=_token(), prefer="return=minimal")
+    except CloudError as e:
+        if _missing(e):
+            raise CloudError("Pokes need one more setup step: run supabase/egg.sql in Supabase.") from None
+        if "row-level security" in str(e).lower():
+            raise CloudError("Easy! You can poke again in a minute.") from None
+        raise
+
+
+def new_pokes() -> list:
+    """Pokes the app hasn't shown yet: [{"id", "from", "kind"}], marked seen for the app (the egg has its own mark)."""
+    if not _egg_ready():
+        return []
+    tok, me = _token(), state()["uid"]
+    try:
+        rows = _http("GET", f"/rest/v1/pokes?receiver=eq.{me}&seen_app=is.null&order=id.asc&limit=20&select=id,sender,kind,created_at",
+                     token=tok) or []
+    except CloudError as e:
+        _egg_missing(e)
+        return []
+    if not rows:
+        return []
+    ids = sorted({r["sender"] for r in rows})
+    profs = {p["id"]: p for p in _http("GET", f"/rest/v1/profiles?id={_in(ids)}&select=id,username,display_name", token=tok) or []}
+    _http("PATCH", f"/rest/v1/pokes?id=in.({','.join(str(int(r['id'])) for r in rows)})", {"seen_app": _now()},
+          token=tok, prefer="return=minimal")
+    out = []
+    for r in rows:
+        p = profs.get(r["sender"], {})
+        out.append({"id": r["id"], "from": p.get("display_name") or p.get("username") or "A friend", "kind": r["kind"]})
+    return out

@@ -27,9 +27,9 @@ It logs into your LazyTrack account over WiFi and reads your friend card every m
 
 | Part | ESP32 pin |
 |---|---|
-| Button A (next screen) | GPIO 32, other leg to GND |
-| Button B (sync now) | GPIO 33, other leg to GND |
-| Button C (screen off/on) | GPIO 25, other leg to GND |
+| Button A (menu / next) | GPIO 32, other leg to GND |
+| Button B (OK / pet Mochi) | GPIO 33, other leg to GND |
+| Button C (back / screen off) | GPIO 25, other leg to GND |
 | Buzzer + | GPIO 26 (buzzer - to GND) |
 
 Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the screen (T_CLK, T_CS...) and the SD card pins stay unconnected.
@@ -48,11 +48,27 @@ Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the 
    If it says "Connecting....___" for a long time, hold the **BOOT** button on the ESP32 until it starts writing.
 7. Tools → Serial Monitor at 115200 shows what it's doing if something's off.
 
+## Playing with it
+
+| | A | B | C |
+|---|---|---|---|
+| **Home** (your Mochi) | menu | pet Mochi (hearts) | screen off (any button wakes it) |
+| **Menu** | next | open | back |
+| **Log** | next | log it (Mochi reacts right away) | back. Right after logging, C = undo |
+| **Friends** | next friend | poke them (their egg buzzes, their app plays a sound) | back |
+
+- **Log** lists the habits you track in LazyTrack. A log reaches LazyTrack within a minute, while LazyTrack runs on
+  your computer. Without WiFi, logs wait on the egg and go out once it's back online.
+- **Friends** shows each friend's Mochi, HP, whether they're drunk/high, online or last seen, and what they're doing.
+- When a friend pokes you, waves or sends love (from their egg or the app), the egg wakes up, buzzes and shows who.
+- One-time setup for logging and pokes: run `supabase/egg.sql` in Supabase (see `supabase/README.md`).
+- The sketch is getting big: if Arduino says it's too large, pick Tools → Partition Scheme → **Huge APP (3MB No OTA)**.
+
 ## If something's off
 
 - **White or black screen:** wiring, or the wrong chip setting (try the other one).
 - **Colors look like a photo negative:** set `SCREEN_INVERT` at the top to `true`.
 - **"Login failed":** the email/password in `secrets.h`. **"No card yet":** open LazyTrack on your computer once while logged in.
-- The bottom line shows the status; screen C (press A twice) has WiFi, IP and the last sync.
+- The bottom line shows what you're doing (or the status); Menu → Info has WiFi, IP and the last sync (B there syncs now).
 
 Compiled and checked with ESP32 board package 3.3.12, GFX Library for Arduino 1.6.9 and ArduinoJson 7.4.2.

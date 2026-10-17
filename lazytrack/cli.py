@@ -52,6 +52,7 @@ class SyncWorker(threading.Thread):
                 log.warning("backup failed: %s", e)
             try:
                 from . import cloud
+                cloud.egg_sync()    # logs made on the egg come in here
                 cloud.heartbeat()   # friends see you as online while LazyTrack runs
             except Exception as e:
                 log.debug("friends heartbeat failed: %s", e)
