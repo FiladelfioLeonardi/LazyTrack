@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import logging
 import threading
@@ -186,6 +187,16 @@ def make_handler(cfg: dict):
             b = self._body()
             if u.path.startswith("/api/auth/"):
                 return self._auth(u.path, b)
+            if u.path == "/api/quit" and self._local() and self.headers.get("X-LazyTrack") == "1":
+                # the window closed and "keep running in the background" is off: quit for real
+                self._send(200, {"ok": True})
+                def bye():
+                    try:
+                        cloud.go_offline()
+                    finally:
+                        os._exit(0)
+                threading.Timer(0.3, bye).start()
+                return None
             if u.path == "/api/restart" and self._local():   # ./lt phone restarts it from the Terminal
                 self._send(200, {"ok": True})
                 settings.restart_soon()

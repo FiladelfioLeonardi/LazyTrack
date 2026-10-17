@@ -32,6 +32,7 @@ def get(cfg: dict) -> dict:
         "device_name": cfg.get("device_name", "macbook"),
         "idle_minutes": max(1, round(int(cfg["activity"].get("idle_seconds", 300)) / 60)),
         "open_dashboard_on_start": bool(cfg["dashboard"].get("open_on_start", True)),
+        "keep_running": bool(cfg.get("app", {}).get("keep_running", True)),
         "smoke_enabled": bool(s.get("enabled", False)),
         "smoke_asked": bool(s.get("asked", False)),
         "smoke_sensitivity": sens,
@@ -65,6 +66,8 @@ def save(body: dict) -> dict:
             raw["device_name"] = name
     if "idle_minutes" in body:
         section("activity")["idle_seconds"] = 60 * max(1, min(60, int(body["idle_minutes"])))
+    if "keep_running" in body:
+        section("app")["keep_running"] = bool(body["keep_running"])
     if "open_dashboard_on_start" in body:
         section("dashboard")["open_on_start"] = bool(body["open_dashboard_on_start"])
     if "smoke_enabled" in body:

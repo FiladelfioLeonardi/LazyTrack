@@ -49,6 +49,16 @@ def categorize(app: str, title: str, url: str, rules: List[dict]) -> str:
     return "browsing" if app in system.BROWSERS else "other"
 
 
+# what you're doing right now, for friends ("Coding for 25 min"). Only the category, never titles or sites.
+NOW = {"what": "", "since": 0.0, "t": 0.0}
+
+
+def _now(what: str, t: float) -> None:
+    if NOW["what"] != what:
+        NOW.update(what=what, since=t)
+    NOW["t"] = t
+
+
 class ActivityTracker:
     """Call sample() every few seconds. Must run on the main thread on macOS."""
 
@@ -62,16 +72,20 @@ class ActivityTracker:
         now = time.time()
         if system.screen_locked():
             self.cur = None
+            _now("away", now)
             return None
         app = system.frontmost_app()
         if not app:
             self.cur = None
+            _now("away", now)
             return None
         url, title = system.browser_tab(app) if app in system.BROWSER_SCRIPTS else ("", "")
         category = categorize(app, title, url, self.cfg["categories"])
 
         if self.is_away(now, category):
+            _now("away", now)
             return None
+        _now(category, now)
         self.record(app, category, title, url, now)
         return {"app": app, "category": category, "title": title, "url": url}
 

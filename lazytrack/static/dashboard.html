@@ -301,6 +301,7 @@
   .fcard .fmeta { font-size: 13px; opacity: .7; }
   .fcard .pres { display: inline-flex; align-items: center; gap: 5px; font: 700 12px var(--body); opacity: 1; }
   .fcard .pres i { width: 9px; height: 9px; border-radius: 50%; background: #9a94a6; border: 1.5px solid var(--line); display: inline-block; }
+  .fcard .doing { display: block; margin-top: 3px; font: 700 13px var(--body); opacity: 1; }
   .fcard .pres.on i { background: #3fbf6f; box-shadow: 0 0 0 3px rgba(63,191,111,.25); }
   .fcard .fstate { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
   .fcard .fstate span { font: 700 11px var(--pixel); border: 2px solid var(--line); border-radius: 7px; padding: 1px 6px; background: rgba(255,255,255,.7); color: #1d1b20; }
@@ -1584,6 +1585,15 @@ applyTheme();
             <p class="hint">With no key press, click, scroll or mouse move for this long, screen time stops counting, and those minutes are taken off again. While a video or a call is playing you still count as here.</p>
             <input id="idl" type="number" name="idle_minutes" min="1" max="60" style="max-width:140px"></div>
           <label class="toggle"><input type="checkbox" name="open_dashboard_on_start"> Open this page when LazyTrack starts</label>
+        </div>
+      </section>
+
+      <section class="card pad" data-cat="app">
+        <h2>When you close the window</h2>
+        <div class="form">
+          <label class="toggle"><input type="checkbox" name="keep_running"> Keep LazyTrack running in the background</label>
+          <p class="hint">On: closing the window keeps tracking your screen time (and the camera, if it's on), and friends see you online.
+            Off: closing the window quits LazyTrack completely, and friends see you offline. Opening the app starts it again.</p>
         </div>
       </section>
 
@@ -3348,6 +3358,7 @@ function buildCard() {
           // how Mochi is doing right now (drunk, high, coughing) so friends see it too; "built" = when
           mood: (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy",
           fx: (({high, drunk, coughy}) => ({high, drunk, coughy}))(petState(O)), built: Math.round(Date.now() / 1000),
+          share_now: !shareKeys().includes("!now"),   // LazyTrack adds what you're doing right now (only the category)
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
           stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
 }
@@ -3386,14 +3397,21 @@ function fcardHTML(p, opts = {}) {
     <div class="fmeta">${opts.me ? "Updates while LazyTrack is open" : presence(p)}</div></${tag}>`;
 }
 /** Online = their LazyTrack checked in within 5 minutes (it does every ~2 while it runs). */
+const DOING = {coding: "💻 Coding", youtube: "▶️ Watching YouTube", social: "💬 On socials", streaming: "🎬 Watching something",
+  gaming: "🎮 Gaming", browsing: "🌐 Browsing", other: "🖥️ On the computer", away: "💤 Away from the computer"};
 function presence(p) {
   if (!p.updated_at) return `<span class="pres"><i></i> Not seen yet</span>`;
-  const on = p.online ?? (Date.now() - new Date(p.updated_at) < 300000);
-  return on ? `<span class="pres on"><i></i> Online</span>` : `<span class="pres"><i></i> Last seen ${ago(p.updated_at)}</span>`;
+  const c = p.card || {};
+  const on = !c.offline && (p.online ?? (Date.now() - new Date(p.updated_at) < 300000));
+  if (!on) return `<span class="pres"><i></i> Last seen ${ago(p.updated_at)}</span>`;
+  const now = c.now || {}, what = DOING[now.what] || (now.what ? "🖥️ On the computer" : "");
+  const mins = now.since ? Math.floor((Date.now() / 1000 - now.since) / 60) : 0;
+  const long = mins >= 60 ? `${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ""}` : mins >= 1 ? `${mins} min` : "";
+  return `<span class="pres on"><i></i> Online</span>${what ? `<span class="doing">${what}${long && now.what !== "away" ? ` · for ${long}` : ""}</span>` : ""}`;
 }
 /** What their Mochi is going through right now. Only trusted while fresh: older than 30 min, it may have worn off. */
 function friendFx(c, stale) {
-  const fresh = c && c.fx && !stale && c.built && Date.now() / 1000 - c.built < 1800;
+  const fresh = c && c.fx && !stale && !c.offline && c.built && Date.now() / 1000 - c.built < 1800;
   return fresh ? {high: +c.fx.high || 0, drunk: +c.fx.drunk || 0, coughy: +c.fx.coughy || 0, mood: c.mood || "happy"} : {high: 0, drunk: 0, coughy: 0, mood: "happy"};
 }
 
@@ -3470,7 +3488,8 @@ async function renderFriends() {
   const keys = shareKeys();
   const opts = [...HABITS.map(h => [h.k, `${h.e} ${h.n}`]), ...SHOW_SCREEN.map(k => [k, `${(INFO[k] || {}).e || ""} ${(INFO[k] || {}).n || k}`])];
   $("fShare").innerHTML = `<div class="label">WHAT FRIENDS SEE</div><p class="note" style="margin-bottom:10px">Mochi, HP and your level always show. Green = shared.</p>
-    <div class="sharechips">${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>`;
+    <div class="sharechips"><button type="button" data-sharenow aria-pressed="${!keys.includes("!now")}">👀 What I'm doing now</button>${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>
+    <p class="note" style="margin-top:8px">"What I'm doing now" shows only the kind of thing (coding, YouTube, gaming…), never which site, window or chat.</p>`;
   $("fReq").innerHTML = (F.incoming.length ? `<h2 class="sec">Wants to be your friend</h2><div class="card">${F.incoming.map(x =>
       `<div class="reqrow"><b>${esc(x.display_name)} <span class="note">@${esc(x.username)}</span></b>
         <button type="button" class="btn primary" data-accept="${x.id}">Accept</button><button type="button" class="btn" data-decline="${x.id}">No thanks</button></div>`).join("")}</div>` : "")
@@ -3512,6 +3531,16 @@ document.addEventListener("click", async e => {
   if (rm) {
     if (!rm.dataset.sure) { rm.dataset.sure = 1; rm.textContent = "Sure? Tap again"; return; }
     await post("/api/cloud/remove", {id: +rm.dataset.fid}); go({tab: "friends"}); return;
+  }
+  const sn = e.target.closest("[data-sharenow]");
+  if (sn) {
+    const keys = shareKeys(), off = keys.includes("!now"), next = off ? keys.filter(x => x !== "!now") : [...keys, "!now"];
+    sn.setAttribute("aria-pressed", off);
+    SHARE = next;
+    await post("/api/habits", {share: next});
+    pushCard(true);
+    $("fMe").innerHTML = fcardHTML({...renderFriends.data.me, card: buildCard(), updated_at: new Date().toISOString()}, {me: true});
+    return;
   }
   const sh = e.target.closest("[data-share]");
   if (sh) {

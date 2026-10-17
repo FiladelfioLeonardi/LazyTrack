@@ -257,6 +257,14 @@ def _window(cfg: dict) -> None:
                 srv.close()
         except OSError:
             pass
+        try:   # "keep running in the background" off: closing the window quits LazyTrack too
+            if not config.load().get("app", {}).get("keep_running", True):
+                req = urllib.request.Request(url + "/api/quit", data=b"{}", method="POST",
+                                             headers={"X-LazyTrack": "1", "Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=3).close()
+                log.info("window: closed, and LazyTrack quit (keep running is off)")
+        except Exception:
+            log.debug("couldn't ask LazyTrack to quit", exc_info=True)
         threading.Timer(1.0, lambda: os._exit(0)).start()
 
     try:

@@ -181,16 +181,35 @@ def disconnect() -> None:
 _last_card = {"t": 0.0, "body": ""}
 
 
+def _doing() -> dict:
+    """What you're doing right now (a category like "coding"), fresh from the screen tracker."""
+    try:
+        from .activity import NOW
+    except Exception:
+        return {}
+    if not NOW["what"] or time.time() - NOW["t"] > 90:
+        return {"what": "away", "since": NOW["since"] or time.time()}
+    return {"what": NOW["what"], "since": NOW["since"]}
+
+
+def _with_now(card: dict) -> dict:
+    card = {k: v for k, v in card.items() if k not in ("now", "offline")}
+    if card.get("share_now", True):
+        card["now"] = _doing()
+    return card
+
+
 def push_card(card: dict) -> bool:
     """Upload your card. Skipped if nothing changed and it went up less than 2 minutes ago."""
+    db.kv_set("cloud_last_card", json.dumps(card, sort_keys=True))
+    card = _with_now(card)
     body = json.dumps(card, sort_keys=True)
     if body == _last_card["body"] and time.time() - _last_card["t"] < 120:
         return False
     uid = state()["uid"]
     _http("POST", "/rest/v1/cards", {"user_id": uid, "card": card, "updated_at": _now()}, token=_token(),
           prefer="resolution=merge-duplicates,return=minimal")
-    _last_card.update(t=time.time(), body=body)
-    db.kv_set("cloud_last_card", body)
+    _last_card.update(t=time.time(), body=body, what=(card.get("now") or {}).get("what"))
     return True
 
 
@@ -200,17 +219,37 @@ ONLINE_SECONDS = 300   # a friend whose LazyTrack checked in within 5 minutes sh
 def heartbeat() -> None:
     """While LazyTrack runs (window open or not), re-send your last card every ~2 minutes, so friends
     see you as online. The card's own "built" time tells them how fresh Mochi's mood is."""
-    if not state()["connected"] or time.time() - _last_card["t"] < 120:
+    if not state()["connected"]:
+        return
+    changed = _doing().get("what") != _last_card.get("what")   # started doing something else: tell friends now
+    if time.time() - _last_card["t"] < (45 if changed else 120):
         return
     body = db.kv_get("cloud_last_card")
     if not body:
         return
     try:
-        _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": json.loads(body), "updated_at": _now()},
+        card = _with_now(json.loads(body))
+        _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": card, "updated_at": _now()},
               token=_token(), prefer="resolution=merge-duplicates,return=minimal")
-        _last_card.update(t=time.time(), body=body)
+        _last_card.update(t=time.time(), body=json.dumps(card, sort_keys=True), what=(card.get("now") or {}).get("what"))
     except (CloudError, ValueError) as e:
         log.debug("heartbeat failed: %s", e)
+
+
+def go_offline() -> None:
+    """LazyTrack is quitting: friends see you offline right away (not 5 minutes later)."""
+    if not state()["connected"]:
+        return
+    body = db.kv_get("cloud_last_card")
+    if not body:
+        return
+    try:
+        card = {k: v for k, v in json.loads(body).items() if k != "now"}
+        card["offline"] = True
+        _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": card, "updated_at": _now()},
+              token=_token(), prefer="resolution=merge-duplicates,return=minimal")
+    except (CloudError, ValueError) as e:
+        log.debug("going offline failed: %s", e)
 
 
 def _online(updated_at) -> bool:
@@ -249,7 +288,7 @@ def friends() -> dict:
         p = profs.get(uid, {"username": "?", "display_name": "?"})
         c = cards.get(uid) or {}
         return {"uid": uid, "username": p["username"], "display_name": p["display_name"] or p["username"],
-                "card": c.get("card"), "updated_at": c.get("updated_at"), "online": _online(c.get("updated_at")),
+                "card": c.get("card"), "updated_at": c.get("updated_at"), "online": _online(c.get("updated_at")) and not (c.get("card") or {}).get("offline"),
                 "unread": unread.get(uid, 0)}
 
     out = {"me": person(me), "friends": [], "incoming": [], "outgoing": []}
