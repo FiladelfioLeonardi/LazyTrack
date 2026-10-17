@@ -653,7 +653,7 @@ def _egg_today(all_h: list) -> list:
     """Everything about today for the egg's Today screen (private, unlike the friend card):
     every habit you track, plus screen time. Seconds are rounded to minutes so it doesn't re-upload
     every 30 seconds."""
-    from . import summary
+    from . import summary, habits as _habits
     t = summary.today()
     ev, cats = t["events"], t["categories"]
     out = []
@@ -662,14 +662,27 @@ def _egg_today(all_h: list) -> list:
         out.append({"s": name, "v": int(ev.get(h["k"], 0)), "bad": bool(h.get("bad"))})
     def mins(v):
         return int((v or 0) // 60) * 60
-    out.append({"s": "Screen", "v": mins(t["screen_total"]), "u": "s"})
-    for k, n in (("coding", "Coding"), ("youtube", "YouTube"), ("gaming", "Gaming"), ("social", "Socials"), ("streaming", "Streaming")):
-        if cats.get(k, 0) >= 60:
-            out.append({"s": n, "v": mins(cats[k]), "u": "s"})
-    if t["commits"]:
-        out.append({"s": "Commits", "v": int(t["commits"])})
+    # the same screen stats you picked for Home in the app, always shown (0 too), in that order
+    names = {"coding": "Coding", "youtube": "YouTube", "social": "Socials", "streaming": "Streaming", "gaming": "Gaming",
+             "browsing": "Web", "screen_pc": "PC screen", "screen_phone": "Phone", "screen": "Screen", "commits": "Commits"}
+    got = _habits.get()
+    for k in got["screen"]:
+        if k not in names:
+            continue
+        if k == "commits":
+            out.append({"s": names[k], "v": int(t["commits"] or 0)})
+        elif k in ("screen_pc", "screen_phone"):
+            out.append({"s": names[k], "v": mins(t[k]), "u": "s"})
+        elif k == "screen":
+            out.append({"s": names[k], "v": mins(t["screen_total"]), "u": "s"})
+        else:
+            out.append({"s": names[k], "v": mins(cats.get(k, 0)), "u": "s"})
+    if got["modules"].get("school"):
+        out.append({"s": "42 logtime", "v": mins(t["logtime_42"]), "u": "s"})
     if t["steps_total"]:
         out.append({"s": "Steps", "v": int(t["steps_total"])})
+    if t["sleep_nights"]:
+        out.append({"s": "Sleep", "v": mins(t["sleep_avg"]), "u": "s"})
     return out[:24]
 
 
