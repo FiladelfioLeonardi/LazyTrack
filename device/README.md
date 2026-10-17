@@ -17,12 +17,12 @@ It logs into your LazyTrack account over WiFi and reads your friend card every m
 |---|---|
 | VCC | 3V3 |
 | GND | GND |
-| CS | GPIO 5 |
-| RESET / RST | GPIO 17 |
-| DC / RS | GPIO 16 |
+| CS | GPIO 15 (D15) |
+| RESET / RST | GPIO 4 (D4) |
+| DC / RS | GPIO 2 (D2) |
 | SDI / MOSI / SDA | GPIO 23 |
 | SCK / CLK | GPIO 18 |
-| LED / BL | GPIO 4 (or 3V3: always on) |
+| LED / BL | 3V3 (always on) |
 | SDO / MISO | not needed |
 
 | Part | ESP32 pin |
@@ -43,7 +43,7 @@ Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the 
 3. **Open** `device/LazyTrackEgg/LazyTrackEgg.ino`.
 4. **Your secrets:** copy `secrets.example.h` to `secrets.h` (same folder) and fill in your WiFi and LazyTrack email + password.
    `secrets.h` is ignored by git, so it never goes to GitHub.
-5. **Your screen chip:** at the top of the sketch, keep `#define SCREEN_ILI9341` or switch to `SCREEN_ST7789` (it's printed on the back of the screen board, or in the shop listing).
+5. **Your screen chip:** the sketch is set to ST7789 (what most 2.0" 240x320 screens use). For an ILI9341, switch the two lines at the top.
 6. Tools → Board → **ESP32 Dev Module**, Tools → Port → the USB port that appears when you plug it in. Press **Upload** (→).
    If it says "Connecting....___" for a long time, hold the **BOOT** button on the ESP32 until it starts writing.
 7. Tools → Serial Monitor at 115200 shows what it's doing if something's off.
@@ -51,7 +51,7 @@ Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the 
 ## If something's off
 
 - **White or black screen:** wiring, or the wrong chip setting (try the other one).
-- **Colors look inverted or wrong:** in the sketch, change `true /* IPS */` to `false` (ST7789), or set it to `true` for the ILI9341 line.
+- **Colors look like a photo negative:** set `SCREEN_INVERT` at the top to `true`.
 - **"Login failed":** the email/password in `secrets.h`. **"No card yet":** open LazyTrack on your computer once while logged in.
 - The bottom line shows the status; screen C (press A twice) has WiFi, IP and the last sync.
 

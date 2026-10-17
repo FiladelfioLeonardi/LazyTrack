@@ -22,17 +22,20 @@
 #include "secrets.h"
 
 // ---------------------------------------------------------------- your hardware
-// The chip on the back of the screen board: ILI9341 (most 2.4" / 2.8") or ST7789 (most 2.0")
-#define SCREEN_ILI9341
-// #define SCREEN_ST7789
+// The chip on the back of the screen board: ST7789 (most 2.0") or ILI9341 (most 2.4" / 2.8")
+// #define SCREEN_ILI9341
+#define SCREEN_ST7789
+// Colors look like a photo negative? flip this
+#define SCREEN_INVERT false
 
-// SPI screen wiring (ESP32 DevKit). Change to match your wires.
+// SPI screen wiring (ESP32 DevKit). These are the same pins as a TFT_eSPI setup (User_Setup.h), so a
+// screen that already worked with TFT_eSPI works here without rewiring. Change to match your wires.
 #define PIN_SCK 18   // SCK / CLK
 #define PIN_MOSI 23  // SDA / MOSI / DIN
-#define PIN_CS 5     // CS
-#define PIN_DC 16    // DC / RS / A0
-#define PIN_RST 17   // RST / RES
-#define PIN_BL 4     // BL / LED (backlight). Wired straight to 3.3V instead? then it can't turn off, that's fine
+#define PIN_CS 15    // CS
+#define PIN_DC 2     // DC / RS / A0
+#define PIN_RST 4    // RST / RES
+#define PIN_BL -1    // BL / LED (backlight) pin, or -1 when it's wired straight to 3.3V (then C only blanks the screen)
 #define BTN_A 32     // buttons: one leg to the pin, the other to GND (no resistors needed)
 #define BTN_B 33
 #define BTN_C 25
@@ -45,9 +48,9 @@ static const char *SUPA_KEY = "sb_publishable_mmX_kRPufTOQk1M4fmjjFg_HenbqicQ";
 // ---------------------------------------------------------------- screen
 Arduino_DataBus *bus = new Arduino_ESP32SPI(PIN_DC, PIN_CS, PIN_SCK, PIN_MOSI, GFX_NOT_DEFINED);
 #if defined(SCREEN_ST7789)
-Arduino_GFX *gfx = new Arduino_ST7789(bus, PIN_RST, 0 /* portrait */, true /* IPS */, 240, 320);
+Arduino_GFX *gfx = new Arduino_ST7789(bus, PIN_RST, 0 /* portrait */, SCREEN_INVERT, 240, 320);
 #else
-Arduino_GFX *gfx = new Arduino_ILI9341(bus, PIN_RST, 0 /* portrait */);
+Arduino_GFX *gfx = new Arduino_ILI9341(bus, PIN_RST, 0 /* portrait */, SCREEN_INVERT);
 #endif
 
 static uint16_t rgb(uint32_t hex) { return ((hex >> 8) & 0xF800) | ((hex >> 5) & 0x07E0) | ((hex >> 3) & 0x001F); }
