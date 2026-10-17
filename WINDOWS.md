@@ -27,9 +27,21 @@ Keep the black start.bat window open (minimize it); closing it stops LazyTrack.
 - **Friends:** open the Friends tab and add your friend's username.
 - **Websites:** Windows doesn't let apps read the address of a browser tab, so LazyTrack reads the tab
   title instead (e.g. "… - YouTube"). Common sites are recognized; others count as "Other websites".
-- **Phone:** install Tailscale on the PC and the iPhone (tailscale.com/download, same login on both),
-  then run `lt phone` in the LazyTrack folder (click the address bar of the folder, type `cmd`, Enter,
-  then type `lt phone`). Scan the QR code with the iPhone camera and add the page to the home screen.
+- **iPhone:** see "Your iPhone" below.
+
+## Your iPhone
+
+Your phone shows your LazyTrack (Mochi, stats, logging buttons, friends, chat) by connecting to
+your PC, from anywhere, through Tailscale (a free private connection between your own devices).
+
+1. Install **Tailscale** on the PC (tailscale.com/download) and on the iPhone (App Store).
+   Log in with the **same account** on both, and switch it **on** on the phone.
+2. With LazyTrack running, double-click **`phone.bat`**. If Windows asks to allow Python on
+   networks, click **Allow** (then run phone.bat again).
+3. A QR code opens. Scan it with the iPhone **Camera** and tap the link: LazyTrack opens in Safari.
+4. In Safari: **Share → Add to Home Screen**. Now it's an app icon on your phone.
+
+The PC has to be on with LazyTrack running for the phone to show your stats.
 
 ## Test it
 

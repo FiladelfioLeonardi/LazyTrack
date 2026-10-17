@@ -261,11 +261,15 @@ def cmd_phone(cfg: dict, args) -> None:
 
     # 3. test it the same way the phone will
     if _ping(f"{remote}/api/ping?token={quote(token)}"):
-        print("✅ Your Mac is reachable through Tailscale.")
+        print("✅ This computer is reachable through Tailscale.")
     else:
         print("\n!! LazyTrack runs, but it isn't reachable on the Tailscale address yet.")
         print("   - If a popup asked to allow incoming connections for Python, click Allow.")
-        print("   - Or: System Settings > Network > Firewall > Options > allow Python.")
+        if system.IS_WINDOWS:
+            print("   - Or: Windows Security > Firewall & network protection > Allow an app through firewall >")
+            print("     Change settings > tick Python (both Private and Public), then OK.")
+        else:
+            print("   - Or: System Settings > Network > Firewall > Options > allow Python.")
         print(f"   - Make sure the {START} window was restarted after this command.")
         print(f"   Then run {LT} phone again.")
         return
@@ -280,7 +284,10 @@ def cmd_phone(cfg: dict, args) -> None:
         qr.print_ascii(invert=True)
         png = config.HOME / "phone-dashboard.png"
         qr.make_image().save(str(png))
-        os.system(f"open '{png}'")
+        if system.IS_WINDOWS:
+            os.startfile(str(png))   # opens the QR picture in the Photos app
+        else:
+            os.system(f"open '{png}'")
         print("\nScan it with the iPhone Camera, tap the yellow link, then Share > Add to Home Screen.")
     except ImportError:
         print("(No QR code: run the installer again)")
