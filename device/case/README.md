@@ -25,7 +25,7 @@ All sizes are at the top of `egg_case.py`, so the case can be adjusted to your p
 
 ## What else you need
 
-- 4 × M3 × 20 screws. They self-tap into the PLA bosses; M3 × 16 also works. Without screws, the lip holds the shells together, and a drop of glue makes it permanent.
+- 4 × **M3 × 25** screws, button head (ISO 7380) or pan head. They go in from the back and cut their own thread into the PLA posts of the front shell (about 6 mm of grip). Shorter ones (M3 × 20) barely reach the front posts since the case got deeper; M3 × 30 would push into the face. Without screws, the lip holds the shells together, and a drop of glue makes it permanent.
 - Double-sided foam tape: one piece under the ESP32, and small dots on top of the 4 screen posts.
 - Thin wire and solder: inside the case the jumper-wire plugs are too tall, so solder wires straight to the pins. The screen pins (25 mm from the glass to the tips) have 7 mm of room behind them, so they stay as they are and nothing needs cutting.
 
