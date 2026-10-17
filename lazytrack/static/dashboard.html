@@ -112,15 +112,26 @@
   .pet { display: grid; grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; }
   .pet i { display: block; }
   .pet.bob { animation: bob 3.2s ease-in-out infinite; }
+  /* Mochi's place: a pixel scene behind it (Mochi a bit smaller, standing on the ground) */
+  .scene { background-size: 100% 100% !important; background-repeat: no-repeat !important; image-rendering: pixelated; }   /* beats the boxes' background shorthands */
+  /* Mochi stands on the scene's ground (84% down), centered; its animations pivot at its feet */
+  .scene { position: relative; }
+  .scene > .pet { position: absolute; left: 0; right: 0; bottom: 16%; margin: 0 auto; width: max-content; }
+  .pet { transform-origin: 50% 100%; }
+  #pet, .pet.bob { will-change: transform; }   /* animate as one picture, so no thin lines show between the pixels */
+  .petbox.scene { width: 168px; height: 168px; } .petbox.scene .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
+  .fcard .fpet.scene { width: 88px; height: 88px; } .fcard .fpet.scene .pet { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
+  /* Mochi stands still on its feet; on Home it breathes in whole pixels (see petAnim). Only the welcome screen floats. */
+  .pet.bob { animation: none; }
   @keyframes bob { 50% { transform: translateY(-4px); } }
   /* Mochi's states: swaying when high, wobbling when drunk, shaking on a cough, a little hop when idle */
   .pet.high1 { animation: haze 4.5s ease-in-out infinite; } .pet.high2 { animation: haze 3.6s ease-in-out infinite; }
   .pet.high3 { animation: haze 2.8s ease-in-out infinite; --hz: 6deg; }
-  @keyframes haze { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-2px, -2px) rotate(calc(-1 * var(--hz, 3deg))); }
-                    75% { transform: translate(2px, -1px) rotate(var(--hz, 3deg)); } }
+  @keyframes haze { 0%, 100% { transform: rotate(0) scale(1, 1); } 25% { transform: rotate(calc(-1 * var(--hz, 3deg))) scale(1.02, .98); }
+                    75% { transform: rotate(var(--hz, 3deg)) scale(1.02, .98); } }
   .pet.drunk1 { animation: wobble 2.6s ease-in-out infinite; --wb: 4deg; } .pet.drunk2 { animation: wobble 1.9s ease-in-out infinite; --wb: 8deg; }
   .pet.drunk3 { animation: wobble 1.4s ease-in-out infinite; --wb: 13deg; }
-  @keyframes wobble { 0%, 100% { transform: rotate(0) translateX(0); } 30% { transform: rotate(var(--wb)) translateX(3px); }
+  @keyframes wobble { 0%, 100% { transform: rotate(0) translateX(0); } 30% { transform: rotate(var(--wb)) translateX(2px); }
                       70% { transform: rotate(calc(-.8 * var(--wb))) translateX(-3px); } }
   .pet.coughing { animation: cough .55s linear; }
   @keyframes cough { 0%, 100% { transform: none; } 15% { transform: translate(-2px, 1px) scale(1.04, .94); } 35% { transform: translate(2px, -1px); }
@@ -133,6 +144,7 @@
   @media (max-width: 560px) {
     .pettop { gap: 12px; align-items: flex-start; }
     .petbox { width: 96px; height: 96px; } .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
+    .petbox.scene { width: 120px; height: 120px; } .petbox.scene .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
     .statsheet { grid-template-columns: 1fr; gap: 0; }
     .stat { padding: 3px 4px; } .stat .sv { font-size: 16px; }
   }
@@ -390,6 +402,9 @@
   .wrtile { display: grid; gap: 4px; justify-items: center; padding: 8px 4px; border: 3px solid var(--line); border-radius: 14px; background: var(--card);
             cursor: pointer; font-weight: 700; font-size: 12px; transition: transform .14s ease, box-shadow .14s ease; }
   .wrtile .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
+  .wrscene { width: 80px; height: 80px; border: 2px solid var(--line); border-radius: 10px; background-color: #fff; }
+  .wrtile .wrscene .pet { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
+  .wrpreview.scene .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
   @media (hover: hover) { .wrtile:hover { transform: translate(-1px, -2px); box-shadow: 3px 4px 0 var(--line); } }
   .wrcolors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
   .wrcolors .lbl { font: 12px Silkscreen, monospace; margin-right: 4px; }
@@ -400,7 +415,7 @@
   .wrpick input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
   .wrtile[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 2px 2px 0 var(--line); }
   .wrbtm { display: flex; justify-content: flex-end; gap: 10px; }
-  @media (max-width: 560px) { .wrpreview { width: 120px; height: 120px; } .wrpreview .pet { grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; } }
+  @media (max-width: 560px) { .wrpreview { width: 120px; height: 120px; } .wrpreview .pet, .wrpreview.scene .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; } }
   .qbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 6px; }
   .qbtns .btn { justify-content: center; height: 52px; }
   .qbtns .btn.wide { grid-column: 1 / -1; }
@@ -474,7 +489,7 @@
   .wpet { width: 188px; height: 188px; background: #ffffff; border: 3px solid var(--line); border-radius: 26px; box-shadow: 6px 6px 0 var(--line);
           display: grid; place-items: center; animation: slideL .9s cubic-bezier(.2, .8, .2, 1) .15s backwards; }
   .wpet .pet { grid-template-columns: repeat(16, 10px); grid-auto-rows: 10px; }
-  .wpet .pet.bob { animation: bob 3.2s ease-in-out 1.2s infinite; }
+  .wpet .pet.bob { animation: bob 3.2s ease-in-out 1.2s infinite; }   /* the welcome screen's Mochi floats on purpose */
   .wtag { font-family: var(--pixel); font-size: 14px; color: var(--ink-2); letter-spacing: .12em; background: var(--lilac); color: var(--on-fill);
           border: 3px solid var(--line); border-radius: 10px; padding: 4px 10px; box-shadow: 3px 3px 0 var(--line);
           animation: slideR .8s cubic-bezier(.2, .8, .2, 1) .45s backwards; }
@@ -1287,6 +1302,13 @@ const MOCHI = {
     horns: {n: "Devil horns", tint: "#e0303a", rows: ["................", ".k............k.", ".khk........khk.", "..khk......khk..", "...kk......kk..."]},
     catears: {n: "Cat ears", tint: "#1d1b20", rows: ["................", "..k..........k..", "..kk........kk..", "..khk......khk..", "..khhkkkkkkhhk.."]},
     headphones: {n: "Headphones", tint: "#2b2733", rows: ["................", "................", ".....kkkkkk.....", "....khhhhhhk....", "...kk......kk...", "..k..........k..", "kkk..........kkk", "khk..........khk", "kjk..........kjk", "kkk..........kkk"]},
+    santa: {n: "Christmas hat", tint: "#e0303a", rows: ["...........kkk..", ".......kkkkkwwwk", "......khhhhhkwk.", "....khjhhhhhhk..", "..kwwwwwwwwwwwwk", "..kkkkkkkkkkkkkk"]},
+    party: {n: "Party hat", tint: "#7ad3ff", rows: [".......kyk......", ".......khk......", "......khjhk.....", "......kyhyk.....", ".....khjhyhk....", ".....kkkkkkk...."]},
+    cowboy: {n: "Cowboy hat", tint: "#a8693e", rows: ["................", "......kkkk......", ".....khhhhk.....", ".....khjhhk.....", "..k..kHHHHk..k..", ".khhhhhhhhhhhhk."]},
+    durag: {n: "Durag", tint: "#2b2733", rows: ["................", "................", "................", ".....kkkkkk.....", "...kkhjhhhhkk...", "..khjhhhhhhhhk..", ".............hk.", ".............hk.", "............khk.", "............kHk."]},
+    flowers: {n: "Flower crown", rows: ["................", "................", "................", "...pyp.EpE.pyp..", "..EEEEEEEEEEEE.."]},
+    wizard: {n: "Wizard hat", tint: "#6250d6", rows: [".......kk.......", "......khk.......", "......khyk......", ".....khjhhk.....", "....khyhhhyk....", "..kkkkkkkkkkkk.."]},
+    viking: {n: "Viking helmet", rows: ["................", ".t............t.", ".tt..........tt.", "..tt.kkkkkk.tt..", "...tkssssssskt..", "..kSSSSSSSSSSk.."]},
     bandana: {n: "Bandana", tint: "#e0303a", rows: ["................", "................", "................", ".....kkkkkk.....", "...kkhhhhhhkkkk.", "..khjhwhhwhhkhjk"]},
   },
   glasses: {   // rows 5-7
@@ -1294,6 +1316,9 @@ const MOCHI = {
     shades: {n: "Shades", tint: "#1d1b20", rows: ["................", "...khwhhkhwhhk..", "....khhk.khhk..."]},
     round: {n: "Round glasses", tint: "#dfe3ea", rows: ["....hhh..hhh....", "...h...hh...h...", "....hhh..hhh...."]},
     visor: {n: "Visor", tint: "#7ad3ff", rows: ["................", "..khhhhhhhhhhk..", "..kjjjjjjjjjjk.."]},
+    hearts: {n: "Heart shades", tint: "#ff5aa0", rows: ["...hh.hhhh.hh...", "...hjhhhhjhhh...", "....hhh..hhh....", ".....h....h....."]},
+    stars: {n: "Star glasses", tint: "#ffd84a", rows: [".....h....h.....", "...hhjhhhhjhh...", "....hhh..hhh....", "....h.h..h.h...."]},
+    goggles: {n: "Ski goggles", tint: "#7ad3ff", rows: ["..kkkkkkkkkkkk..", "kkkjhhhkkjhhhkkk", "..khhhHkkhhhHk.."]},
     patch: {n: "Eye patch", rows: ["...kkkkkkkkkkk..", "....kkk.........", "....kkk........."]},
   },
   necks: {   // rows 10-13
@@ -1302,6 +1327,8 @@ const MOCHI = {
     chains: {n: "Layered chains", tint: "#dfe3ea", rows: ["....h......h....", ".....h.HH.h.....", "......hhhh......", ".......HH......."]},
     cross: {n: "Cross", tint: "#dfe3ea", rows: ["....H......H....", ".....H.hh.H.....", "......hhhh......", ".......hh......."]},
     choker: {n: "Spike choker", tint: "#dfe3ea", rows: ["................", "..khkhkhkhkhkh.."]},
+    medal: {n: "Gold medal", tint: "#f2b705", rows: ["....r......U....", ".....r....U.....", "......rkkU......", "......kjhk......", "......kHhk......"]},
+    tie: {n: "Necktie", tint: "#2a78d6", rows: ["......khhk......", ".......hh.......", "......khhk......", "......kHHk......", ".......kk......."]},
     bowtie: {n: "Bow tie", tint: "#e0303a", rows: ["................", "......hHHh......"]},
     scarf: {n: "Scarf", tint: "#e0303a", rows: ["................", ".khhhhhhhhhhhhk.", "..........khhk..", "..........kHHk.."]},
   },
@@ -1320,12 +1347,23 @@ const MOCHI = {
     controller: {n: "Controller", tint: "#8a8f9c", rows: {11: "..........hhhhh.", 12: "..........hkhuh.", 13: "..........hh.hh."}},
     phone: {n: "Phone", rows: {9: "............kkk.", 10: "............kuk.", 11: "............kuk.", 12: "............kkk."}},
     skate: {n: "Skateboard", tint: "#c99a6e", rows: {15: ".Hhhhhhhhhhhhhh.", 14: "...obbo..obbo..."}},
+    mic: {n: "Microphone", tint: "#dfe3ea", rows: {6: "............kk..", 7: "...........khhk.", 8: "...........kjHk.", 9: "............kk..", 10: "............ll..", 11: "............ll..", 12: "...........ll..."}},
+    guitar: {n: "Guitar", tint: "#e0303a", rows: {2: "..............kk", 3: ".............nk.", 4: "............nk..", 5: "............nk..", 6: "...........nk...", 7: "...........nk...", 8: "..........nk....", 9: "..........nk....",
+      10: ".........khhhk..", 11: "........khjhhhk.", 12: "........khhkhhk.", 13: "........khhhhhk.", 14: ".........kHHHk.."}},
+    cash: {n: "Cash stack", rows: {9: "............e...", 10: "...........e.e..", 11: "..........kkkkk.", 12: "..........keEek.", 13: "..........kEeEk.", 14: "..........kkkkk."}},
+    sparkler: {n: "Sparkler", rows: {4: "...........y.y..", 5: "............w...", 6: "...........y.y..", 7: "............S...", 8: "............S...", 9: "............S...", 10: "............S...", 11: "............S..."}},
+    icecream: {n: "Ice cream", tint: "#ff8fb1", rows: {6: "............hh..", 7: "...........hjhh.", 8: "...........hhHh.", 9: "...........kkkk.", 10: "............nN..", 11: "............nN..", 12: ".............n.."}},
     flower: {n: "Flower", tint: "#ff8fb1", rows: {8: "............h.h.", 9: ".............y..", 10: "............h.h.", 11: ".............E..", 12: ".............E.."}},
   },
   mouths: {   // rows 9-10, by mood
     happy: ["......k..k......", ".......kk......."], proud: ["......kkkk......", ".......rr......."],
     meh: ["................", "......kkkk......"], smoky: [".......kk.......", ".......kk......."],
     sick: ["......k.k.k.....", ".......k.k......"], sleepy: ["................", ".......kk......."],
+  },
+  places: {   // the scene behind Mochi (drawn by placeURL)
+    stadium: {n: "Stadium show"}, rage: {n: "Rage show"}, moon: {n: "Moon base"}, rooftop: {n: "Neon rooftop"},
+    volcano: {n: "Volcano"}, ocean: {n: "Under the sea"}, heaven: {n: "Cloud kingdom"}, arcade: {n: "Arcade"},
+    sky: {n: "Sky"}, room: {n: "Bedroom"}, park: {n: "Park"}, beach: {n: "Beach"}, soft: {n: "Soft"}, none: {n: "Plain"},
   },
   looks: {
     classic: {n: "Classic", look: {}},
@@ -1336,8 +1374,8 @@ const MOCHI = {
     night: {n: "Night out", look: {body: "blob", skin: "lilac", glasses: "shades", glassesColor: "#9b1c24", neck: "choker", outfit: "hoodie", outfitColor: "#2b2733"}},
   },
 };
-const LOOK_DEFAULT = {body: "blob", skin: "theme", eyes: "normal", hat: "none", glasses: "none", neck: "none", outfit: "none", held: "none"};
-const SLOTS = {body: "bodies", skin: "skins", eyes: "eyes", hat: "hats", glasses: "glasses", neck: "necks", outfit: "outfits", held: "held"};
+const LOOK_DEFAULT = {body: "blob", skin: "theme", eyes: "normal", hat: "none", glasses: "none", neck: "none", outfit: "none", held: "none", place: "sky"};
+const SLOTS = {body: "bodies", skin: "skins", eyes: "eyes", hat: "hats", glasses: "glasses", neck: "necks", outfit: "outfits", held: "held", place: "places"};
 const COLOR_SLOTS = ["hat", "glasses", "neck", "outfit", "held"];   // the item's main color can be anything ({slot}Color)
 const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
 
@@ -1359,7 +1397,7 @@ const FX_FACE = {
 /**
  * Draws Mochi: returns the 256 pixel cells. mood: happy/proud/meh/smoky/sleepy; tier: legend/shiny/okay/tired/sick.
  * fx (all optional): high 0-3 (weed), drunk 0-3 (alcohol), cough true/false, dx -1/0/1 (looking left/right),
- * up (looking up), frame (a counter that moves the smoke, bubbles and stars).
+ * up (looking up), frame (a counter that moves the smoke, bubbles and stars), breath (squashed one pixel: breathing out).
  */
 function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {}) {
   const L = {...LOOK_DEFAULT, ...(look || {})};
@@ -1433,7 +1471,227 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   // cough: a puff of smoke out of the mouth
   if (fx.cough) put({9: "..x.............", 10: ".x.x............", 11: "..x............."});
   if (mood === "sleepy") put({0: "...........zz...", 1: "............z...", 2: "...........zz..."});
+  // breathing out: everything above the belly sinks one pixel, the feet stay on the ground
+  if (fx.breath) { for (let y = 10; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
   return g.flat().map(c => `<i${c ? ` style="background:${c}"` : ""}></i>`).join("");
+}
+
+// ---------------------------------------------------------------- Mochi's place: a pixel scene behind it
+// Small canvases (finer pixels than Mochi's, so Mochi stays the star), stretched with crisp pixels.
+// Mochi stands at 84% of the height; the scene draws its shadow there. The shows, the rooftop, the
+// ocean etc. are animated by the frame number; the sky ones follow the time of day.
+const SKY = {dawn: ["#ffb3a1", "#ffc6a6", "#ffd9b0", "#ffe9c4"], day: ["#6fb8ff", "#86c5ff", "#a3d4ff", "#c2e3ff"],
+             dusk: ["#4b3a9e", "#7a4fb0", "#c56aa8", "#ff9a7a"], night: ["#141230", "#1c1940", "#252150", "#2f2a60"]};
+const dayPart = (h = new Date().getHours()) => h >= 5 && h < 8 ? "dawn" : h >= 8 && h < 18 ? "day" : h >= 18 && h < 21 ? "dusk" : "night";
+const SCENES56 = ["stadium", "rage", "moon", "rooftop", "volcano", "ocean", "heaven", "arcade"];
+const _scenes = new Map();
+
+/** The calmer places on a 42x42 canvas: sky, bedroom, park, beach, soft, plain. */
+function scene42(place, part, f, soft) {
+  const N = 42, cv = document.createElement("canvas"); cv.width = cv.height = N;
+  const x = cv.getContext("2d"), night = part === "night";
+  const R = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(a, b, w, h); };
+  const P = (a, b, c) => R(a, b, 1, 1, c);
+  const disc = (cx, cy, r, c) => { for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (i * i + j * j <= r * r + r * .8) P(cx + i, cy + j, c); };
+  let seed = 11; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const sky = (h, cols = SKY[part]) => cols.forEach((c, i) => R(0, Math.floor(i * h / 4), N, Math.ceil(h / 4) + 1, c));
+  const stars = (h, n) => { for (let i = 0; i < n; i++) { const a = Math.floor(rnd() * N), b = Math.floor(rnd() * h), tw = (i + f) % 6 === 0;
+    P(a, b, tw ? "#ffffff" : "#bdb6f0"); if (tw) { P(a - 1, b, "#7d76c4"); P(a + 1, b, "#7d76c4"); P(a, b - 1, "#7d76c4"); P(a, b + 1, "#7d76c4"); } } };
+  const cloud = (a, b) => { R(a + 2, b, 4, 1, "#ffffff"); R(a, b + 1, 9, 2, "#ffffff"); R(a + 1, b + 3, 7, 1, "#dfeaf6"); };
+  const sunMoon = (a, b) => {
+    if (night) { disc(a, b, 3, "#fff6c9"); disc(a + 2, b - 1, 3, SKY.night[0]); }
+    else disc(a, b, 3, part === "day" ? "#ffd84a" : "#ff9a5a");
+  };
+  const grass = (top, light, mid, dark) => {
+    R(0, top, N, N - top, mid);
+    for (let i = 0; i < N; i += 2) P(i, top - 1 + (i % 4 ? 0 : 1), light);
+    R(0, top, N, 1, light);
+    for (let i = 0; i < 26; i++) P(Math.floor(rnd() * N), top + 2 + Math.floor(rnd() * (N - top - 2)), dark);
+  };
+  const G = night ? ["#4f7f55", "#3a6342", "#2c4d33"] : part === "dusk" ? ["#86b56a", "#6a9a5a", "#557f49"] : ["#a6e38f", "#79c46a", "#5ea852"];
+
+  if (place === "sky") {
+    sky(34); if (night) stars(30, 16); else { cloud((3 + f) % 50 - 6, 7); cloud((22 + f) % 50 - 6, 14); }
+    sunMoon(32, 6); grass(34, ...G);
+  } else if (place === "room") {
+    const wall = night ? "#3e3858" : "#f4ecd9", stripe = night ? "#38324f" : "#ebe0c8", wood = night ? "#7d5a40" : "#c99a6e";
+    R(0, 0, N, 34, wall); for (let i = 2; i < N; i += 6) R(i, 0, 1, 33, stripe);
+    R(24, 4, 14, 13, "#8a5a36"); sky(0); x.save(); x.beginPath(); x.rect(25, 5, 12, 11); x.clip();
+    SKY[part].forEach((c, i) => R(25, 5 + i * 3, 12, 3, c));
+    if (night) { P(27, 7, "#ffffff"); P(34, 12, "#ffffff"); disc(33, 8, 1, "#fff6c9"); } else R(26 + f % 4, 8, 4, 1, "#ffffff");
+    x.restore(); R(30, 5, 1, 11, "#8a5a36"); R(25, 10, 12, 1, "#8a5a36"); R(23, 17, 16, 1, "#a87a50");
+    R(4, 6, 9, 12, "#1d1b20"); R(5, 7, 7, 10, night ? "#9b1c24" : "#e0303a"); R(8, 9, 2, 3, "#ffe45e"); R(7, 11, 2, 3, "#ffe45e"); P(9, 12, "#ffe45e");
+    R(0, 33, N, 1, "#8a5a36"); R(0, 34, N, 8, wood);
+    for (const j of [36, 39]) R(0, j, N, 1, night ? "#6b4c36" : "#b3845a");
+    for (const [a, b] of [[9, 34], [27, 34], [18, 37], [35, 37], [5, 40], [24, 40]]) R(a, b, 1, 2, night ? "#6b4c36" : "#b3845a");
+    if (night) { x.globalAlpha = .18; disc(30, 11, 12, "#ffe9a8"); x.globalAlpha = 1; }   // moonlight
+  } else if (place === "park") {
+    sky(30); if (night) stars(22, 10); else cloud((14 + f) % 50 - 6, 6);
+    sunMoon(8, 7);
+    const tree = night ? "#22402c" : "#3f8f4f", tree2 = night ? "#2b5236" : "#5aa864";
+    for (const [a, r] of [[2, 6], [13, 5], [26, 6], [38, 5]]) { R(a, 24, 2, 8, night ? "#3d2a1e" : "#7a5236"); disc(a, 21, r, tree); disc(a - 1, 19, r - 2, tree2); }
+    grass(31, ...G);
+    for (let i = 0; i < 9; i++) { const a = Math.floor(rnd() * N), b = 34 + Math.floor(rnd() * 7); P(a, b, ["#ff8fb1", "#ffe45e", "#ffffff"][i % 3]); }
+  } else if (place === "beach") {
+    sky(22); if (night) stars(18, 10); else cloud((6 + f) % 50 - 6, 5);
+    sunMoon(31, 8);
+    R(0, 22, N, 9, night ? "#173a6e" : "#2a78d6");
+    for (let i = 0; i < N; i += 7) R((i + f * 2) % (N + 4) - 3, 24 + (i % 3) * 2, 3, 1, night ? "#3f6aa8" : "#7ad3ff");
+    R(0, 30, N, 1, night ? "#9fb6d6" : "#e8f6ff");
+    R(0, 31, N, 11, night ? "#c2a676" : "#ffe0a3");
+    for (let i = 0; i < 18; i++) P(Math.floor(rnd() * N), 32 + Math.floor(rnd() * 10), night ? "#a88e62" : "#ebc782");
+    R(5, 38, 2, 1, "#ff8fb1"); P(5, 37, "#ff8fb1"); R(35, 35, 1, 1, "#ffffff");
+  } else if (place === "soft") {
+    const mix = (h, t) => { const n = parseInt(h.slice(1), 16); return "#" + [16, 8, 0].map(s => Math.round(((n >> s) & 255) * (1 - t) + 255 * t).toString(16).padStart(2, "0")).join(""); };
+    const base = /^#[0-9a-f]{6}$/i.test(soft) ? soft : "#b9a7ff";
+    R(0, 0, N, N, mix(base, .82));
+    for (let j = 0; j < 34; j += 6) for (let i = (j / 6 % 2) * 3; i < N; i += 6) P(i, j + 2, mix(base, .6));
+    R(0, 34, N, 8, mix(base, .55)); R(0, 34, N, 1, mix(base, .4));
+  }
+  else if (place === "none") R(0, 0, N, N, "#ffffff");
+  return cv;
+}
+
+/** The big places on a 56x56 canvas (feet on y = 47). */
+function scene56(name, f) {
+  const N = 56, FLOOR = 47;
+  const cv = document.createElement("canvas"); cv.width = cv.height = N;
+  const x = cv.getContext("2d");
+  const R = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(a, b, w, h); };
+  const P = (a, b, c) => R(a, b, 1, 1, c);
+  const A = (al, fn) => { x.globalAlpha = al; fn(); x.globalAlpha = 1; };
+  const disc = (cx, cy, r, c) => { for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (i * i + j * j <= r * r + r * .8) P(cx + i, cy + j, c); };
+  const grad = (y0, y1, cols) => { const h = y1 - y0; cols.forEach((c, i) => R(0, y0 + Math.floor(i * h / cols.length), N, Math.ceil(h / cols.length) + 1, c)); };
+  const poly = (pts, c) => { x.fillStyle = c; x.beginPath(); x.moveTo(...pts[0]); for (const p of pts.slice(1)) x.lineTo(...p); x.closePath(); x.fill(); };
+  let seed = 9; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const stars = (h, n, tw = "#ffffff", dim = "#9d96d8") => { for (let i = 0; i < n; i++) { const a = rnd() * N | 0, b = rnd() * h | 0, t = (i + f) % 5 === 0; P(a, b, t ? tw : dim); if (t) { P(a - 1, b, dim); P(a + 1, b, dim); P(a, b - 1, dim); P(a, b + 1, dim); } } };
+  const crowd = (y, body, rim, lights) => {   // heads + raised hands, with phone lights
+    for (let i = -2; i < N + 2; i += 4) { const h = (i * 7 + f * 3) % 3, by = y + h;
+      disc(i, by + 2, 2, body); R(i - 2, by + 3, 5, N - by, body); P(i - 1, by + 1, rim);
+      if ((i * 5 + f) % 3 === 0) { R(i + 2, by - 4, 1, 5, body); if (lights) P(i + 2, by - 5, (i + f) % 2 ? "#fff6c9" : "#ffffff"); }
+      if ((i * 3 + f) % 4 === 1) R(i - 3, by - 3, 1, 4, body);
+    }
+  };
+
+  if (name === "stadium") {   // a sold-out stadium show, Mochi on the stage
+    grad(0, 30, ["#0b0820", "#140d33", "#1f1450", "#2c1a66"]);
+    stars(12, 10);
+    for (let r = 0; r < 4; r++) {   // the stands, full of tiny lights
+      const y = 14 + r * 4; R(0, y, N, 4, ["#1a1238", "#20163f", "#271a48", "#2e1f52"][r]);
+      for (let i = (r % 2) * 2; i < N; i += 3) if (rnd() < .55) P(i, y + 1 + (i % 2), ["#ff8fb1", "#7ad3ff", "#ffe45e", "#ffffff"][(i + r + f) % 4]);
+    }
+    R(2, 6, 12, 8, "#0d0a14"); R(3, 7, 10, 6, f % 2 ? "#ff5aa0" : "#7a5cff"); R(42, 6, 12, 8, "#0d0a14"); R(43, 7, 10, 6, f % 2 ? "#7a5cff" : "#ff5aa0");   // big screens
+    disc(8, 10, 1, "#ffffff"); disc(48, 10, 1, "#ffffff");
+    R(0, 30, N, 2, "#3d3a48"); for (let i = 1; i < N; i += 5) P(i, 30, ["#ff5aa0", "#7ad3ff", "#ffe45e"][(i + f) % 3]);   // truss with lamps
+    const beam = (sx, tx, c) => A(.32, () => poly([[sx, 31], [sx + 1, 31], [tx + 6, FLOOR], [tx - 6, FLOOR]], c));
+    beam(6, 20 + (f % 3) * 4, "#ff5aa0"); beam(28, 28 - (f % 3) * 3, "#ffffff"); beam(49, 36 - (f % 3) * 4, "#7ad3ff");
+    R(0, 40, N, 9, "#16131d"); R(0, 40, N, 1, "#2b2733"); A(.5, () => R(10, 41, 36, 6, "#3a2f55"));   // stage floor + light pool
+    R(0, 48, N, 1, "#ff5aa0");
+    crowd(50, "#07060b", "#ff5aa0", true);
+  } else if (name === "rage") {   // a red and black rage show: pyro, smoke, mosh pit
+    grad(0, 40, ["#050304", "#12050a", "#24070f", "#3d0a16"]);
+    for (let i = 0; i < 4; i++) { const sx = 8 + i * 13; A(.25 + (f + i) % 2 * .15, () => poly([[sx, 0], [sx + 2, 0], [sx + 9, 40], [sx - 7, 40]], "#e0303a")); }
+    R(14, 4, 28, 14, "#0c0408"); R(15, 5, 26, 12, "#2a0610");   // the big screen: glitchy red static
+    for (let j = 5; j < 17; j += 2) R(15 + ((j * 7 + f * 5) % 9), j, 6 + (j * 3 + f) % 10, 1, (j + f) % 3 ? "#e0303a" : "#ff8f8f");
+    for (const px of [3, 50]) {   // pyro columns
+      R(px, 30, 3, 11, "#1d1b20");
+      const h = 10 + (f % 3) * 4;
+      for (let j = 0; j < h; j++) { const w = 1 + Math.floor((h - j) / 4), wob = ((j + f) % 3) - 1; R(px + 1 - Math.floor(w / 2) + wob, 29 - j, w + 1, 1, j < h / 3 ? "#ffe45e" : j < 2 * h / 3 ? "#ff9a2e" : "#e0303a"); }
+    }
+    R(0, 40, N, 9, "#0e0a0d"); R(0, 40, N, 1, "#e0303a");
+    A(.35, () => { for (let i = 0; i < 6; i++) disc((i * 11 + f * 2) % 62 - 3, 46 + (i % 2), 4, "#6a5560"); });   // smoke on the floor
+    R(0, 48, N, 1, "#e0303a");
+    crowd(50, "#050304", "#e0303a", false);
+  } else if (name === "moon") {   // a moon base, Earth in the sky
+    R(0, 0, N, N, "#07061a"); stars(40, 34);
+    disc(13, 13, 8, "#2a78d6"); disc(11, 11, 3, "#3fae69"); disc(16, 16, 2, "#3fae69"); R(8, 9, 4, 1, "#ffffff"); R(14, 18, 5, 1, "#ffffff"); A(.35, () => disc(16, 16, 7, "#07061a"));   // Earth
+    R(40, 22, 7, 18, "#dfe3ea"); poly([[40, 22], [47, 22], [43.5, 15]], "#e0303a"); R(42, 26, 3, 3, "#7ad3ff"); R(38, 36, 2, 4, "#8a8f9c"); R(47, 36, 2, 4, "#8a8f9c");   // rocket
+    if (f % 2) { R(41, 40, 5, 1, "#ff9a2e"); }
+    R(0, 38, N, 18, "#8f8aa0"); poly([[0, 38], [12, 33], [24, 38]], "#a9a3b8"); poly([[30, 38], [46, 34], [56, 38]], "#a9a3b8");
+    R(0, 38, N, 1, "#cfcadb");
+    for (const [cx, cy, r] of [[8, 44, 3], [30, 50, 2], [48, 46, 3], [18, 53, 2]]) { disc(cx, cy, r, "#6f6a82"); R(cx - r + 1, cy - r, r, 1, "#cfcadb"); }
+    R(26, 30, 1, 10, "#dfe3ea"); R(27, 30, 6, 4, "#ffe45e");   // a flag
+  } else if (name === "rooftop") {   // neon city rooftop at night, light rain
+    grad(0, 36, ["#0d0a24", "#1a1240", "#2a1656", "#46206e"]);
+    let a = 0; while (a < N) { const w = 5 + (rnd() * 5 | 0), h = 12 + (rnd() * 20 | 0); R(a, 36 - h, w, h, "#120d22");
+      for (let j = 36 - h + 2; j < 35; j += 3) for (let i = a + 1; i < a + w - 1; i += 2) if (rnd() < .4) P(i, j, rnd() < .5 ? "#ffd36e" : "#7ad3ff"); a += w + 1; }
+    R(4, 8, 7, 10, "#0a0814"); R(5, 9, 5, 8, f % 3 ? "#ff5aa0" : "#a03466"); R(6, 10, 3, 1, "#ffd1e4"); R(6, 13, 3, 1, "#ffd1e4"); R(7, 11, 1, 5, "#ffd1e4");   // neon signs
+    R(44, 12, 9, 5, "#0a0814"); R(45, 13, 7, 3, "#7ad3ff"); R(46, 14, 5, 1, "#e8faff");
+    A(.5, () => { for (let i = 0; i < 26; i++) { const rx = (i * 13 + f * 3) % N, ry = (i * 29 + f * 7) % 46; R(rx, ry, 1, 2, "#9fb8ff"); } });   // rain
+    R(0, 36, N, 20, "#2b2733"); R(0, 36, N, 2, "#4f4860");
+    R(4, 30, 9, 7, "#5b5370"); R(5, 31, 7, 1, "#8a8f9c"); R(5, 33, 7, 1, "#8a8f9c");   // AC unit
+    R(45, 24, 8, 9, "#5a3d2e"); R(46, 33, 1, 4, "#3d2a1e"); R(51, 33, 1, 4, "#3d2a1e"); R(44, 23, 10, 1, "#3d2a1e");   // water tower
+    A(.35, () => { R(14, 49, 10, 1, "#ff5aa0"); R(32, 51, 12, 1, "#7ad3ff"); });   // neon puddles
+  } else if (name === "volcano") {
+    grad(0, 38, ["#1a0505", "#3a0a08", "#6a1a0c", "#a8380f"]);
+    A(.6, () => { for (let i = 0; i < 5; i++) disc(28 + ((i * 5 + f) % 9) - 4, 8 - i * 2 + 6, 4 + i, "#3a2a2a"); });
+    poly([[4, 38], [22, 14], [34, 14], [54, 38]], "#2a1414"); poly([[22, 14], [34, 14], [31, 18], [25, 18]], "#ff9a2e");
+    for (let j = 0; j < 20; j++) R(26 + Math.round(Math.sin((j + f) / 2) * 1.5), 16 + j, 3, 1, j % 3 ? "#ff6a1a" : "#ffe45e");   // lava stream
+    for (let i = 0; i < 7; i++) { const t = (f + i * 3) % 8; P(22 + i * 2 + (i % 2 ? t : -t), 12 - t, i % 2 ? "#ffe45e" : "#ff6a1a"); }   // sparks
+    R(0, 38, N, 18, "#1f1414"); R(0, 38, N, 1, "#4a2a20");
+    for (let i = 0; i < 9; i++) { const a2 = rnd() * N | 0, b2 = 42 + (rnd() * 12 | 0); R(a2, b2, 3, 1, (i + f) % 2 ? "#ff6a1a" : "#a8380f"); }   // glowing cracks
+  } else if (name === "ocean") {   // underwater, light rays from above
+    grad(0, N, ["#5ec8e8", "#3aa3d4", "#2a7fc0", "#1f5fa0", "#18488a"]);
+    for (let i = 0; i < 4; i++) A(.16, () => poly([[6 + i * 14 + f, 0], [11 + i * 14 + f, 0], [2 + i * 14, 40], [-4 + i * 14, 40]], "#ffffff"));
+    for (let i = 0; i < 8; i++) { const by = (40 - ((f * 3 + i * 7) % 40)); P(8 + i * 6, by, "#dff6ff"); if (i % 2) P(9 + i * 6, by - 1, "#dff6ff"); }   // bubbles
+    const fish = (fx2, fy, c) => { R(fx2, fy, 4, 2, c); P(fx2 - 1, fy, c); P(fx2 - 1, fy + 1, c); P(fx2 + 3, fy, "#1d1b20"); };
+    fish(6 + (f * 2) % 50, 14, "#ffd36e"); fish(46 - (f * 2) % 40, 24, "#ff8fb1");
+    R(0, 40, N, 16, "#e8d29a"); R(0, 40, N, 1, "#f6e6b8");
+    for (const sx of [3, 8, 48, 53]) for (let j = 0; j < 14; j++) P(sx + ((j + f) % 4 < 2 ? 0 : 1), 40 - j, j % 2 ? "#3fae69" : "#2e8a52");   // seaweed
+    disc(14, 44, 3, "#ff7a7a"); disc(42, 45, 3, "#c9b8ff"); R(30, 50, 3, 2, "#ff8fb1");
+  } else if (name === "heaven") {   // cloud kingdom with golden gates
+    grad(0, 40, ["#ffd9ec", "#ffe7d6", "#fff3c9", "#e8f4ff"]);
+    for (let i = 0; i < 6; i++) R(0, 6 + i, N, 1, ["#ff8f8f", "#ffb36e", "#ffe45e", "#9be3a9", "#93c4ff", "#c9b8ff"][i]);   // rainbow
+    A(.85, () => { disc(10, 14, 6, "#ffffff"); disc(46, 14, 6, "#ffffff"); });
+    for (const gx of [12, 40]) { R(gx, 16, 4, 26, "#f2b705"); R(gx + 1, 16, 1, 26, "#ffe45e"); disc(gx + 2, 15, 2, "#ffe45e"); }   // gate posts
+    for (let a = 0; a <= 40; a++) { const t = Math.PI * a / 40; P(Math.round(28 - 12 * Math.cos(t)), Math.round(30 - 12 * Math.sin(t)), "#f2b705"); }   // the arch
+    for (let i = 18; i < 40; i += 3) R(i, 30, 1, 12, "#f2b705");
+    for (let i = 0; i < 6; i++) { const t = (f + i * 2) % 6; P(6 + i * 9, 26 - t, "#ffffff"); }
+    for (let i = -4; i < N + 4; i += 8) { disc(i, 44, 6, "#ffffff"); disc(i + 4, 42, 5, "#f4f2ff"); }
+    R(0, 44, N, 12, "#ffffff"); A(.5, () => R(0, 50, N, 6, "#e6e2f8"));
+  } else if (name === "arcade") {
+    R(0, 0, N, N, "#0d0a1a");
+    for (let i = 0; i < 4; i++) { const ax = 2 + i * 14;   // arcade cabinets
+      R(ax, 8, 11, 32, "#1d1838"); R(ax, 8, 11, 3, ["#ff5aa0", "#7ad3ff", "#ffe45e", "#9be38a"][i]);
+      R(ax + 2, 13, 7, 9, "#05040c"); for (let j = 0; j < 4; j++) R(ax + 3 + ((j * 3 + f + i) % 5), 14 + j * 2, 2, 1, ["#ff5aa0", "#7ad3ff", "#ffe45e", "#9be38a"][(i + j) % 4]);
+      R(ax + 1, 24, 9, 3, "#2b2350"); P(ax + 3, 25, "#e0303a"); P(ax + 6, 25, "#7ad3ff"); P(ax + 8, 25, "#ffe45e");
+      A(.2, () => R(ax - 1, 40, 13, 3, ["#ff5aa0", "#7ad3ff", "#ffe45e", "#9be38a"][i])); }
+    for (let j = 40; j < N; j += 4) for (let i = (j / 4 % 2) * 4; i < N; i += 8) R(i, j, 4, 4, "#1b1730");   // checker floor
+    R(0, 40, N, 1, "#ff5aa0");
+  }
+  return cv;
+}
+
+/** The scene as an image URL, with Mochi's shadow and its state (haze when high, sparkles when legendary, grey when sick). */
+function placeURL(place, o = {}) {
+  if (!MOCHI.places[place]) place = LOOK_DEFAULT.place;
+  const part = o.part || dayPart(), f = (o.frame || 0) % 24, high = o.high || 0, tier = o.tier || "okay", soft = o.soft || "#b9a7ff";
+  const key = [place, part, f, high, tier, soft].join("|");
+  if (_scenes.has(key)) return _scenes.get(key);
+  const cv = SCENES56.includes(place) ? scene56(place, f) : scene42(place, part, f, soft);
+  const x = cv.getContext("2d"), N = cv.width, night = part === "night";
+  const R = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(a, b, w, h); };
+  const P = (a, b, c) => R(a, b, 1, 1, c);
+  const disc = (cx, cy, r, c) => { for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (i * i + j * j <= r * r + r * .8) P(cx + i, cy + j, c); };
+  // Mochi's shadow, right under its feet
+  const fy = Math.round(N * .84), hw = Math.round(N * .15);
+  x.globalAlpha = .32; R(Math.round(N / 2) - hw + 1, fy - 1, hw * 2 - 2, 1, "#000"); R(Math.round(N / 2) - hw, fy, hw * 2, 1, "#000"); x.globalAlpha = 1;
+  if (high) { x.globalAlpha = .2 + .06 * high;
+    for (let i = 0; i < high * 2; i++) disc(Math.round(((i * 13 + f * 2) % (N / 42 * 50)) * N / 42) - 4, Math.round((6 + (i * 7) % 22) * N / 42), Math.round((4 + (i % 2)) * N / 42), "#d8e8c8"); x.globalAlpha = 1; }
+  if (tier === "sick") { x.globalAlpha = .22; R(0, 0, N, N, "#9aa38a"); x.globalAlpha = 1; }
+  if (tier === "legend") for (let i = 0; i < 7; i++) { const a = (i * 17 + 5) % N, b = (i * 11 + 3) % Math.round(N * .7); if ((i + f) % 3) { P(a, b, "#ffe45e"); P(a - 1, b, "#fff6c9"); P(a + 1, b, "#fff6c9"); } }
+  const url = cv.toDataURL();
+  if (_scenes.size > 400) _scenes.clear();
+  _scenes.set(key, url);
+  return url;
+}
+/** Puts the scene behind Mochi on an element. */
+function setPlace(el, place, o) {
+  const u = placeURL(place || LOOK_DEFAULT.place, o);
+  if (el.dataset.scene === u) return;
+  el.dataset.scene = u;
+  el.style.backgroundImage = `url(${u})`;
+  el.classList.add("scene");
 }
 let PET_LOOK = {...LOOK_DEFAULT};   // what Mochi wears, saved on the account (/api/habits "pet")
 // kept so older bits that ask for PET.smoky etc. still work: they now just mean a mood
@@ -1521,6 +1779,8 @@ function petState(O) {
  * Keeps Mochi alive on Home: blinks, looks around, hops now and then, and plays the
  * high / drunk / cough states. One small timer, paused while the page is hidden.
  */
+/** The base color of the "Soft" place: Mochi's own color, or the theme's. */
+const softColor = look => { const c = skinColor({...LOOK_DEFAULT, ...look}); return c.startsWith("#") ? c : getComputedStyle(document.documentElement).getPropertyValue("--pet").trim(); };
 const petAnim = {
   base: {mood: "happy", tier: "okay"}, t: 0, timer: null, seenCig: null,
   idle: null, idleEnd: 0, nextIdle: 0, coughEnd: 0, nextCough: 0, cls: "",
@@ -1572,8 +1832,10 @@ const petAnim = {
     else if (this.idle === "up") up = true;
     else if (this.idle === "lookaround") dx = [-1, -1, 0, 1, 1][Math.floor((now - this.idleStart) / 520) % 5];
     if ((b.drunk || b.high) && !this.idle) dx = Math.floor(this.t / 6) % 3 - 1;   // can't keep the eyes still
-    const fx = {high: b.high || 0, drunk: b.drunk || 0, cough: coughing, dx, up, frame: Math.floor(this.t / 2)};
+    const breath = calm && !coughing && this.idle !== "hop" && Math.floor(now / 1700) % 2 === 1;
+    const fx = {high: b.high || 0, drunk: b.drunk || 0, cough: coughing, dx, up, frame: Math.floor(this.t / 2), breath};
     $("pet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, blink, fx);
+    setPlace($("petBox"), PET_LOOK.place, {frame: Math.floor(this.t / 2), high: b.high || 0, tier: b.tier, soft: softColor(PET_LOOK)});
     // the body's motion: drunk wins over high, both win over the gentle bob
     const motion = b.drunk ? "drunk" + b.drunk : b.high ? "high" + b.high : "bob";
     if (motion !== this.cls) {
@@ -1982,7 +2244,7 @@ async function loadSettings() {
 }
 // ---------------------------------------------------------------- the wardrobe
 const WR_TABS = [["looks", "Looks"], ["body", "Body"], ["skin", "Color"], ["eyes", "Eyes"], ["hat", "Head"], ["glasses", "Glasses"],
-                 ["neck", "Neck"], ["outfit", "Outfit"], ["held", "Holding"]];
+                 ["neck", "Neck"], ["outfit", "Outfit"], ["held", "Holding"], ["place", "Place"]];
 const WR_COLORS = ["#1d1b20", "#ffffff", "#8a8f9c", "#e0303a", "#ff8fb1", "#f2b705", "#3fae69", "#7ad3ff", "#2a78d6", "#6250d6", "#c99a6e"];
 const wardrobe = {
   tab: "looks", look: null, blink: null,
@@ -1997,19 +2259,21 @@ const wardrobe = {
   close() { clearInterval(this.blink); $("wardrobe").hidden = true; },
   draw() {
     $("wrPet").innerHTML = mochiCells(this.look);
+    setPlace($("wrPet").parentElement, this.look.place, {soft: softColor(this.look)});
     $("wrTabs").innerHTML = WR_TABS.map(([k, n]) => `<button type="button" role="tab" aria-selected="${k === this.tab}" data-wrtab="${k}">${n}</button>`).join("");
     let items;
     if (this.tab === "looks") {
       items = Object.entries(MOCHI.looks).map(([k, v]) => {
-        const look = {...LOOK_DEFAULT, ...v.look};
+        const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
         return {k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])};
       });
     } else {
       items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
     }
     this.drawColors();
-    $("wrGrid").innerHTML = items.map(it => `<button type="button" class="wrtile" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
-      <div class="pet">${mochiCells(it.look)}</div><span>${esc(it.n)}</span></button>`).join("");
+    $("wrGrid").innerHTML = items.map(it => { const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
+      return `<button type="button" class="wrtile" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
+      <div class="wrscene scene" style="background-image:url(${bg})"><div class="pet">${mochiCells(it.look)}</div></div><span>${esc(it.n)}</span></button>`; }).join("");
   },
   // the color row: for skin, and for any item whose main color can change
   colorNow() {
@@ -2037,7 +2301,7 @@ const wardrobe = {
     this.draw();
   },
   pick(k) {
-    if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look};
+    if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look, place: this.look.place};
     else this.look = {...this.look, [this.tab]: k};
     this.draw();
   },
@@ -2045,7 +2309,7 @@ const wardrobe = {
     const any = slot => { const ks = Object.keys(MOCHI[SLOTS[slot]]); return ks[Math.floor(Math.random() * ks.length)]; };
     const maybe = slot => Math.random() < .45 ? "none" : any(slot);
     this.look = {body: any("body"), skin: any("skin"), eyes: any("eyes"), hat: maybe("hat"), glasses: Math.random() < .7 ? "none" : any("glasses"),
-                 neck: maybe("neck"), outfit: maybe("outfit"), held: Math.random() < .6 ? "none" : any("held")};
+                 neck: maybe("neck"), outfit: maybe("outfit"), held: Math.random() < .6 ? "none" : any("held"), place: this.look.place};
     this.draw();
   },
   async save() {
@@ -2223,7 +2487,8 @@ function fcardHTML(p, opts = {}) {
   const tag = opts.me ? "div" : "button";
   return `<${tag} ${opts.me ? "" : `type="button" data-friend="${esc(p.uid)}"`} class="fcard ${opts.me ? "me" : ""}" style="--fbg:${bg};--pet:${pal["--pet"] || "#b9a7ff"};--hpc:${tier === "legend" ? "#f2b705" : tier === "sick" ? "#e0735a" : tier === "tired" ? "#e8a23c" : "#3fbf6f"}">
     ${p.unread ? `<span class="fnew">${p.unread} new</span>` : ""}
-    <div class="ftop"><div class="fpet"><div class="pet ${calm ? "bob" : ""}">${mochiCells(c && c.pet || {}, "happy", stale ? "okay" : tier)}</div></div>
+    <div class="ftop">${(() => { const fp = c && c.pet || {}, bg = placeURL(fp.place || LOOK_DEFAULT.place, {tier: stale ? "okay" : tier, soft: softColor(fp)});
+      return `<div class="fpet scene" style="background-image:url(${bg})"><div class="pet ${calm ? "bob" : ""}">${mochiCells(fp, "happy", stale ? "okay" : tier)}</div></div>`; })()}
       <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span></div></div>
     ${c ? `<div class="hprow"><span class="hpl">HP</span><span class="hpbar">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>
       <span class="hpn">${stale ? "?" : c.hp}</span><span class="tierb">${esc(stale ? "ASLEEP" : c.tierName || tier.toUpperCase())}</span></div>
