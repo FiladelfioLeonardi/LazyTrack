@@ -113,6 +113,20 @@
   .pet i { display: block; }
   .pet.bob { animation: bob 3.2s ease-in-out infinite; }
   @keyframes bob { 50% { transform: translateY(-4px); } }
+  /* Mochi's states: swaying when high, wobbling when drunk, shaking on a cough, a little hop when idle */
+  .pet.high1 { animation: haze 4.5s ease-in-out infinite; } .pet.high2 { animation: haze 3.6s ease-in-out infinite; }
+  .pet.high3 { animation: haze 2.8s ease-in-out infinite; --hz: 6deg; }
+  @keyframes haze { 0%, 100% { transform: translate(0, 0) rotate(0); } 25% { transform: translate(-2px, -2px) rotate(calc(-1 * var(--hz, 3deg))); }
+                    75% { transform: translate(2px, -1px) rotate(var(--hz, 3deg)); } }
+  .pet.drunk1 { animation: wobble 2.6s ease-in-out infinite; --wb: 4deg; } .pet.drunk2 { animation: wobble 1.9s ease-in-out infinite; --wb: 8deg; }
+  .pet.drunk3 { animation: wobble 1.4s ease-in-out infinite; --wb: 13deg; }
+  @keyframes wobble { 0%, 100% { transform: rotate(0) translateX(0); } 30% { transform: rotate(var(--wb)) translateX(3px); }
+                      70% { transform: rotate(calc(-.8 * var(--wb))) translateX(-3px); } }
+  .pet.coughing { animation: cough .55s linear; }
+  @keyframes cough { 0%, 100% { transform: none; } 15% { transform: translate(-2px, 1px) scale(1.04, .94); } 35% { transform: translate(2px, -1px); }
+                     55% { transform: translate(-2px, 1px) scale(1.03, .96); } 75% { transform: translate(1px, 0); } }
+  .pet.hop { animation: hop .6s cubic-bezier(.3, 0, .4, 1); }
+  @keyframes hop { 40% { transform: translateY(-10px) scale(.96, 1.05); } 70% { transform: translateY(0) scale(1.06, .94); } }
   .speech .who { font-family: var(--pixel); font-size: 13px; }
   .speech h1 { font: 800 clamp(20px, 3.2vw, 28px)/1.2 var(--body); margin: 4px 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
   .speech .mood { margin: 0; font-weight: 500; }
@@ -1330,15 +1344,31 @@ const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
 /** The skin: a preset name ("mint") or any color ("#12ab34"). */
 const skinColor = L => isHex(L.skin) ? L.skin : (MOCHI.skins[L.skin] || MOCHI.skins.theme).c || "var(--pet)";
 
-/** Draws Mochi: returns the 256 pixel cells. mood: happy/proud/meh/smoky/sleepy; tier: legend/shiny/okay/tired/sick. */
-function mochiCells(look, mood = "happy", tier = "okay", blink = false) {
+// Faces for special states. Eyes start at row 6 (X eyes take 3 rows, over the cheeks), mouths rows 9-10.
+const FX_FACE = {
+  highEyes: ["....qqq..qqq....", "....rkr..rkr...."],      // heavy lids, red eyes
+  highMouth: [".....k....k.....", "......kkkk......"],                          // slow goofy grin
+  tipsyEyes: ["....kkk..kkk....", ".....k....k....."],      // droopy lids
+  drunkEyes: [".....k..........", ".....k...kkk...."],      // one eye shut
+  wastedEyes: ["....k.k..k.k....", ".....k....k.....", "....k.k..k.k...."],     // dizzy X eyes
+  drunkMouth: ["......k..k......", ".......kpk......"],                          // tongue out
+  coughEyes: ["....k......k....", ".....k....k.....", "....k......k...."],      // squeezed > <
+  coughMouth: [".......kk.......", "......k..k......"],
+};
+
+/**
+ * Draws Mochi: returns the 256 pixel cells. mood: happy/proud/meh/smoky/sleepy; tier: legend/shiny/okay/tired/sick.
+ * fx (all optional): high 0-3 (weed), drunk 0-3 (alcohol), cough true/false, dx -1/0/1 (looking left/right),
+ * up (looking up), frame (a counter that moves the smoke, bubbles and stars).
+ */
+function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {}) {
   const L = {...LOOK_DEFAULT, ...(look || {})};
   const pick = (slot) => MOCHI[SLOTS[slot]][L[slot]] || MOCHI[SLOTS[slot]][LOOK_DEFAULT[slot]];
   const skin = skinColor(L);
   const sick = tier === "sick", tired = tier === "tired";
   // sick: the same color, just paler; tired: a little greyer
   const bodyCol = sick ? `color-mix(in srgb, ${skin} 55%, #fff)` : tired ? `color-mix(in srgb, ${skin} 78%, #8a8178)` : skin;
-  const col = {...MOCHI_COL, b: bodyCol, B: `color-mix(in srgb, ${bodyCol} 80%, #000)`};
+  const col = {...MOCHI_COL, b: bodyCol, B: `color-mix(in srgb, ${bodyCol} 80%, #000)`, q: `color-mix(in srgb, ${bodyCol} 50%, #000)`};
   const g = Array.from({length: 16}, () => Array(16).fill(null));
   const body = pick("body").rows;
   const put = (rows, y0 = 0, onlyBody = false, tint = null) => {
@@ -1354,12 +1384,27 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false) {
   const tintOf = slot => { const it = pick(slot); return it.tint ? (isHex(L[slot + "Color"]) ? L[slot + "Color"] : it.tint) : null; };
   put(body);
   put(pick("outfit").rows, 11, true, tintOf("outfit"));
-  // face: closed eyes when asleep or blinking, droopy when sick, the chosen eyes otherwise
-  const eyes = blink || mood === "sleepy" ? ["................", "....kk....kk...."]
-    : sick ? ["....zz....zz....", ".....k....k....."] : pick("eyes").rows;
-  put(["...cc......cc..."], 8);
-  put(eyes, 6);
-  put(MOCHI.mouths[sick ? "sick" : MOCHI.mouths[mood] ? mood : "happy"], 9);
+  // face: what's going on decides the eyes and mouth; otherwise the chosen eyes
+  const high = fx.high || 0, drunk = fx.drunk || 0, f = fx.frame || 0;
+  const shift = (rows, dx) => dx ? rows.map(r => dx > 0 ? "." + r.slice(0, 15) : r.slice(1) + ".") : rows;
+  let eyes, eyeY = 6, mouth = MOCHI.mouths[sick ? "sick" : MOCHI.mouths[mood] ? mood : "happy"];
+  if (fx.cough) { eyes = FX_FACE.coughEyes; mouth = FX_FACE.coughMouth; }
+  else if (blink || mood === "sleepy") eyes = ["................", "....kk....kk...."];
+  else if (drunk >= 3) { eyes = FX_FACE.wastedEyes; }
+  else if (high) { eyes = FX_FACE.highEyes; }
+  else if (drunk === 2) { eyes = FX_FACE.drunkEyes; }
+  else if (drunk === 1) { eyes = FX_FACE.tipsyEyes; }
+  else if (sick) eyes = ["....zz....zz....", ".....k....k....."];
+  else eyes = pick("eyes").rows;
+  if (!fx.cough) {
+    if (high) mouth = FX_FACE.highMouth;
+    if (drunk >= 2) mouth = FX_FACE.drunkMouth;
+  }
+  if (!fx.cough && !blink) eyes = shift(eyes, fx.dx || 0);
+  if (fx.up && !fx.cough && !blink && pick("hat").rows.length < 6) eyeY -= 1;   // a hat brim would cover raised eyes
+  put(drunk ? ["..PPP......PPP.."] : high ? ["...rc......cr..."] : ["...cc......cc..."], 8);   // flushed cheeks when drunk
+  put(eyes, eyeY);
+  put(mouth, 9);
   put(pick("neck").rows, 10, false, tintOf("neck"));
   put(pick("glasses").rows, 5, false, tintOf("glasses"));
   put(pick("hat").rows, 0, false, tintOf("hat"));
@@ -1370,7 +1415,23 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false) {
     put({0: "y..............y", 1: ".y............y."});
   }
   if (sick && L.hat === "none") put({3: "........tt......", 4: "........tt......"});
-  if (mood === "smoky") put({0: "............x...", 1: "...........x.x..", 2: "............x..."});
+  if (mood === "smoky" && !high) put({0: "............x...", 1: "...........x.x..", 2: "............x..."});
+  // high: smoke curls drifting up (more the higher), green sparkles at 3
+  if (high) {
+    const dot = (y, x) => { if (y >= 0 && y < 16 && x >= 0 && x < 16) put({[y]: ".".repeat(x) + "x" + ".".repeat(15 - x)}); };
+    const wisp = (x, ph) => { const y = 3 - ((f + ph) % 4), w = (f + ph) % 2;   // a little S of smoke, rising
+      dot(y, x + w); dot(y + 1, x + 1 - w); dot(y + 2, x + w); };
+    wisp(12, 0); if (high >= 2) { wisp(2, 2); wisp(13, 3); }
+    if (high >= 3) put({[(f % 3) + 1]: f % 2 ? ".e............E." : "..E..........e.."});
+  }
+  // drunk: hiccup bubbles at 2, stars circling the head at 3
+  if (drunk >= 2) { const y = 4 - (f % 4); put({[y]: "............" + (f % 2 ? "u..." : ".u..")}); }
+  if (drunk >= 3) {
+    const ring = [[3, 2], [1, 7], [3, 13], [4, 8]], [y, x] = ring[f % 4], [y2, x2] = ring[(f + 2) % 4];
+    put({[y]: ".".repeat(x) + "y" + ".".repeat(15 - x)}); put({[y2]: ".".repeat(x2) + "y" + ".".repeat(15 - x2)});
+  }
+  // cough: a puff of smoke out of the mouth
+  if (fx.cough) put({9: "..x.............", 10: ".x.x............", 11: "..x............."});
   if (mood === "sleepy") put({0: "...........zz...", 1: "............z...", 2: "...........zz..."});
   return g.flat().map(c => `<i${c ? ` style="background:${c}"` : ""}></i>`).join("");
 }
@@ -1429,12 +1490,99 @@ function health(O) {
   return {hp: Math.round(hp), tier, name, next: next && {name: next[2], need: next[0] - Math.round(hp)}, parts, quests: quests.slice(0, 3)};
 }
 
-function drawPet(mood, label, tier = "okay") {
-  $("pet").innerHTML = mochiCells(PET_LOOK, mood, tier);
+function drawPet(mood, label, tier = "okay", state = {}) {
   $("pet").setAttribute("aria-label", label);
-  $("pet").classList.toggle("bob", calm);
   $("petcard").dataset.mood = mood;
+  petAnim.set({mood, tier, ...state});
 }
+
+/**
+ * What today did to Mochi, from the logs: high (weed), drunk (alcohol), coughy (cigarettes).
+ * Each is 0-3. They wear off: a joint for about 2 hours (longer after more), drinks after about 5.
+ * Looking at an older day shows how that day ended.
+ */
+function petState(O) {
+  const t = O.today, n = k => (t.events || {})[k] || 0, now = Date.now() / 1000;
+  const last = k => (O.recent_events || []).filter(e => e.kind === k).map(e => e.ts).sort((a, b) => b - a)[0];
+  const since = k => { const ts = last(k); return ts ? (now - ts) / 3600 : null; };   // hours since the last one (null = not in the latest logs)
+  const joints = n("joint"), drinks = n("alcohol"), cigs = n("cigarette");
+  let high = Math.min(3, joints), drunk = drinks >= 5 ? 3 : drinks >= 3 ? 2 : drinks ? 1 : 0;
+  if (O.is_today) {
+    const hj = since("joint"), hd = since("alcohol");
+    if (high) high = hj == null ? (joints >= 3 ? 1 : 0) : hj < 1 + joints ? high : hj < 2 + joints ? Math.max(1, high - 1) : 0;
+    if (drunk) drunk = hd == null ? Math.max(0, drunk - 1) : hd < 5 ? drunk : hd < 8 ? drunk - 1 : 0;
+  }
+  const hc = O.is_today ? since("cigarette") : null;
+  const coughy = !cigs ? 0 : cigs >= 10 ? 3 : cigs >= 6 ? 2 : hc != null && hc < 0.25 ? 1 : cigs >= 4 ? 1 : 0;
+  return {high, drunk, coughy, lastCig: last("cigarette") || 0};
+}
+
+/**
+ * Keeps Mochi alive on Home: blinks, looks around, hops now and then, and plays the
+ * high / drunk / cough states. One small timer, paused while the page is hidden.
+ */
+const petAnim = {
+  base: {mood: "happy", tier: "okay"}, t: 0, timer: null, seenCig: null,
+  idle: null, idleEnd: 0, nextIdle: 0, coughEnd: 0, nextCough: 0, cls: "",
+  set(base) {
+    const b = this.base = base;
+    // a cigarette that just got logged (by a tap or the camera): cough right away
+    if (this.seenCig != null && b.lastCig > this.seenCig && Date.now() / 1000 - b.lastCig < 600) this.cough();
+    this.seenCig = b.lastCig || 0;
+    if (b.coughy && !this.nextCough) this.nextCough = Date.now() + 4000;
+    this.render();
+    if (!this.timer && calm) this.timer = setInterval(() => this.tick(), 300);
+  },
+  cough() { this.coughEnd = Date.now() + 1500; this.setCls("coughing", true); },
+  tick() {
+    if (document.hidden || !$("pet").offsetParent) return;
+    const now = Date.now(), b = this.base;
+    this.t++;
+    if (this.idle && now > this.idleEnd) this.idle = null;
+    // idle moves, only when nothing else is going on
+    if (!this.idle && now > this.nextIdle) {
+      const busy = b.drunk >= 2 || b.high >= 2 || b.mood === "sleepy";
+      const moves = busy ? ["blink", "blink"] : ["blink", "blink", "blink", "left", "right", "up", "lookaround", "hop"];
+      const m = moves[Math.floor(Math.random() * moves.length)];
+      const len = {blink: 180, left: 1400, right: 1400, up: 1200, lookaround: 2600, hop: 650}[m];
+      this.idle = m; this.idleEnd = now + len; this.idleStart = now;
+      this.nextIdle = now + len + 1800 + Math.random() * 3500;
+      if (m === "hop") this.setCls("hop", true);
+    }
+    // coughing fits, more often the more you smoked
+    if (b.coughy && now > this.nextCough) {
+      this.cough();
+      this.nextCough = now + [0, 45000, 25000, 14000][b.coughy] * (0.6 + Math.random() * 0.8);
+    }
+    this.render();
+  },
+  setCls(c, once) {
+    const el = $("pet");
+    el.classList.remove("coughing", "hop"); void el.offsetWidth;   // restart the one-shot animation
+    el.classList.add(c);
+    if (once) setTimeout(() => el.classList.remove(c), c === "hop" ? 650 : 600);
+  },
+  render() {
+    const b = this.base, now = Date.now();
+    const coughing = now < this.coughEnd && (now - (this.coughEnd - 1500)) % 600 < 380;   // two quick coughs
+    let dx = 0, up = false, blink = false;
+    if (this.idle === "blink") blink = true;
+    else if (this.idle === "left") dx = -1;
+    else if (this.idle === "right") dx = 1;
+    else if (this.idle === "up") up = true;
+    else if (this.idle === "lookaround") dx = [-1, -1, 0, 1, 1][Math.floor((now - this.idleStart) / 520) % 5];
+    if ((b.drunk || b.high) && !this.idle) dx = Math.floor(this.t / 6) % 3 - 1;   // can't keep the eyes still
+    const fx = {high: b.high || 0, drunk: b.drunk || 0, cough: coughing, dx, up, frame: Math.floor(this.t / 2)};
+    $("pet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, blink, fx);
+    // the body's motion: drunk wins over high, both win over the gentle bob
+    const motion = b.drunk ? "drunk" + b.drunk : b.high ? "high" + b.high : "bob";
+    if (motion !== this.cls) {
+      $("pet").classList.remove("bob", "high1", "high2", "high3", "drunk1", "drunk2", "drunk3");
+      if (calm) $("pet").classList.add(motion);
+      this.cls = motion;
+    }
+  },
+};
 
 // ---------------------------------------------------------------- shared pieces
 function rowHTML(k, value, cmp, extraLabel) {
@@ -1509,8 +1657,16 @@ function renderHome() {
   if (H.tier === "legend") say = "I feel LEGENDARY. Whatever you're doing, keep doing it.";
   else if (H.tier === "sick" && isToday) say = "I'm not feeling great. Help me back up? It doesn't take much.";
   else if (H.tier === "tired" && isToday && mood === "happy") say = "Bit tired today. A few small things would help.";
+  const st = petState(O);
+  if (st.drunk >= 3) say = isToday ? "W-who moved the floor? *hic* I love you, you know that?" : "That was a messy night.";
+  else if (st.high >= 3) say = isToday ? "Duuude... my pixels are breathing. Got any snacks?" : "That day was very, very cloudy.";
+  else if (st.drunk === 2) say = isToday ? "Feeling a bit wobbly *hic*. Water, maybe?" : say;
+  else if (st.high) say = isToday ? (st.high === 2 ? "Everything's sooo slow and wavy right now." : "Feeling a little floaty, ngl.") : say;
+  else if (st.drunk === 1 && isToday) say = "Just a little tipsy. One glass of water for me?";
+  else if (st.coughy >= 2 && isToday) say = "*cough cough* My little lungs are working hard today.";
   $("petMood").textContent = say;
-  drawPet(mood, `Your pet Mochi, feeling ${mood}, ${H.name.toLowerCase()} at ${H.hp} HP`, H.tier);
+  const fxName = st.drunk ? ", a bit drunk" : st.high ? ", a bit high" : st.coughy >= 2 ? ", coughing" : "";
+  drawPet(mood, `Your pet Mochi, feeling ${mood}${fxName}, ${H.name.toLowerCase()} at ${H.hp} HP`, H.tier, st);
   $("petcard").dataset.tier = H.tier;
 
   // HP bar + what gets Mochi to the next level (never a guilt trip: always the way up)
