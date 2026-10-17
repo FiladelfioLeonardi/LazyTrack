@@ -6,3 +6,4 @@ VERSION
 *.new
 installer/payload.zip
 dist/
+device/LazyTrackEgg/secrets.h
