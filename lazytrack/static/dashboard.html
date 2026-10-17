@@ -69,6 +69,28 @@
   .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
   .btn.primary { background: var(--yellow); color: var(--on-fill); }
 
+  /* ------------------------------------------------------------ the guided tour */
+  .tourbtn { border: 3px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); box-shadow: 3px 3px 0 var(--line);
+    font: 800 15px var(--body); padding: 8px 12px; cursor: pointer; }
+  .tourbtn:hover { background: var(--yellow); color: var(--on-fill); }
+  #tour { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+  #tour[hidden] { display: none; }
+  #tour .shade { position: fixed; inset: 0; pointer-events: auto; background: transparent; }
+  #tour .spot { position: fixed; border-radius: 18px; box-shadow: 0 0 0 4px var(--yellow), 0 0 0 9999px rgba(23, 20, 31, .62); transition: all .32s cubic-bezier(.3, .7, .2, 1); pointer-events: none; }
+  #tour .spot.none { left: 50% !important; top: 42% !important; width: 0 !important; height: 0 !important; box-shadow: 0 0 0 9999px rgba(23, 20, 31, .62); }
+  #tour .tcard { position: fixed; width: min(380px, calc(100vw - 32px)); background: var(--card); color: var(--ink); border: 3px solid var(--line); border-radius: 20px;
+    box-shadow: 6px 6px 0 var(--line); padding: 16px 16px 14px; pointer-events: auto; transition: left .32s cubic-bezier(.3, .7, .2, 1), top .32s cubic-bezier(.3, .7, .2, 1); }
+  #tour .tcount { font: 400 12px var(--pixel); opacity: .7; } #tour h3 { margin: 4px 0 6px; font: 800 20px/1.2 var(--body); }
+  #tour p { margin: 0 0 12px; line-height: 1.5; }
+  #tour .tdots { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 12px; }
+  #tour .tdots button { width: 14px; height: 14px; padding: 0; border: 2px solid var(--line); border-radius: 4px; background: var(--card); cursor: pointer; }
+  #tour .tdots button.done { background: var(--lilac); } #tour .tdots button.on { background: var(--yellow); transform: scale(1.2); }
+  #tour .tbtns { display: flex; align-items: center; gap: 8px; } #tour .tbtns .sp { flex: 1; }
+  #tour .tskip { border: 0; background: none; color: var(--ink-3); font: 700 14px var(--body); cursor: pointer; text-decoration: underline; padding: 6px 4px; }
+  #tour .tbtns .btn { padding: 8px 14px; }
+  @media (max-width: 560px) { #tour .tcard { left: 16px !important; right: 16px; width: auto; top: auto !important; bottom: 96px; } .tourbtn { padding: 6px 9px; font-size: 13px; } }
+  @media (prefers-reduced-motion: reduce) { #tour .spot, #tour .tcard { transition: none; } }
+
   /* ------------------------------------------------------------ header + tabs */
   .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
   .brand { font-family: var(--pixel); font-weight: 700; font-size: 22px; text-decoration: none; color: var(--ink); margin-right: auto; display: flex; align-items: center; gap: 10px; }
@@ -758,6 +780,19 @@ applyTheme();
     <div class="wrbtm"><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save</button></div>
   </div>
 </div>
+<!-- the guided tour: a spotlight on one part of the app + a card that explains it -->
+<div id="tour" hidden role="dialog" aria-modal="true" aria-labelledby="tourTitle">
+  <div class="shade"></div>
+  <div class="spot"></div>
+  <div class="tcard" tabindex="-1">
+    <div class="tcount" id="tourCount"></div>
+    <h3 id="tourTitle"></h3>
+    <p id="tourText"></p>
+    <div class="tdots" id="tourDots" aria-label="Jump to a step"></div>
+    <div class="tbtns"><button type="button" class="tskip" id="tourSkip">Skip tour</button><span class="sp"></span>
+      <button type="button" class="btn" id="tourBack">Back</button><button type="button" class="btn primary" id="tourNext">Next →</button></div>
+  </div>
+</div>
 <!-- when Mochi died: who it was, how long it lived, and the baby -->
 <div class="qmodal" id="ripModal" hidden role="dialog" aria-modal="true" aria-labelledby="ripTitle">
   <div class="qcard ripcard">
@@ -780,6 +815,7 @@ applyTheme();
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#"><span class="mini" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 10 10" shape-rendering="crispEdges"><path fill="#1d1b20" d="M2 2h6v1H2zM1 3h1v5H1zM8 3h1v5H8zM3 4h1v1H3zM6 4h1v1H6zM2 8h2v1H2zM6 8h2v1H6zM4 6h2v1H4z"/></svg></span>LAZYTRACK</a>
+    <button type="button" class="tourbtn" id="tourBtn" title="A quick guided tour of LazyTrack">🧭 Tour</button>
     <div class="daynav" role="group" aria-label="Choose day">
       <button id="prevDay" aria-label="Previous day">‹</button>
       <div class="lbl" id="dayLabel">Today</div>
@@ -958,6 +994,7 @@ applyTheme();
         <li><b>Make your account</b>: name, username, email and password. The same account logs in on your other devices.</li>
         <li><b>Setup</b>: pick what you want to do less of and more of (or add your own), what to show from your screen, extras (42, GitHub), then set your <a href="#tab=docs&sec=targets">targets</a>.</li>
       </ol>
+      <p>Right after the setup a <b>guided tour</b> walks you through the app. Skip any step or the whole thing; the <b>🧭 Tour</b> button at the top brings it back any time.</p>
       <p>LazyTrack has to be running to track. Both installers can start it with the computer.</p>
     </section>
 
@@ -1129,7 +1166,7 @@ applyTheme();
     <form id="sForm" autocomplete="off">
       <section class="card pad docsbtn"><h2>How LazyTrack works</h2>
         <p class="sub">Everything about Mochi, HP and targets, tracking, the camera, friends, your phone, updates and your data.</p>
-        <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a></div></section>
+        <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a><button type="button" class="btn" data-tour>🧭 Take the guided tour</button></div></section>
       <section class="card pad" id="sAccount"></section>
 
       <section class="card pad">
@@ -1173,7 +1210,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" id="sSmoke">
         <h2>Smoking detector</h2>
         <p class="sub">Watches through the webcam and asks you when it thinks you're smoking.</p>
         <div class="form">
@@ -3100,6 +3137,99 @@ $("ripGo").addEventListener("click", async () => {
   render();
 });
 
+// ---------------------------------------------------------------- the guided tour
+// Steps point at parts of the app (switching tabs when needed). Skip any step with the dots,
+// skip the whole thing, or come back any time with the Tour button. Starts by itself after the first setup.
+const TOUR = [
+  {title: "Hey 👋 Quick tour?", text: "About a minute: what everything is and how Mochi's HP works. Use the dots to jump around or skip the whole thing. The 🧭 Tour button at the top brings it back any time."},
+  {tab: "home", el: "#petBox", title: "This is Mochi", text: "Your pet lives on how your day goes. Tap it to dress it up: bodies, hats, colors, outfits and the place it lives in. Everything is free."},
+  {tab: "home", el: "#hp .hprow", title: "HP", text: "Mochi's health, 0 to 100. It carries over from day to day. TODAY shows how today is going so far: green means you're doing better than your targets."},
+  {tab: "home", el: "#hp .lifeline", title: "Keep it alive", text: "If HP hits 0 at midnight, Mochi dies and a baby hatches. The game: keep one Mochi alive as long as you can. Its age, generation and your record are here (and on your friend card)."},
+  {tab: "home", el: "#hp .quests", title: "Right now", text: "The quickest ways to help: what the next gym session or glass of water is worth, or what one more cigarette costs."},
+  {tab: "home", el: "#statsheet", title: "Your stats", text: "Today next to yesterday at this time. ▲ more, ▼ less; green is better, red is worse. Tap one for its details."},
+  {tab: "home", el: "#logbar", title: "Log in one tap", text: "Tap a button when it happens. Tapped by mistake? Undo it from the little message that pops up. \"More things to log\" shows the rest."},
+  {el: '.tab[data-tab="habits"]', title: "Habits", text: "Charts for every habit: today, this week and the last two weeks."},
+  {el: '.tab[data-tab="screen"]', title: "Screen", text: "Your screen time, tracked by itself: coding, YouTube, socials, games and the rest."},
+  {el: '.tab[data-tab="friends"]', title: "Friends", text: "Add friends by username, see each other's Mochi and chat. Who keeps theirs alive longest?"},
+  {tab: "settings", el: "#sTargets", title: "Targets", text: "What decides HP. On target is 0; under heals, over hurts. Change them whenever you like; the ones you make get a bit tighter every week."},
+  {tab: "settings", el: "#sSmoke", title: "Smoking detector", text: "Optional: the webcam notices cigarettes and asks you. Pictures never leave your computer."},
+  {tab: "settings", el: ".docsbtn", title: "The full guide", text: "Everything in detail lives in the documentation, and the tour can be started from here too."},
+  {el: "#tourBtn", title: "That's it! 🎉", text: "Come back to this tour any time with this button. Now go keep Mochi alive.", last: true},
+];
+const tour = {
+  i: 0, on: false, list: [],
+  start(from = 0) {
+    this.list = TOUR.filter(st => !st.el || !st.el.includes('data-tab="school"') || MODULES.school);
+    this.on = true; $("tour").hidden = false;
+    $("tourDots").innerHTML = this.list.map((st, i) => `<button type="button" data-tstep="${i}" aria-label="Step ${i + 1}: ${esc(st.title)}"></button>`).join("");
+    this.show(from);
+  },
+  stop() {
+    this.on = false; $("tour").hidden = true;
+    if (currentTab() !== "home") go({tab: "home"});
+  },
+  async show(i) {
+    if (i < 0 || i >= this.list.length) return this.stop();
+    this.i = i;
+    const st = this.list[i];
+    if (st.tab && currentTab() !== st.tab) { go({tab: st.tab}); await new Promise(r => setTimeout(r, 450)); }
+    if (st.tab === "home" && !O) await new Promise(r => setTimeout(r, 600));
+    let el = st.el ? document.querySelector(st.el) : null;
+    for (let n = 0; st.el && (!el || !el.offsetParent) && n < 10; n++) { await new Promise(r => setTimeout(r, 150)); el = document.querySelector(st.el); }
+    if (st.el && (!el || !el.offsetParent)) return this.show(i + (this.dir || 1));   // not on this screen (e.g. no quests): skip it
+    if (this.i !== i || !this.on) return;
+    this.el = el;
+    $("tourCount").textContent = `${i + 1} / ${this.list.length}`;
+    $("tourTitle").textContent = st.title;
+    $("tourText").textContent = st.text;
+    $("tourBack").hidden = i === 0;
+    $("tourNext").textContent = st.last ? "Done ✓" : i === 0 ? "Show me →" : "Next →";
+    $("tourSkip").hidden = !!st.last;
+    $("tourDots").querySelectorAll("button").forEach((b, n) => { b.classList.toggle("on", n === i); b.classList.toggle("done", n < i); });
+    // tall sections (like Targets): show their top part, with the card under it
+    this.tall = el && el.getBoundingClientRect().height > innerHeight * 0.5;
+    if (el) {
+      if (this.tall) scrollTo({top: scrollY + el.getBoundingClientRect().top - 90, behavior: "auto"});
+      else el.scrollIntoView({block: "center", behavior: calm ? "smooth" : "auto"});
+    }
+    setTimeout(() => this.place(), calm ? 320 : 0);
+    setTimeout(() => this.place(), 700);   // once more, after any smooth scrolling has settled
+    this.place();
+    $("tour").querySelector(".tcard").focus({preventScroll: true});
+  },
+  place() {
+    if (!this.on) return;
+    const spot = $("tour").querySelector(".spot"), card = $("tour").querySelector(".tcard"), el = this.el;
+    const W = innerWidth, H = innerHeight, cw = card.offsetWidth, ch = card.offsetHeight;
+    if (!el) { spot.classList.add("none"); card.style.left = `${(W - cw) / 2}px`; card.style.top = `${Math.max(16, (H - ch) / 2)}px`; return; }
+    spot.classList.remove("none");
+    const b = el.getBoundingClientRect(), pad = 8;
+    const r = this.tall ? {left: b.left, top: b.top, width: b.width, height: Math.min(b.height, Math.max(140, H * 0.24)), right: b.right} : b;
+    r.bottom = r.top + r.height;
+    Object.assign(spot.style, {left: `${r.left - pad}px`, top: `${r.top - pad}px`, width: `${r.width + pad * 2}px`, height: `${r.height + pad * 2}px`});
+    // the card goes below the spotlight if it fits, otherwise above, otherwise next to it
+    let top = r.bottom + pad + 14;
+    if (top + ch > H - 12) top = r.top - pad - 14 - ch;
+    if (top < 12) top = Math.min(H - ch - 12, Math.max(12, r.top));
+    const left = Math.min(W - cw - 16, Math.max(16, r.left + r.width / 2 - cw / 2));
+    card.style.left = `${left}px`; card.style.top = `${top}px`;
+  },
+};
+$("tourNext").addEventListener("click", () => { tour.dir = 1; tour.list[tour.i].last ? tour.stop() : tour.show(tour.i + 1); });
+$("tourBack").addEventListener("click", () => { tour.dir = -1; tour.show(tour.i - 1); });
+$("tourSkip").addEventListener("click", () => tour.stop());
+$("tourDots").addEventListener("click", e => { const b = e.target.closest("[data-tstep]"); if (b) { tour.dir = +b.dataset.tstep >= tour.i ? 1 : -1; tour.show(+b.dataset.tstep); } });
+$("tour").querySelector(".shade").addEventListener("click", () => $("tour").querySelector(".tcard").focus());
+document.addEventListener("click", e => { if (e.target.closest("#tourBtn, [data-tour]")) tour.start(); });
+addEventListener("keydown", e => {
+  if (!tour.on) return;
+  if (e.key === "Escape") tour.stop();
+  else if (e.key === "ArrowRight") $("tourNext").click();
+  else if (e.key === "ArrowLeft" && tour.i > 0) $("tourBack").click();
+});
+addEventListener("resize", () => tour.place());
+addEventListener("scroll", () => { if (tour.on) requestAnimationFrame(() => tour.place()); }, {passive: true});
+
 // ---------------------------------------------------------------- the documentation
 const docs = {
   show(sec) {
@@ -3702,7 +3832,9 @@ const setup = {
       await refreshAuth();
     } catch (_) {}
     $("dGo").disabled = false;
+    const first = this.mode === "new";
     flow.leave();
+    if (first) setTimeout(() => tour.start(), 1400);   // a brand-new account gets the tour right away
   },
 };
 $("welcome").addEventListener("click", e => {
