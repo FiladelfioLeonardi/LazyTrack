@@ -53,10 +53,44 @@ static const char *SUPA_KEY = "sb_publishable_mmX_kRPufTOQk1M4fmjjFg_HenbqicQ";
 // ---------------------------------------------------------------- screen
 Arduino_DataBus *bus = new Arduino_ESP32SPI(PIN_DC, PIN_CS, PIN_SCK, PIN_MOSI, GFX_NOT_DEFINED);
 #if defined(SCREEN_ST7789)
-Arduino_GFX *gfx = new Arduino_ST7789(bus, PIN_RST, 0 /* portrait */, SCREEN_INVERT, 240, 320);
+Arduino_GFX *lcd = new Arduino_ST7789(bus, PIN_RST, 0 /* portrait */, SCREEN_INVERT, 240, 320);
 #else
-Arduino_GFX *gfx = new Arduino_ILI9341(bus, PIN_RST, 0 /* portrait */, SCREEN_INVERT);
+Arduino_GFX *lcd = new Arduino_ILI9341(bus, PIN_RST, 0 /* portrait */, SCREEN_INVERT);
 #endif
+
+// Smooth screens: a whole screen is drawn in memory first, then sent in one go, so nothing flickers or
+// builds up line by line. A full 240x320 picture doesn't fit in the ESP32's memory, so it's done in
+// bands of 80 rows: everything is drawn with screen coordinates, and the band
+// only keeps the rows it covers.
+class Band : public Arduino_GFX {
+ public:
+  uint16_t *fb = nullptr;
+  int16_t oy = 0, bh = 0;
+  Band() : Arduino_GFX(240, 320) {}
+  bool begin(int32_t) override {
+    for (int h : {80, 40}) { fb = (uint16_t *)malloc(240 * h * 2); if (fb) { bh = h; return true; } }   // 80 rows = 38 KB: plenty left for WiFi + HTTPS
+    return false;
+  }
+  void writePixelPreclipped(int16_t x, int16_t y, uint16_t c) override {
+    y -= oy;
+    if (y >= 0 && y < bh) fb[y * 240 + x] = c;
+  }
+  void writeFillRectPreclipped(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t c) override {
+    int y0 = max(0, y - oy), y1 = min((int)bh, y - oy + h), x0 = max(0, (int)x), x1 = min(240, x + w);
+    for (int yy = y0; yy < y1; yy++) { uint16_t *p = fb + yy * 240 + x0; for (int xx = x0; xx < x1; xx++) *p++ = c; }
+  }
+  void writeFastHLine(int16_t x, int16_t y, int16_t w, uint16_t c) override { writeFillRectPreclipped(x, y, w, 1, c); }
+  void writeFastVLine(int16_t x, int16_t y, int16_t h, uint16_t c) override { writeFillRectPreclipped(x, y, 1, h, c); }
+  void draw16bitRGBBitmap(int16_t x, int16_t y, uint16_t *bmp, int16_t w, int16_t h) override {
+    for (int r = 0; r < h; r++) {
+      int yy = y + r - oy;
+      if (yy < 0 || yy >= bh) continue;
+      for (int cx = 0; cx < w; cx++) { int xx = x + cx; if (xx >= 0 && xx < 240) fb[yy * 240 + xx] = bmp[r * w + cx]; }
+    }
+  }
+} band;
+bool banded = false;
+Arduino_GFX *gfx = lcd;   // where drawing goes: the band while a screen is being put together
 
 static uint16_t rgb(uint32_t hex) { return ((hex >> 8) & 0xF800) | ((hex >> 5) & 0x07E0) | ((hex >> 3) & 0x001F); }
 static const uint16_t INK = 0x18E4;  // #1d1b20, the app's outline color
@@ -492,7 +526,7 @@ void checkPokes() {
   String who = nameOf(sender);
   if (!who.length()) { loadFriends(); who = nameOf(sender); }
   if (!who.length()) who = "A friend";
-  if (!screenOn) { screenOn = true; if (PIN_BL >= 0) digitalWrite(PIN_BL, HIGH); gfx->displayOn(); }
+  if (!screenOn) { screenOn = true; if (PIN_BL >= 0) digitalWrite(PIN_BL, HIGH); lcd->displayOn(); }
   if (kind == "love") { petUntil = millis() + 3000; showMsg(who.substring(0, 14), "sent Mochi love <3", 6000); tuneLove(); }
   else if (kind == "wave") { shakeUntil = millis() + 1500; showMsg(who.substring(0, 14), "waved at you!", 6000); tunePoke(); }
   else { shakeUntil = millis() + 2000; showMsg(who.substring(0, 14), a.size() > 1 ? "poked you " + String(a.size()) + " times!" : "poked you!", 6000); tunePoke(); }
@@ -504,16 +538,13 @@ int loveToday() {
   return prefs.getLong("loveDay", -1) == day ? prefs.getInt("love", 0) : 0;
 }
 
-void pet() {
+void pet() {   // hearts, closed happy eyes, a little wiggle and a chirp; no text
   long day = clockOk() ? (long)(time(nullptr) / 86400) : 0;
   int n = loveToday() + 1;
   prefs.putLong("loveDay", day);
   prefs.putInt("love", n);
   petUntil = millis() + 1800;
   tunePet();
-  String sub = card.drunk ? "*hic* ...love you too" : card.high ? "duuude... so soft" : card.coughy ? "*cough* thanks <3"
-             : card.tier == "sick" ? "that helps a little" : n == 1 ? "first pet today!" : String(n) + " pets today";
-  showMsg("<3", sub, 2200);
 }
 
 // ---------------------------------------------------------------- drawing
@@ -551,6 +582,10 @@ uint16_t bgAt(int x, int y) {
 }
 
 void drawBackground() {  // full screen, in strips through the stage buffer
+  if (gfx == &band) {     // putting a screen together: just this band's rows
+    for (int y = 0; y < band.bh; y++) for (int x = 0; x < 240; x++) band.fb[y * 240 + x] = bgAt(x, band.oy + y);
+    return;
+  }
   int rows = (SW * SH) / 240;
   for (int y0 = 0; y0 < 320; y0 += rows) {
     int h = min(rows, 320 - y0);
@@ -724,7 +759,19 @@ void drawFriend() {
   text(18, 296, status.startsWith("Poked") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes") ? status.substring(0, 33) : "A next   B poke   C back", 1, GREY);
 }
 
-void drawFrame() {  // the background and everything on it; Mochi itself comes from drawStage
+void drawScreen();
+
+void drawFrame() {   // a whole screen, without flicker: built band by band in memory, each sent in one go
+  if (!banded) { drawScreen(); return; }
+  gfx = &band;
+  for (band.oy = 0; band.oy < 320; band.oy += band.bh) {
+    drawScreen();
+    lcd->draw16bitRGBBitmap(0, band.oy, band.fb, 240, min((int)band.bh, 320 - band.oy));
+  }
+  gfx = lcd;
+}
+
+void drawScreen() {  // the background and everything on it; Mochi itself comes from drawStage
   if (view == V_MENU) {
     static const String items[] = {"Log", "Friends", "Today", "Info"};
     drawList("MENU", items, nullptr, nullptr, 4, menuSel, "A down   B open   C back");
@@ -822,7 +869,7 @@ int pressed() {  // which button was just pressed (0-2), or -1
 void setScreen(bool on) {
   screenOn = on;
   if (PIN_BL >= 0) digitalWrite(PIN_BL, on ? HIGH : LOW);
-  on ? gfx->displayOn() : gfx->displayOff();
+  on ? lcd->displayOn() : lcd->displayOff();
 }
 
 // ---------------------------------------------------------------- main
@@ -831,7 +878,7 @@ void setup() {
   for (auto &b : btns) pinMode(b.pin, INPUT_PULLUP);
   if (PIN_BL >= 0) { pinMode(PIN_BL, OUTPUT); digitalWrite(PIN_BL, HIGH); }
   // 27 MHz like TFT_eSPI: fast enough, and steady over jumper wires (faster can give a white screen)
-  if (!gfx->begin(27000000)) Serial.println("screen didn't start: check the wiring and the chip setting");
+  if (!lcd->begin(27000000)) Serial.println("screen didn't start: check the wiring and the chip setting");
   Serial.printf("LazyTrack Egg: screen %s on CS %d DC %d RST %d SCK %d MOSI %d\n",
 #if defined(SCREEN_ST7789)
                 "ST7789",
@@ -841,6 +888,8 @@ void setup() {
                 PIN_CS, PIN_DC, PIN_RST, PIN_SCK, PIN_MOSI);
   BG = rgb(0xefeaff); CARD = rgb(0xffffff); SOFT = rgb(0xf3f0fb); YELLOW = rgb(0xffe45e); GREEN = rgb(0x3fbf6f); RED = rgb(0xe0303a); GREY = rgb(0x6a6475);
   stage = (uint16_t *)malloc(SW * SH * 2);
+  banded = band.begin(0);   // before WiFi takes its share of memory
+  Serial.printf("screen buffer: %d rows per band\n", banded ? band.bh : 0);
   prefs.begin("lazytrack", false);
   refresh = prefs.getString("refresh", "");
   uid = prefs.getString("uid", "");
@@ -898,7 +947,7 @@ void onButton(int b) {
       } else if (menuSel == 1) {
         view = V_FRIENDS; friendSel = 0;
         if (millis() - friendsAt > 60000 || !nfriends) {
-          drawBackground(); panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK);
+          panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK);
           loadFriends();
         }
         status = ""; drawFrame();
