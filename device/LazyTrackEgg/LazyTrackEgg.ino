@@ -45,6 +45,9 @@
 #define BTN_B 33
 #define BTN_C 25
 #define PIN_BUZZ 26  // passive buzzer: + to this pin, - to GND
+// SPI speed for the screen. 27 MHz is steady over breadboard jumper wires. Once it's soldered with short
+// wires (in the case), try 40000000: everything gets ~1.5x faster. White screen = too fast, go back.
+#define SPI_HZ 27000000
 
 // the friends server (same as the app; this key is the public one made to sit in apps)
 static const char *SUPA_URL = "https://zmrzumltciteeznzjwaw.supabase.co";
@@ -796,7 +799,8 @@ void drawToday() {
   text(20, 20, "TODAY", 2, INK);
   if (!ntoday) {   // older LazyTrack: only what's on your friend card
     for (int i = 0; i < card.nstats; i++) text(20, 52 + i * 28, card.stats[i], 2, INK);
-    if (!card.nstats) text(20, 52, "Update LazyTrack to see", 1, GREY);
+    text(20, 256, "Only what friends see. For all of", 1, GREY);
+    text(20, 270, "it: update LazyTrack + run egg.sql", 1, GREY);
     text(20, 296, "C  back", 1, GREY);
     return;
   }
@@ -873,6 +877,7 @@ void drawFriend() {
 }
 
 void drawScreen();
+void scrollSetup();
 
 void drawFrame() {   // a whole screen, without flicker: built band by band in memory, each sent in one go
   if (!banded) { drawScreen(); return; }
@@ -959,15 +964,27 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
 }
 
 // ---------------------------------------------------------------- buttons
-struct Btn { int pin; bool down = false; uint32_t at = 0; } btns[3] = {{BTN_A}, {BTN_B}, {BTN_C}};
+// Buttons are caught by interrupts, so a press is never missed, even while the egg is busy talking to the
+// server or drawing a slide: it's remembered and handled right after. Debounced in the interrupt: a press
+// counts when the button goes down at least 200 ms after the last press and 40 ms after it last came up
+// (so the little flickers of a switch opening or closing don't count as extra presses).
+struct Btn { int pin; uint32_t accepted, rose; } btns[3] = {{BTN_A, 0, 0}, {BTN_B, 0, 0}, {BTN_C, 0, 0}};
+volatile uint8_t btnQueue = 0;   // one bit per button waiting to be handled
 
-int pressed() {  // which button was just pressed (0-2), or -1
-  for (int i = 0; i < 3; i++) {
-    bool d = digitalRead(btns[i].pin) == LOW;
-    if (d && !btns[i].down && millis() - btns[i].at > 180) { btns[i].down = true; btns[i].at = millis(); return i; }
-    if (!d) btns[i].down = false;
-  }
-  return -1;
+void IRAM_ATTR btnEdge(void *arg) {
+  Btn *b = (Btn *)arg;
+  uint32_t t = millis();
+  if (digitalRead(b->pin) == HIGH) { b->rose = t; return; }   // let go
+  if (t - b->accepted > 200 && t - b->rose > 40) { b->accepted = t; btnQueue |= 1 << (b - btns); }
+}
+
+int pressed() {  // the next press waiting (0-2), or -1
+  noInterrupts();
+  uint8_t q = btnQueue;
+  int i = q & 1 ? 0 : q & 2 ? 1 : q & 4 ? 2 : -1;
+  if (i >= 0) btnQueue &= ~(1 << i);
+  interrupts();
+  return i;
 }
 
 void setScreen(bool on) {
@@ -985,10 +1002,10 @@ void setScreen(bool on) {
 // ---------------------------------------------------------------- main
 void setup() {
   Serial.begin(115200);
-  for (auto &b : btns) pinMode(b.pin, INPUT_PULLUP);
+  for (auto &b : btns) { pinMode(b.pin, INPUT_PULLUP); attachInterruptArg(digitalPinToInterrupt(b.pin), btnEdge, &b, CHANGE); }
   if (PIN_BL >= 0) { pinMode(PIN_BL, OUTPUT); digitalWrite(PIN_BL, HIGH); }
   // 27 MHz like TFT_eSPI: fast enough, and steady over jumper wires (faster can give a white screen)
-  if (!lcd->begin(27000000)) Serial.println("screen didn't start: check the wiring and the chip setting");
+  if (!lcd->begin(SPI_HZ)) Serial.println("screen didn't start: check the wiring and the chip setting");
   Serial.printf("LazyTrack Egg: screen %s on CS %d DC %d RST %d SCK %d MOSI %d\n",
 #if defined(SCREEN_ST7789)
                 "ST7789",
@@ -999,6 +1016,7 @@ void setup() {
   BG = rgb(0xefeaff); CARD = rgb(0xffffff); SOFT = rgb(0xf3f0fb); YELLOW = rgb(0xffe45e); GREEN = rgb(0x3fbf6f); RED = rgb(0xe0303a); GREY = rgb(0x6a6475);
   stage = (uint16_t *)malloc(SW * SH * 2);
   banded = band.begin(0);   // before WiFi takes its share of memory
+  scrollSetup();
   Serial.printf("screen buffer: %d rows per band\n", banded ? band.bh : 0);
   prefs.begin("lazytrack", false);
   refresh = prefs.getString("refresh", "");
@@ -1031,30 +1049,54 @@ void setup() {
   drawFrame();
 }
 
-// slides: the new screen comes in from the left (an ease-out over ~6 frames)
-void slideIn(int to, int width = 240) {
-  view = to;
-  if (!banded) { drawFrame(); return; }
-  for (int i = 1; i <= 6; i++) {
-    float t = i / 6.0f, e = 1 - (1 - t) * (1 - t) * (1 - t);
-    band.ox = (int16_t)(-width * (1 - e));
-    if (to == V_MENU) menuDim = i < 3 ? 1 : 2;
-    drawFrame();
-  }
-  band.ox = 0; menuDim = 2;
-  drawFrame();
+// Screen changes slide vertically using the screen's own hardware scrolling: the screen shifts its
+// picture by itself, and only the new strip coming in has to be sent. That's what makes it smooth on an
+// SPI screen (redrawing the whole 240x320 picture for every frame of a slide is too slow: you'd see it
+// being drawn top to bottom). The chip can only scroll along its long side, so slides go up and down.
+void hwScroll(int s) {   // display line 0 shows memory line s
+  bus->beginWrite();
+  bus->writeCommand(0x37);   // VSCRSADD (same on ST7789 and ILI9341)
+  bus->write16((uint16_t)(s % 320));
+  bus->endWrite();
 }
 
-void slideMenuOut() {   // the drawer goes back out to the left, Mochi lights up again
-  if (banded) for (int i = 1; i <= 5; i++) {
-    float t = i / 5.0f;
-    band.ox = (int16_t)(-200 * t * t);
-    menuDim = i < 3 ? 2 : 1;
-    drawFrame();
+void scrollSetup() {     // the whole 320 lines scroll, no fixed areas
+  bus->beginWrite();
+  bus->writeCommand(0x33);   // VSCRDEF
+  bus->write16(0); bus->write16(320); bus->write16(0);
+  bus->endWrite();
+  hwScroll(0);
+}
+
+void pushRows(int y0, int y1) {   // draws rows y0..y1 of the current screen and sends just those
+  gfx = &band;
+  band.ox = 0;
+  for (int y = y0; y < y1; ) {
+    band.oy = y;
+    int h = min((int)band.bh, y1 - y);
+    drawScreen();
+    lcd->draw16bitRGBBitmap(0, y, band.fb, 240, h);
+    y += h;
   }
-  band.ox = 0; menuDim = 2;
-  view = V_HOME;
-  drawFrame();
+  gfx = lcd;
+}
+
+// up = the new screen comes up from the bottom and pushes the old one out the top (going into something);
+// down = it comes down from the top (going back)
+void transition(int to, bool up) {
+  view = to;
+  if (!banded) { drawFrame(); return; }
+  const int N = 14;
+  int prev = 0;
+  for (int i = 1; i <= N; i++) {
+    float t = i / (float)N, e = 1 - (1 - t) * (1 - t) * (1 - t);   // ease out: quick start, soft landing
+    int d = i == N ? 320 : (int)(320 * e);
+    if (d <= prev) continue;
+    if (up) { pushRows(prev, d); hwScroll(d); }
+    else { pushRows(320 - d, 320 - prev); hwScroll(320 - d); }
+    prev = d;
+  }
+  hwScroll(0);
 }
 
 void onButton(int b) {
@@ -1062,43 +1104,43 @@ void onButton(int b) {
   tuneClick();
   switch (view) {
     case V_HOME:
-      if (b == 0) { menuSel = 0; slideIn(V_MENU, 210); }
+      if (b == 0) { menuSel = 0; transition(V_MENU, true); }
       else if (b == 1) pet();
       else if (undoId && millis() < msgUntil) undoLog();
       else setScreen(false);
       break;
     case V_MENU:
       if (b == 0) { menuSel = (menuSel + 1) % 4; drawFrame(); }
-      else if (b == 2) slideMenuOut();
+      else if (b == 2) transition(V_HOME, false);
       else if (menuSel == 0) {
         if (!nhabits || millis() - habitsAt > 300000) loadHabits();
-        logSel = 0; slideIn(V_LOG);
+        logSel = 0; transition(V_LOG, true);
       } else if (menuSel == 1) {
         friendSel = 0;
         if (millis() - friendsAt > 60000 || !nfriends) { panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK); loadFriends(); }
-        status = ""; slideIn(V_FRIENDS);
+        status = ""; transition(V_FRIENDS, true);
       } else if (menuSel == 2) {
         if (millis() - habitsAt > 30000) loadHabits();   // fresh numbers
-        todayPage = 0; slideIn(V_STATS);
-      } else slideIn(V_INFO);
+        todayPage = 0; transition(V_STATS, true);
+      } else transition(V_INFO, true);
       break;
     case V_LOG:
       if (b == 0 && nhabits) { logSel = (logSel + 1) % nhabits; drawFrame(); }
       else if (b == 1 && nhabits) doLog(logSel);
-      else if (b == 2) { view = V_MENU; drawFrame(); }
+      else if (b == 2) transition(V_MENU, false);
       break;
     case V_FRIENDS:
       if (b == 0 && nfriends) { friendSel = (friendSel + 1) % nfriends; status = ""; drawFrame(); }
       else if (b == 1 && nfriends) { sendPoke(friendSel); drawFrame(); }
-      else if (b == 2) { view = V_MENU; status = ""; drawFrame(); }
+      else if (b == 2) { status = ""; transition(V_MENU, false); }
       break;
     case V_INFO:
       if (b == 1) { status = "Syncing..."; drawFrame(); sync(); checkPokes(); tuneClick(); if (view == V_INFO) drawFrame(); break; }
-      if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
+      if (b == 2 || b == 0) transition(V_MENU, false);
       break;
     case V_STATS:
       if (b == 0 && ntoday > 10) { todayPage++; drawFrame(); }
-      else if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
+      else if (b == 2 || b == 0) transition(V_MENU, false);
       break;
     default:
       if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
