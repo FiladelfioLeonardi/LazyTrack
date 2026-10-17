@@ -14,6 +14,7 @@
     3. pick your screen chip below, check the pins, upload
 */
 #include <WiFi.h>
+#include <WiFiMulti.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
@@ -72,6 +73,7 @@ struct Card {
 } card;
 
 Preferences prefs;
+WiFiMulti wifi;   // tries every network in secrets.h and joins whichever is around
 String token, refresh, uid;
 uint32_t tokenUntil = 0, lastSync = 0, lastTry = 0;
 String status = "Starting...";
@@ -206,12 +208,12 @@ bool parseCard(const String &body) {
 
 void sync() {
   lastTry = millis();
-  if (WiFi.status() != WL_CONNECTED) { status = "No WiFi"; return; }
+  if (WiFi.status() != WL_CONNECTED) { status = card.ok ? "Offline: your Mochi from earlier" : "No WiFi"; return; }
   if (!token.length() || millis() / 1000 > tokenUntil) { status = "Logging in..."; if (!login()) return; }
   String body;
   int code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true);
   if (code == 401) { token = ""; if (login()) code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true); }
-  if (code == 200 && parseCard(body)) { lastSync = millis(); status = "Synced"; }
+  if (code == 200 && parseCard(body)) { lastSync = millis(); status = "Synced"; prefs.putBytes("card", body.c_str(), body.length()); }   // kept for offline
   else if (code != 200) status = "Sync failed (" + String(code) + ")";
 }
 
@@ -351,9 +353,20 @@ void setup() {
   drawFrame();
   drawStage(0, 0, false);
   tuneBoot();
+  // the last Mochi it saw, so it shows up even without WiFi (outside, no hotspot)
+  String saved;
+  size_t n = prefs.getBytesLength("card");
+  if (n > 0 && n < 16384) { char *buf = (char *)malloc(n + 1); prefs.getBytes("card", buf, n); buf[n] = 0; saved = buf; free(buf); }
+  if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, 0, false); }
   WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-  for (int i = 0; i < 40 && WiFi.status() != WL_CONNECTED; i++) delay(250);
+  wifi.addAP(WIFI_SSID, WIFI_PASS);
+#ifdef WIFI2_SSID
+  wifi.addAP(WIFI2_SSID, WIFI2_PASS);
+#endif
+#ifdef WIFI3_SSID
+  wifi.addAP(WIFI3_SSID, WIFI3_PASS);
+#endif
+  for (int i = 0; i < 20 && wifi.run(1000) != WL_CONNECTED; i++) {}
   configTime(0, 0, "pool.ntp.org");  // the clock, for "coding for 25 min"
   sync();
   drawFrame();
@@ -368,7 +381,7 @@ void loop() {
   else if (b == 1) { tuneClick(); status = "Syncing..."; drawFrame(); sync(); tuneClick(); drawFrame(); }
 
   if (millis() - lastTry > 60000) { int before = card.hp; String tb = card.tierName; sync(); if (card.hp != before || card.tierName != tb || view == 2) drawFrame(); }
-  if (WiFi.status() != WL_CONNECTED && millis() - lastTry > 15000) { WiFi.reconnect(); lastTry = millis(); }
+  if (WiFi.status() != WL_CONNECTED && millis() - lastTry > 15000) { lastTry = millis(); if (wifi.run(3000) == WL_CONNECTED) sync(); }
 
   if (screenOn && view == 0 && millis() - tick > 120) {  // ~8 fps: bob, blink, wobble when drunk, shake when coughing
     tick = millis();
