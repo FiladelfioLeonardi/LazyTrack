@@ -82,6 +82,17 @@ struct Card {
   int nstats = 0;
 } card;
 
+// (Arduino IDE declares every function near the top of the sketch, so no function takes these as a parameter)
+struct Habit { String k, n; bool bad = false; };
+struct Friend {
+  String id, name, user, tier = "okay", what, label;
+  int hp = 0, drunk = 0, high = 0, coughy = 0;
+  bool online = false, hasCard = false, sprite = false;
+  time_t seen = 0;
+  uint16_t pal[36];
+  char px[257];
+};
+
 Preferences prefs;
 WiFiMulti wifi;   // tries every network in secrets.h and joins whichever is around
 String token, refresh, uid;
@@ -301,7 +312,6 @@ void showMsg(const String &title, const String &sub, uint32_t ms) {
 }
 
 // ---------------------------------------------------------------- logging from the egg
-struct Habit { String k, n; bool bad = false; };
 Habit habits[16];
 int nhabits = 0, logSel = 0;
 uint32_t habitsAt = 0;
@@ -387,14 +397,6 @@ void undoLog() {
 }
 
 // ---------------------------------------------------------------- friends
-struct Friend {
-  String id, name, user, tier = "okay", what, label;
-  int hp = 0, drunk = 0, high = 0, coughy = 0;
-  bool online = false, hasCard = false, sprite = false;
-  time_t seen = 0;
-  uint16_t pal[36];
-  char px[257];
-};
 Friend friends[12];
 int nfriends = 0, friendSel = 0;
 uint32_t friendsAt = 0;
@@ -465,7 +467,8 @@ String nameOf(const String &id) {
   return "";
 }
 
-void sendPoke(const Friend &f) {
+void sendPoke(int i) {   // (an index, not a Friend&: Arduino declares functions above the struct)
+  const Friend &f = friends[i];
   String body;
   int code = api("POST", "/rest/v1/pokes", "{\"receiver\":\"" + f.id + "\",\"kind\":\"poke\"}", body, "return=minimal");
   if (code == 201) { tunePoke(); status = "Poked " + f.name + "!"; }
@@ -908,7 +911,7 @@ void onButton(int b) {
       break;
     case V_FRIENDS:
       if (b == 0 && nfriends) { friendSel = (friendSel + 1) % nfriends; status = ""; drawFrame(); }
-      else if (b == 1 && nfriends) { sendPoke(friends[friendSel]); drawFrame(); }
+      else if (b == 1 && nfriends) { sendPoke(friendSel); drawFrame(); }
       else if (b == 2) { view = V_MENU; status = ""; drawFrame(); }
       break;
     case V_INFO:
