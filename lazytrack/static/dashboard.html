@@ -1341,6 +1341,8 @@ applyTheme();
       <div class="labbtns">
         <button type="button" class="btn" data-lab="rip">💀 Death screen</button>
         <button type="button" class="btn" data-lab="smoke">📷 Smoking popup</button>
+        <button type="button" class="btn" data-lab="syspopup">🖥️ Smoking popup (Mac/Windows)</button>
+        <button type="button" class="btn" data-lab="camask">🔒 Camera question on Home</button>
         <button type="button" class="btn" data-lab="tour">🧭 Tutorial</button>
         <button type="button" class="btn" data-lab="idea">💡 Ideas form</button>
         <button type="button" class="btn" data-lab="update">✨ "Updated" message</button>
@@ -3009,7 +3011,7 @@ document.addEventListener("click", e => {
 async function camWarn() {
   const c = await camStatus(), w = $("camWarn"), smokes = HABITS.some(h => h.smoke);
   // never decided about the camera? ask once, nicely (it's off until you say yes)
-  $("camAsk").hidden = !(c && smokes && !c.enabled && !c.asked && $("camAsk").dataset.done !== "1");
+  if ($("camAsk").dataset.test !== "1") $("camAsk").hidden = !(c && smokes && !c.enabled && !c.asked && $("camAsk").dataset.done !== "1");
   const show = c && c.enabled && c.status !== "off" && smokes;
   w.hidden = !show;
   if (!show) return;
@@ -3035,6 +3037,10 @@ document.addEventListener("click", async e => {
     camWarn(); return;
   }
   const a = e.target.closest("[data-camask]");
+  if (a && $("camAsk").dataset.test === "1") {   // the Test lab's preview
+    $("camAsk").dataset.test = ""; $("camAsk").hidden = true;
+    toast(`Test: you picked "${a.textContent}". Nothing was changed.`, null); camWarn(); return;
+  }
   if (a) {
     $("camAsk").dataset.done = "1"; $("camAsk").hidden = true;
     if (a.dataset.camask === "on") {
@@ -3744,6 +3750,13 @@ const admin = {
     if (a === "smoke") { const ev = k => ((O && O.recent_events) || []).filter(e => e.kind === k).map(e => e.ts).sort((x, y) => y - x)[0];
       question.show({id: -Date.now(), buttons: ["Cigarette", "Joint", "Already registered", "Neither"], last: {cigarette: ev("cigarette"), joint: ev("joint")}}); }
     if (a === "tour") tour.start();
+    if (a === "camask") { go({tab: "home"}); setTimeout(() => { $("camAsk").dataset.test = "1"; $("camAsk").hidden = false; $("camAsk").scrollIntoView({block: "center"}); }, 700); }
+    if (a === "syspopup") (async () => {
+      toast("Look for the LazyTrack popup on your screen…", null);
+      try { const r = await post("/api/lab/system-popup", {}); const j = await r.json();
+        toast(j.error ? j.error : j.answer ? `Test popup: you picked "${j.answer}". Nothing was logged.` : "Test popup closed without an answer.", null); }
+      catch (_) { toast("Couldn't open the popup.", null); }
+    })();
     if (a === "idea") ideaBox.open();
     if (a === "nmsg") { sfx.play("msg", true); toast("💬 New message from a friend", null); }
     if (a === "nreq") { sfx.play("req", true); toast("👋 New friend request", null); }

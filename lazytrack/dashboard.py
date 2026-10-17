@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import accounts, cloud, config, db, detail, github, habits, life, settings, summary, updater
+from . import accounts, cloud, config, db, detail, github, habits, life, settings, summary, system, updater
 from .activity import categorize_phone
 
 log = logging.getLogger(__name__)
@@ -194,6 +194,14 @@ def make_handler(cfg: dict):
                 return self._send(401, {"error": "log in first"})
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_post(u.path, b)
+            if u.path == "/api/lab/system-popup":
+                # the admin Test lab: the real Mac/Windows question, with your real "last cigarette" line; logs nothing
+                if not self._local():
+                    return self._send(403, {"error": "Only on the computer itself."})
+                from . import smoke
+                line = smoke.last_line()
+                ans = system.ask(smoke.QUESTION_TEXT + (f"\n\n{line}" if line else ""), smoke.BUTTONS, "Cigarette", timeout=60)
+                return self._send(200, {"answer": ans})
             if u.path == "/api/camera/pause":
                 from . import smoke
                 return self._send(200, {"ok": True, "until": smoke.pause(float(b.get("minutes", 60)))})
