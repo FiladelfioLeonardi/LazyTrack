@@ -109,6 +109,11 @@ def make_handler(cfg: dict):
                 return self._send(200, {**life.status(), "suggestions": life.suggestions()})
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_get(u.path, qs)
+            if u.path == "/api/backups":
+                if not self._local():
+                    return self._send(403, {"error": "Only on the computer itself."})
+                from . import backup
+                return self._send(200, {"folder": str(backup.folder()), "backups": backup.listing()})
             if u.path == "/api/camera/status":
                 from . import smoke
                 live = {k: v for k, v in smoke.LIVE.items() if k not in ("frame",)}
@@ -213,6 +218,20 @@ def make_handler(cfg: dict):
                 line = smoke.last_line()
                 ans = system.ask(smoke.question_text() + (f"\n\n{line}" if line else ""), smoke.buttons(), smoke.ask_default(), timeout=60)
                 return self._send(200, {"answer": ans})
+            if u.path in ("/api/backups/now", "/api/backups/restore"):
+                if not self._local():
+                    return self._send(403, {"error": "Only on the computer itself."})
+                from . import backup
+                if u.path == "/api/backups/now":
+                    p = backup.make("by you")
+                    return self._send(200, {"ok": True, "name": p.stem})
+                try:
+                    backup.restore(str(b.get("name", "")))
+                except FileNotFoundError as e:
+                    return self._send(404, {"error": str(e)})
+                self._send(200, {"ok": True})
+                settings.restart_soon(1.0)
+                return None
             if u.path == "/api/camera/pause":
                 from . import smoke
                 return self._send(200, {"ok": True, "until": smoke.pause(float(b.get("minutes", 60)))})

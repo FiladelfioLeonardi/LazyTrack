@@ -654,6 +654,10 @@
   .tcustom .cn { flex: 1; min-width: 0; } .tcustom .ce { width: 64px; text-align: center; }
   .tcustom .emos { display: flex; flex-wrap: wrap; gap: 4px; } .tcustom .emos button { border: 0; background: none; font-size: 22px; cursor: pointer; padding: 2px 4px; }
   .tcustom .cbtm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+  .bklist { display: grid; gap: 6px; max-height: 320px; overflow-y: auto; }
+  .bkrow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 2px solid var(--line); border-radius: 12px; background: var(--soft); }
+  .bkrow .bkn { flex: 1; min-width: 0; } .bkrow .bkn small { display: block; font: 400 11px var(--pixel); color: var(--ink-3); }
+  .bkrow .btn { height: 36px; padding: 0 12px; font-size: 13px; }
   .view { display: none; }
   /* Bad habits / Good habits share one page: each shows only its own half */
   #habits.only .grid2 { grid-template-columns: 1fr; }
@@ -1586,6 +1590,14 @@ applyTheme();
             <input id="idl" type="number" name="idle_minutes" min="1" max="60" style="max-width:140px"></div>
           <label class="toggle"><input type="checkbox" name="open_dashboard_on_start"> Open this page when LazyTrack starts</label>
         </div>
+      </section>
+
+      <section class="card pad" data-cat="app" id="sBackups">
+        <h2>💾 Backups</h2>
+        <p class="sub">Every day, and before every update, LazyTrack saves a copy of all your data (logs, stats, Mochi, settings) in the
+          <b>LazyTrack Backups</b> folder in your home folder. The last 14 are kept. Uninstalling LazyTrack never touches that folder.</p>
+        <div id="bkList"><p class="note">Loading…</p></div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="bkNow">Back up now</button><span class="note" id="bkNote"></span></div>
       </section>
 
       <section class="card pad" data-cat="app">
@@ -3710,6 +3722,39 @@ document.addEventListener("click", async e => {
   } catch (_) { $("tNote").textContent = "Couldn't save."; }
 });
 
+// ---------------------------------------------------------------- backups (Settings > App)
+const backups = {
+  sure: null,
+  async load() {
+    let j;
+    try { const r = await api("/api/backups"); if (!r.ok) { $("sBackups").hidden = true; return; } j = await r.json(); }
+    catch (_) { $("bkList").innerHTML = `<p class="note">Couldn't load the backups right now.</p>`; return; }
+    $("sBackups").hidden = false;
+    const when = t => new Date(t * 1000).toLocaleString([], {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"});
+    $("bkList").innerHTML = (j.backups || []).length
+      ? `<div class="bklist">${j.backups.map(b => `<div class="bkrow"><span aria-hidden="true">💾</span>
+          <span class="bkn"><b>${esc(when(b.at))}</b><small>${esc(b.reason || "")} · ${Math.max(1, Math.round(b.size / 1024))} KB</small></span>
+          <button type="button" class="btn" data-bkrestore="${esc(b.name)}">${this.sure === b.name ? "Sure? Restore" : "Restore"}</button></div>`).join("")}</div>
+         <p class="note" style="margin-top:8px">Restoring puts that day's data back. A backup of right now is made first, so you can undo it.</p>`
+      : `<p class="note">No backups yet. The first one is made in a minute or two, or tap "Back up now".</p>`;
+  },
+};
+document.addEventListener("click", async e => {
+  if (e.target.closest("#bkNow")) {
+    $("bkNote").textContent = "Saving…";
+    try { const r = await post("/api/backups/now", {}); $("bkNote").textContent = r.ok ? "Saved ✓" : "Couldn't save it."; } catch (_) { $("bkNote").textContent = "Couldn't save it."; }
+    backups.load(); return;
+  }
+  const rb = e.target.closest("[data-bkrestore]");
+  if (rb) {
+    const n = rb.dataset.bkrestore;
+    if (backups.sure !== n) { backups.sure = n; backups.load(); return; }
+    backups.sure = null; $("bkNote").textContent = "Restoring… LazyTrack restarts in a moment.";
+    try { const r = await post("/api/backups/restore", {name: n}); if (!r.ok) throw 0; setTimeout(() => location.reload(), 6000); }
+    catch (_) { $("bkNote").textContent = "Couldn't restore that one."; }
+  }
+});
+
 // Settings is split into categories (a tab row at the top); the one shown is in the link (#tab=settings&sc=habits)
 const SET_CATS = ["account", "habits", "look", "tracking", "app"];
 function settingsCat(c) {
@@ -4363,7 +4408,7 @@ async function render() {
   try {
     if (view === "detail") await loadDetail(r.k);
     else if (view === "admin") await admin.show(r.as);
-    else if (view === "settings") { settingsCat(r.sc); settingsFor(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
+    else if (view === "settings") { settingsCat(r.sc); settingsFor(); backups.load(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();

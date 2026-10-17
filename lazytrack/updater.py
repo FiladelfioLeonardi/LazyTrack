@@ -87,6 +87,11 @@ def _hash(p: Path) -> str:
 
 def apply(repo: str, branch: str, info: dict) -> None:
     """Download the repo at that commit and copy it over the code folder."""
+    try:   # your data first, always
+        from . import backup
+        backup.make("before updating to " + info["sha"][:7])
+    except Exception:
+        log.exception("backup before update failed")
     data = _get(f"https://codeload.github.com/{repo}/zip/{info['sha']}", timeout=120)
     req_before = _hash(APP_DIR / _req_file())
     with tempfile.TemporaryDirectory() as tmp:

@@ -46,6 +46,11 @@ class SyncWorker(threading.Thread):
                     log.warning("GitHub sync failed: %s", e)
                 next_gh = now + 60 * self.cfg["github"]["sync_minutes"]
             try:
+                from . import backup
+                backup.maybe_daily()   # a copy of your data in ~/LazyTrack Backups, once a day
+            except Exception as e:
+                log.warning("backup failed: %s", e)
+            try:
                 from . import cloud
                 cloud.heartbeat()   # friends see you as online while LazyTrack runs
             except Exception as e:
