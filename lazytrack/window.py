@@ -38,11 +38,13 @@ def _url(cfg: dict) -> str:
 
 
 def _bring_existing_to_front() -> bool:
-    """True if a LazyTrack window is already open (and it was asked to come to the front)."""
+    """True if a LazyTrack window is open and came to the front. It has to answer "ok": a window
+    process that's stuck (its window already closed) doesn't, and then a new window opens."""
     try:
         with socket.create_connection(("127.0.0.1", FRONT_PORT), timeout=1) as s:
             s.sendall(b"front\n")
-        return True
+            s.settimeout(3)
+            return s.recv(8).startswith(b"ok")
     except OSError:
         return False
 
@@ -195,23 +197,42 @@ def cmd_window(cfg: dict, args=None) -> None:
                                    background_color="#efeaff", text_select=True, js_api=api)
     api._window = window
 
-    def front():
+    def front() -> bool:
         try:
             window.restore()
             window.show()
             window.on_top = True
             window.on_top = False
+            return True
         except Exception:
-            pass
+            return False
 
     def listen():
         while srv:
             try:
                 c, _ = srv.accept()
-                c.close()
-                front()
+                ok = front()
+                try:
+                    c.sendall(b"ok\n" if ok else b"no\n")
+                finally:
+                    c.close()
             except OSError:
                 return
+
+    def closed():
+        # closing the window ends this process for sure (on a Mac it could otherwise linger without a
+        # window, keep the "come to the front" port, and make the next launch do nothing)
+        try:
+            if srv:
+                srv.close()
+        except OSError:
+            pass
+        threading.Timer(1.0, lambda: os._exit(0)).start()
+
+    try:
+        window.events.closed += closed
+    except Exception:
+        log.debug("no closed event in this pywebview", exc_info=True)
 
     if srv:
         threading.Thread(target=listen, daemon=True).start()
