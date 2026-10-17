@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 func osa(script string) error { return exec.Command("osascript", "-e", "activate", "-e", script).Run() }
@@ -143,10 +144,13 @@ func uninstall() {
 	stopRunning(appDir())
 	exec.Command("launchctl", "unload", agentPlist()).Run()
 	os.Remove(agentPlist())
+	exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/com.lazytrack.tracker", os.Getuid())).Run()
+	os.Remove(filepath.Join(home(), "Library", "LaunchAgents", "com.lazytrack.tracker.plist"))
 	os.RemoveAll(appBundle())
 	os.Remove(filepath.Join(home(), "Applications", "Uninstall LazyTrack.command"))
-	if yesNo("Uninstall LazyTrack", "Also delete your LazyTrack data (logs, stats, account on this Mac)?") {
-		os.RemoveAll(filepath.Join(home(), ".lazytrack"))
+	if yesNo("Uninstall LazyTrack", "Also delete your LazyTrack data (logs, stats, account on this Mac)?\n\nIt goes to the Trash, so you can still put it back until you empty the Trash.") {
+		// to the Trash, never gone for good in one click
+		os.Rename(filepath.Join(home(), ".lazytrack"), filepath.Join(home(), ".Trash", "LazyTrack data "+time.Now().Format("2006-01-02 15-04")))
 	}
 	os.RemoveAll(appDir())
 	tell("LazyTrack", "LazyTrack was removed. Bye from Mochi!")
