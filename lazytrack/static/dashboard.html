@@ -839,6 +839,7 @@ applyTheme();
             <p class="hint">The camera switches off for this long, so one cigarette isn't counted twice.</p>
             <input id="cool" type="number" name="smoke_cooldown_minutes" min="1" max="120" style="max-width:140px">
           </div>
+          <label class="toggle"><input type="checkbox" name="smoke_light_fix"> Fix colored or dim light (RGB lights, weak webcams)</label>
           <label class="toggle"><input type="checkbox" name="save_training_photos"> Keep the photo it asked about, to train it on you</label>
         </div>
         <div class="camstat" id="camStat" style="margin-top:16px"></div>
@@ -1656,7 +1657,8 @@ const camLive = {
         const pct = c.trigger ? Math.min(100, 100 * c.evidence / c.trigger) : 0;
         $("camEv").style.width = pct.toFixed(0) + "%";
         $("camNums").textContent = c.status !== "watching" ? (CAM_TEXT[c.status] || ["", ""])[1] + "."
-          : `${c.face ? "Face found." : "Looking for your face…"} Last score ${c.score.toFixed(2)} (counts from ${c.threshold.toFixed(2)}).`;
+          : `${c.face ? "Face found." : "Looking for your face…"} Last score ${c.score.toFixed(2)} (counts from ${c.threshold.toFixed(2)}).`
+            + (c.light ? ` Color fix on: ${c.light}.` : "");
       }
     } catch (_) {}
   },

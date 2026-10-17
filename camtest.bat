@@ -5,6 +5,7 @@ title LazyTrack camera test
 set PYTHONUTF8=1
 echo Opening the camera (the first time it downloads the AI, about 400 MB, so give it a few minutes)...
 echo Hold a pen like a cigarette to see the score go up. Press Q in the camera window to close.
+echo If the camera won't open: close the LazyTrack window (start.bat) first, or use Settings - Smoking detector - Show what the camera sees.
 echo.
 .venv\Scripts\python -m lazytrack camtest
 echo.

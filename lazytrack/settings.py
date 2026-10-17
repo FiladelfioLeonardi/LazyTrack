@@ -36,6 +36,7 @@ def get(cfg: dict) -> dict:
         "smoke_sensitivity": sens,
         "smoke_cooldown_minutes": int(s.get("cooldown_minutes", 10)),
         "save_training_photos": bool(s.get("save_labeled_frames", True)),
+        "smoke_light_fix": s.get("light_fix", "auto") != "off",
         "summary_weekday": int(cfg["summary"]["weekday"]),
         "summary_hour": int(cfg["summary"]["hour"]),
         "ft_login": f.get("login", ""),
@@ -71,6 +72,8 @@ def save(body: dict) -> dict:
         section("smoke")["trigger_score"] = SENSITIVITY[body["smoke_sensitivity"]]
     if "smoke_cooldown_minutes" in body:
         section("smoke")["cooldown_minutes"] = max(1, min(120, int(body["smoke_cooldown_minutes"])))
+    if "smoke_light_fix" in body:
+        section("smoke")["light_fix"] = "auto" if body["smoke_light_fix"] else "off"
     if "save_training_photos" in body:
         section("smoke")["save_labeled_frames"] = bool(body["save_training_photos"])
     if "summary_weekday" in body:

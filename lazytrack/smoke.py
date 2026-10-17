@@ -60,6 +60,44 @@ def face_detector():
         return None
 
 
+def fix_light(frame, mode: str = "auto"):
+    """Undo colored lighting and darkness before the AI looks.
+
+    RGB lights (say, all blue) tint the whole picture, so a white cigarette looks blue and the
+    face finder loses contrast. Gray-world balance scales each color channel so they average
+    out the same, which brings the picture back to neutral. Dim, grainy webcams get local
+    contrast (CLAHE on the brightness only). Returns (frame, what was fixed or "")."""
+    import cv2
+    import numpy as np
+    if mode == "off":
+        return frame, ""
+    small = cv2.resize(frame, (64, 36))
+    means = small.reshape(-1, 3).astype(np.float32).mean(0) + 1.0      # B, G, R
+    cast = float(means.max() / means.min())
+    bright = float(means.mean())
+    fixed = []
+    out = frame
+    if cast > 1.2 or mode == "on":
+        gains = np.clip(means.mean() / means, 0.4, 3.0)
+        if gains.max() > 1.6 or bright < 95:
+            # boosting a weak color channel also boosts the webcam's grain: smooth it first
+            # (a median filter removes speckles but keeps edges like the cigarette sharp)
+            out = cv2.medianBlur(out, 3)
+        out = np.clip(out.astype(np.float32) * gains, 0, 255).astype(np.uint8)
+        if cast > 1.2:
+            fixed.append(("blue", "green", "red")[int(np.argmax(means))] + " light")
+    if bright < 95 or cast > 1.2 or mode == "on":
+        lab = cv2.cvtColor(out, cv2.COLOR_BGR2LAB)
+        l, a, b = cv2.split(lab)
+        if bright < 95:   # dim webcam: lift the brightness toward normal (at most 2x)
+            l = cv2.convertScaleAbs(l, alpha=min(2.0, 115.0 / max(1.0, float(l.mean()))))
+        l = cv2.createCLAHE(clipLimit=2.0 if bright < 95 else 1.6, tileGridSize=(8, 8)).apply(l)
+        out = cv2.cvtColor(cv2.merge((l, a, b)), cv2.COLOR_LAB2BGR)
+        if bright < 95:
+            fixed.append("dark picture")
+    return out, " + ".join(fixed)
+
+
 class FaceTracker:
     """Finds the biggest face and remembers it for a moment (your hand covers it while smoking)."""
 
@@ -209,7 +247,7 @@ def save_crop(crop, label: str) -> None:
 # ---------------------------------------------------------------- what the dashboard can see
 # The detector runs in the same program as the dashboard, so it shares its state through this
 # dict: status for Settings, and (only while someone looks at the live view) a small JPEG.
-LIVE = {"status": "off", "detail": "", "score": 0.0, "threshold": 0.0, "evidence": 0.0, "trigger": 0.0,
+LIVE = {"status": "off", "detail": "", "light": "", "score": 0.0, "threshold": 0.0, "evidence": 0.0, "trigger": 0.0,
         "model": "", "face": False, "until": 0.0, "frame": None, "frame_t": 0.0, "want_until": 0.0}
 
 
@@ -322,6 +360,7 @@ class SmokeDetector(threading.Thread):
                 self.stop_ev.wait(2)
                 continue
             n += 1
+            frame, LIVE["light"] = fix_light(frame, s.get("light_fix", "auto"))
 
             # --- stage 1: anyone there? ---
             face, gray = self.faces.update(frame)
@@ -436,6 +475,7 @@ def camtest(cfg: dict) -> None:
         ok, frame = cap.read()
         if not ok:
             break
+        frame, light = fix_light(frame, s.get("light_fix", "auto"))
         face, _ = faces.update(frame)
         crop, (x0, y0, x1, y1) = roi(frame, face)
         score = scorer.score(crop)
@@ -455,6 +495,8 @@ def camtest(cfg: dict) -> None:
         cv2.rectangle(out, (12, 84), (12 + filled, 104), (0, 0, 255) if ev >= trigger else (0, 165, 255), -1)
         _label(out, "WOULD ASK NOW" if ev >= trigger else f"evidence {ev:.1f} / {trigger:.0f}", 132,
                (0, 0, 255) if ev >= trigger else (255, 255, 255))
+        if light:
+            _label(out, f"color fix: {light}", 164, (255, 228, 94))
         cv2.imshow("LazyTrack camtest (q to quit)", out)
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
@@ -482,6 +524,7 @@ def collect(cfg: dict, label: str, seconds: int) -> None:
         ok, frame = cap.read()
         if not ok:
             break
+        frame, _ = fix_light(frame, s.get("light_fix", "auto"))   # train on what the detector will see
         now = time.time()
         face, _ = faces.update(frame)
         crop, (x0, y0, x1, y1) = roi(frame, face)

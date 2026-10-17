@@ -36,5 +36,10 @@ Keep the black start.bat window open (minimize it); closing it stops LazyTrack.
 - **`camtest.bat`**: opens the camera with the live smoking score. Hold a pen like a cigarette:
   the score should go up. Press **Q** in the camera window to close it.
 - **`check.bat`**: shows which app LazyTrack sees, idle time, the camera and a test notification.
+- **Settings → Smoking detector → Show what the camera sees**: the same live view inside the app,
+  while LazyTrack is running (Windows lets only one program use the camera, so close start.bat
+  before using camtest.bat).
+- **`train.bat`**: if it misses your cigarettes (colored RGB light, weak webcam), this teaches it what
+  you look like smoking, in your room and your light. About 5 minutes, guided step by step.
 
 If anything looks wrong, send a screenshot of the black window.

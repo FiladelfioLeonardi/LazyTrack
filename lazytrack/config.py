@@ -73,6 +73,8 @@ DEFAULT_CONFIG = {
         # so a finger over the cigarette for a few seconds doesn't reset everything
         "evidence_half_life": 20,
         "trigger_score": 4.0,
+        # "auto" = balance colored light (RGB lights) and brighten dim webcams when needed, "off" = never
+        "light_fix": "auto",
         "motion_threshold": 4.0,
         "cooldown_minutes": 10,
         "false_alarm_cooldown_minutes": 2,
