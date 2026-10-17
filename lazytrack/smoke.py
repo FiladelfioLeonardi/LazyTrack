@@ -42,6 +42,8 @@ def pick_device() -> str:
         import torch
         if torch.backends.mps.is_available():
             return "mps"  # Apple Silicon GPU
+        if torch.cuda.is_available():
+            return "cuda"  # NVIDIA graphics card (needs the CUDA version of PyTorch)
     except Exception:
         pass
     return "cpu"
@@ -240,6 +242,9 @@ class SmokeDetector(threading.Thread):
         n = 0
         evidence = Evidence(s["evidence_half_life"])
         trigger = float(s["trigger_score"])
+        # without a graphics chip (most Windows PCs: pip installs the CPU-only PyTorch there) the AI
+        # runs on the processor: look half as often so the fan stays quiet. Evidence still adds up.
+        every = max(1, int(s["yolo_every_n_frames"])) * (2 if pick_device() == "cpu" else 1)
         hit_crop = None
         cooldown_until = 0.0   # after a confirmed cigarette/joint: camera off
         quiet_until = 0.0      # after "Neither": camera stays on, just no new question for a bit
@@ -291,7 +296,7 @@ class SmokeDetector(threading.Thread):
                 last_presence = t0
 
             # --- stage 2: score the face/hand area ---
-            if t0 - last_presence < 5 and n % max(1, int(s["yolo_every_n_frames"])) == 0:
+            if t0 - last_presence < 5 and n % every == 0:
                 crop, _ = roi(frame, face)
                 try:
                     score = self.scorer.score(crop)
