@@ -509,6 +509,16 @@
   .camwarn { display: block; margin-top: 14px; padding: 12px 16px; border: 3px solid var(--line); border-radius: 14px; background: var(--red);
              color: #1d1b20; font-weight: 800; text-decoration: none; box-shadow: 3px 3px 0 var(--line); }
   .camwarn[hidden] { display: none; }
+  .camwarn { display: flex !important; flex-wrap: wrap; gap: 6px 10px; align-items: center; } .camwarn[hidden] { display: none !important; }
+  .camwarn a { color: inherit; text-decoration: none; flex: 1; min-width: 180px; }
+  .camwarn .cambtns { display: flex; gap: 6px; flex-wrap: wrap; }
+  .camwarn .cambtns button, .camask .cambtns button { border: 2px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); font: 700 13px var(--body); padding: 4px 9px; cursor: pointer; }
+  .camask { margin-top: 14px; padding: 14px 16px; border: 3px solid var(--line); border-radius: 16px; background: var(--card); box-shadow: 3px 3px 0 var(--line); }
+  .camask h3 { margin: 0 0 6px; font: 800 18px/1.25 var(--body); }
+  .camask ul { margin: 6px 0 12px; padding-left: 0; list-style: none; display: grid; gap: 4px; color: var(--ink-2); font-size: 14px; }
+  .camask .cambtns { display: flex; gap: 8px; flex-wrap: wrap; } .camask .cambtns .btn { height: 42px; font-size: 15px; }
+  .privacy { margin: 0 0 14px; padding: 10px 12px; border: 2px dashed var(--line); border-radius: 12px; font-size: 14px; color: var(--ink-2); }
+  .qlast { margin: 10px 0 0; font: 400 13px/1.6 var(--pixel); color: var(--ink-2); white-space: pre-line; }
   .camwarn.ok, .camwarn.info { padding: 7px 12px; border-width: 2px; font-weight: 700; font-size: 14px; box-shadow: none; }
   .camwarn.ok { background: #c9f2d4; color: #0f6b34; } .camwarn.info { background: var(--soft); color: var(--ink); }
   .fxs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
@@ -909,6 +919,7 @@ applyTheme();
     <div class="apet"><div class="pet bob" id="qPet" aria-hidden="true"></div></div>
     <h2 class="ptitle" id="qTitle" style="font-size:26px">Caught you 👀</h2>
     <p class="psub" id="qSub">Is that a cigarette or a joint?</p>
+    <p class="qlast" id="qLast" hidden></p>
     <div class="qbtns" id="qBtns"></div>
   </div>
 </div>
@@ -950,7 +961,17 @@ applyTheme();
       <div class="hp" id="hp"></div>
     </section>
 
-    <a class="camwarn" id="camWarn" href="#tab=settings&sc=tracking" hidden></a>
+    <div class="camwarn" id="camWarn" hidden></div>
+    <div class="camask" id="camAsk" hidden>
+      <h3>📷 Want Mochi to notice when you smoke?</h3>
+      <p class="note" style="margin:0">Your webcam can spot a cigarette or joint and ask you, so you don't have to remember to tap. Totally optional.</p>
+      <ul>
+        <li>🔒 Nothing is recorded. It looks, decides and forgets, moment by moment.</li>
+        <li>💻 Nothing leaves your computer. Not even to us.</li>
+        <li>⏸️ It switches off when you're away, and you can pause it any time.</li>
+      </ul>
+      <div class="cambtns"><button type="button" class="btn primary" data-camask="on">Turn the camera on</button><button type="button" class="btn" data-camask="no">No thanks, I'll tap</button></div>
+    </div>
     <div class="logbar" id="logbar" aria-label="Log something"></div>
     <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
 
@@ -1200,7 +1221,9 @@ applyTheme();
       <p>The webcam looks for a cigarette or joint near your mouth, and for the glowing tip when you take a drag (it ignores lamps and RGB lights).
         After a couple of drags it asks <b>"Cigarette, joint, already registered or neither?"</b> on the computer and on every open LazyTrack page, phone included.
         <b>Already registered</b> means you logged it yourself: nothing is logged twice and the camera rests for about 10 minutes.
-        <b>Pictures never leave your computer</b>; only the answer is logged.</p>
+        <b>Nothing is recorded</b>: each moment is checked and forgotten, and nothing leaves your computer. Only your answer is logged.</p>
+      <p>It's <b>off until you choose it</b>: when you track smoking, Home asks once. It turns off by itself when you're away or the screen is locked,
+        and Home has <b>Pause 1 hour</b> and <b>Pause until tomorrow</b>. The question also tells you when your last cigarette and joint were.</p>
       <p>Settings → Tracking → Smoking detector turns it on or off and shows whether it's watching. If it misses you (weak webcam, colored light), run <code>train.bat</code> / the training to teach it your room.
         <code>camtest.bat</code> tests the camera on its own.</p>
     </section>
@@ -1409,6 +1432,8 @@ applyTheme();
       <section class="card pad" id="sSmoke" data-mod="smoke" data-cat="tracking">
         <h2>Smoking detector</h2>
         <p class="sub">Watches through the webcam and asks you when it thinks you're smoking.</p>
+        <p class="privacy">🔒 <b>Private by design.</b> Nothing is recorded: each moment is checked and forgotten right away, on this computer only.
+          It turns off when you're away or the screen is locked, and you can pause it from Home. The camera light is on only while it's watching.</p>
         <div class="form">
           <label class="toggle"><input type="checkbox" name="smoke_enabled"> Use the webcam detector</label>
           <div class="field">
@@ -1426,7 +1451,7 @@ applyTheme();
             <input id="cool" type="number" name="smoke_cooldown_minutes" min="1" max="120" style="max-width:140px">
           </div>
           <label class="toggle"><input type="checkbox" name="smoke_light_fix"> Fix colored or dim light (RGB lights, weak webcams)</label>
-          <label class="toggle"><input type="checkbox" name="save_training_photos"> Keep the photo it asked about, to train it on you</label>
+          <label class="toggle"><input type="checkbox" name="save_training_photos"> Keep the small picture it asked about, to teach it your room (stays on this computer; off unless you turn it on)</label>
         </div>
         <div class="camstat" id="camStat" style="margin-top:16px"></div>
       </section>
@@ -2931,6 +2956,14 @@ const question = {
     this.shown = q.id;
     $("qPet").innerHTML = mochiCells(PET_LOOK, "smoky", "okay");
     $("qSub").textContent = "Is that a cigarette or a joint?";
+    const last = q.last || {}, since = ts => {
+      const m = Math.floor((Date.now() / 1000 - ts) / 60), d = new Date(ts * 1000), t = d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+      const days = Math.round((new Date(new Date().toDateString()) - new Date(d.toDateString())) / 864e5);
+      return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 720 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""} ago`
+        : days === 0 ? `today at ${t}` : days === 1 ? `yesterday at ${t}` : `${days} days ago`;
+    };
+    const parts = [["cigarette", "Last cigarette"], ["joint", "Last joint"]].filter(([k]) => last[k]).map(([k, n]) => `${n}: ${since(last[k])}`);
+    $("qLast").hidden = !parts.length; $("qLast").textContent = parts.join("\n");
     $("qBtns").innerHTML = q.buttons.map(b => `<button type="button" class="btn ${b === "Cigarette" ? "primary" : ""}" data-qa="${esc(b)}" data-qid="${q.id}">${esc(Q_LABEL[b] || b)}</button>`).join("");
     $("qModal").hidden = false;
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
@@ -2974,19 +3007,47 @@ document.addEventListener("click", e => {
 // on Home: only speak up when something's wrong
 // the camera's state, always visible on Home (when a smoking habit is tracked): is it watching right now?
 async function camWarn() {
-  const c = await camStatus(), w = $("camWarn");
-  const show = c && c.enabled && c.status !== "off" && HABITS.some(h => h.smoke);
+  const c = await camStatus(), w = $("camWarn"), smokes = HABITS.some(h => h.smoke);
+  // never decided about the camera? ask once, nicely (it's off until you say yes)
+  $("camAsk").hidden = !(c && smokes && !c.enabled && !c.asked && $("camAsk").dataset.done !== "1");
+  const show = c && c.enabled && c.status !== "off" && smokes;
   w.hidden = !show;
   if (!show) return;
-  const bad = ["no_camera", "error"].includes(c.status);
+  const bad = ["no_camera", "error"].includes(c.status), mine = !!c.paused_until;
   w.classList.toggle("ok", c.status === "watching");
   w.classList.toggle("info", !bad && c.status !== "watching");
-  w.textContent = bad ? `📷 ${CAM_TEXT[c.status][1]}, so cigarettes aren't noticed right now. Tap to check.`
+  const text = bad ? `📷 ${CAM_TEXT[c.status][1]}, so cigarettes aren't noticed right now. Tap to check.`
+    : mine ? `⏸️ Camera paused by you until ${clock(c.paused_until)}`
     : c.status === "watching" ? "📷 Watching for cigarettes"
     : c.status === "paused" ? "📷 Camera off while you're away. It turns back on when you're back."
     : c.status === "cooldown" ? `📷 Camera resting${c.until ? ` until ${clock(c.until)}` : ""}, after a cigarette.`
     : "📷 Getting the camera ready…";
+  const btns = mine ? `<button type="button" data-campause="0">Turn back on</button>`
+    : bad ? "" : `<button type="button" data-campause="60">Pause 1 h</button><button type="button" data-campause="-1">Until tomorrow</button>`;
+  w.innerHTML = `<a href="#tab=settings&sc=tracking">${esc(text)}</a>${btns ? `<span class="cambtns">${btns}</span>` : ""}`;
 }
+document.addEventListener("click", async e => {
+  const p = e.target.closest("[data-campause]");
+  if (p) {
+    const m = +p.dataset.campause;
+    try { const r = await post("/api/camera/pause", {minutes: m}); const j = await r.json();
+      toast(m === 0 ? "📷 Camera back on" : `⏸️ Camera paused until ${clock(j.until)}. The light turns off in a moment.`, null); } catch (_) {}
+    camWarn(); return;
+  }
+  const a = e.target.closest("[data-camask]");
+  if (a) {
+    $("camAsk").dataset.done = "1"; $("camAsk").hidden = true;
+    if (a.dataset.camask === "on") {
+      await post("/api/settings", {smoke_enabled: true});
+      await post("/api/restart", {});
+      toast("📷 Turning the camera on… (LazyTrack restarts for a second)", null);
+      setTimeout(() => location.reload(), 4000);
+    } else {
+      await post("/api/settings", {smoke_asked: true});
+      toast("No camera. Just tap 🚬 when you smoke. You can change this in Settings.", null);
+    }
+  }
+});
 setInterval(() => { if (document.body.dataset.view === "home" && !document.hidden) camWarn(); }, 10000);
 
 // ---------------------------------------------------------------- friends
@@ -3680,7 +3741,8 @@ const admin = {
   labAction(a) {
     const L = (O && O.life) || {};
     if (a === "rip") { rip.preview = true; rip.show({died: "lab" + Date.now(), gen: L.gen || 1, days: L.age || 12, cause: {e: "🚬", n: "Cigarettes"}}, {gen: (L.gen || 1) + 1, best: L.best || {days: 12}, deaths: (L.deaths || 0) + 1}); }
-    if (a === "smoke") question.show({id: -Date.now(), buttons: ["Cigarette", "Joint", "Already registered", "Neither"]});
+    if (a === "smoke") { const ev = k => ((O && O.recent_events) || []).filter(e => e.kind === k).map(e => e.ts).sort((x, y) => y - x)[0];
+      question.show({id: -Date.now(), buttons: ["Cigarette", "Joint", "Already registered", "Neither"], last: {cigarette: ev("cigarette"), joint: ev("joint")}}); }
     if (a === "tour") tour.start();
     if (a === "idea") ideaBox.open();
     if (a === "nmsg") { sfx.play("msg", true); toast("💬 New message from a friend", null); }
@@ -4397,7 +4459,7 @@ const setup = {
     $("dTitle").textContent = this.mode === "edit" ? "Saved your picks." : `All set${name ? ", " + name : ""}.`;
     $("dLine").textContent = `Mochi will help you with ${less} thing${less === 1 ? "" : "s"} to cut down, ${more} to do more of, and ${this.sel.screen.length} screen stat${this.sel.screen.length === 1 ? "" : "s"}.`
       + (this.mode === "edit" ? " Anything you removed keeps its history, in case you add it back." : "")
-      + (hs.some(h => h.smoke) ? " The webcam notices cigarettes by itself: check it in Settings → Smoking detector." : "");
+      + (hs.some(h => h.smoke) ? " Want the webcam to notice cigarettes for you? Home will ask (it's optional and private)." : "");
     $("dGo").firstChild.textContent = this.mode === "edit" ? "Back to the app " : "Meet Mochi ";
     $("dPet").innerHTML = mochiCells(PET_LOOK, "proud", "legend");
   },

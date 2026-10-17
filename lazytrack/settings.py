@@ -32,10 +32,11 @@ def get(cfg: dict) -> dict:
         "device_name": cfg.get("device_name", "macbook"),
         "idle_minutes": max(1, round(int(cfg["activity"].get("idle_seconds", 300)) / 60)),
         "open_dashboard_on_start": bool(cfg["dashboard"].get("open_on_start", True)),
-        "smoke_enabled": bool(s.get("enabled", True)),
+        "smoke_enabled": bool(s.get("enabled", False)),
+        "smoke_asked": bool(s.get("asked", False)),
         "smoke_sensitivity": sens,
         "smoke_cooldown_minutes": int(s.get("cooldown_minutes", 10)),
-        "save_training_photos": bool(s.get("save_labeled_frames", True)),
+        "save_training_photos": bool(s.get("save_labeled_frames", False)),
         "smoke_light_fix": s.get("light_fix", "auto") != "off",
         "summary_weekday": int(cfg["summary"]["weekday"]),
         "summary_hour": int(cfg["summary"]["hour"]),
@@ -68,6 +69,9 @@ def save(body: dict) -> dict:
         section("dashboard")["open_on_start"] = bool(body["open_dashboard_on_start"])
     if "smoke_enabled" in body:
         section("smoke")["enabled"] = bool(body["smoke_enabled"])
+        section("smoke")["asked"] = True   # you've decided about the camera: Home stops asking
+    if "smoke_asked" in body:
+        section("smoke")["asked"] = bool(body["smoke_asked"])
     if body.get("smoke_sensitivity") in SENSITIVITY:
         section("smoke")["trigger_score"] = SENSITIVITY[body["smoke_sensitivity"]]
     if "smoke_cooldown_minutes" in body:

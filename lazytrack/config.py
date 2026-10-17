@@ -57,7 +57,9 @@ DEFAULT_CONFIG = {
     },
     "github": {"username": "", "token": "", "sync_minutes": 30},
     "smoke": {
-        "enabled": True,
+        # off until you choose it (Home asks once when you track smoking); "asked" = you've decided
+        "enabled": False,
+        "asked": False,
         "camera_index": 0,
         "fps": 4,
         "yolo_every_n_frames": 2,
@@ -79,7 +81,8 @@ DEFAULT_CONFIG = {
         "cooldown_minutes": 10,
         "false_alarm_cooldown_minutes": 2,
         "pause_when_idle_seconds": 600,
-        "save_labeled_frames": True,
+        # keep the small picture it asked you about, to train it on your room (only if you turn it on)
+        "save_labeled_frames": False,
     },
     "dashboard": {"host": "127.0.0.1", "port": 8042, "token": "", "open_on_start": True},
     # 0 = Monday ... 6 = Sunday
@@ -106,7 +109,6 @@ def _merge(base: dict, override: dict) -> dict:
 STARTER_CONFIG = {
     "device_name": "macbook",
     "fortytwo": {"login": "", "client_id": "", "client_secret": ""},
-    "smoke": {"enabled": True},
 }
 
 # Values old versions wrote into config.json. If yours still has them unchanged,

@@ -111,15 +111,17 @@ def make_handler(cfg: dict):
             if u.path == "/api/camera/status":
                 from . import smoke
                 live = {k: v for k, v in smoke.LIVE.items() if k not in ("frame",)}
-                return self._send(200, {**live, "enabled": bool(config.load()["smoke"]["enabled"]), "now": time.time(),
-                                        "can_view": self._local()})
+                sc = config.load()["smoke"]
+                return self._send(200, {**live, "enabled": bool(sc["enabled"]), "asked": bool(sc.get("asked")), "now": time.time(),
+                                        "can_view": self._local(), "paused_until": smoke.paused_until()})
             if u.path == "/api/camera/question":
                 from . import smoke
                 if self._local() and qs.get("visible", [""])[0] == "1":
                     smoke.APP_SEEN["t"] = time.time()   # the app is on screen here: it asks, not the system popup
                 q = smoke.QUESTION
                 return self._send(200, {"open": q["open"], "id": q["id"], "source": q["source"], "asked_at": q["asked_at"],
-                                        "text": smoke.QUESTION_TEXT, "buttons": smoke.BUTTONS})
+                                        "text": smoke.QUESTION_TEXT, "buttons": smoke.BUTTONS,
+                                        "last": smoke.last_smokes() if q["open"] else {}})
             if u.path == "/api/camera/frame.jpg":
                 # the live view: only on the computer itself, camera pictures never go over the network
                 if not self._local():
@@ -192,6 +194,9 @@ def make_handler(cfg: dict):
                 return self._send(401, {"error": "log in first"})
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_post(u.path, b)
+            if u.path == "/api/camera/pause":
+                from . import smoke
+                return self._send(200, {"ok": True, "until": smoke.pause(float(b.get("minutes", 60)))})
             if u.path == "/api/camera/answer":
                 from . import smoke
                 return self._send(200, {"ok": smoke.answer_question(int(b.get("id", 0)), str(b.get("answer", "")))})

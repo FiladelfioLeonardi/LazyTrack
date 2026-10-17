@@ -38,7 +38,8 @@ QUESTION_TEXT = "Caught you 👀\nIs that a cigarette or a joint?"
 
 # Shared between the computer's camera and a phone watching: one cigarette is one cigarette.
 SHARED = {"cooldown_until": 0.0,   # after a cigarette/joint: cameras off
-          "quiet_until": 0.0}      # after "Neither": cameras on, but no new question for a bit
+          "quiet_until": 0.0,      # after "Neither": cameras on, but no new question for a bit
+          "paused_until": None}    # you paused the camera (Home / Settings); None = not read from the database yet
 QUESTION = {"id": 0, "open": False, "source": "", "asked_at": 0.0, "answer": None}
 _question_lock = threading.Lock()
 _answered = threading.Event()
@@ -70,6 +71,66 @@ def answer_question(qid: int, answer: str) -> bool:
     return True
 
 
+# ---------------------------------------------------------------- pausing, and "when was the last one?"
+
+def paused_until() -> float:
+    """Until when you paused the camera (0 = not paused). Kept in the database, so it survives a restart."""
+    if SHARED["paused_until"] is None:
+        try:
+            SHARED["paused_until"] = float(db.kv_get("camera_paused_until") or 0)
+        except ValueError:
+            SHARED["paused_until"] = 0.0
+    return SHARED["paused_until"] if SHARED["paused_until"] > time.time() else 0.0
+
+
+def pause(minutes: float) -> float:
+    """Pause the camera for this many minutes; 0 turns it back on; -1 = until tomorrow at 6:00."""
+    now = time.time()
+    if minutes < 0:
+        t = datetime.now().replace(hour=6, minute=0, second=0, microsecond=0)
+        until = t.timestamp() + (86400 if t.timestamp() <= now else 0)
+    else:
+        until = now + minutes * 60 if minutes > 0 else 0.0
+    SHARED["paused_until"] = until
+    db.kv_set("camera_paused_until", str(until))
+    return until
+
+
+def last_smokes() -> dict:
+    """The time of your last cigarette and last joint ({"cigarette": ts or None, ...})."""
+    out = {}
+    for k in ANSWERS.values():
+        row = db.conn().execute("SELECT MAX(ts) FROM events WHERE kind=?", (k,)).fetchone()
+        out[k] = row[0] if row and row[0] else None
+    return out
+
+
+def ago(ts: Optional[float], now: Optional[float] = None) -> str:
+    """'25 min ago', '3 h 10 min ago', 'yesterday at 21:30', '4 days ago'."""
+    now = now or time.time()
+    m = int((now - ts) // 60)
+    if m < 1:
+        return "just now"
+    if m < 60:
+        return f"{m} min ago"
+    if m < 12 * 60:
+        return f"{m // 60} h {m % 60} min ago" if m % 60 else f"{m // 60} h ago"
+    d_then, d_now = datetime.fromtimestamp(ts).date(), datetime.fromtimestamp(now).date()
+    days = (d_now - d_then).days
+    if days == 0:
+        return "today at " + datetime.fromtimestamp(ts).strftime("%H:%M")
+    if days == 1:
+        return "yesterday at " + datetime.fromtimestamp(ts).strftime("%H:%M")
+    return f"{days} days ago"
+
+
+def last_line() -> str:
+    """For the popup: 'Last cigarette: 2 h ago · last joint: 3 days ago' (only what you've logged before)."""
+    last = last_smokes()
+    parts = [f"{n}: {ago(last[k])}" for k, n in (("cigarette", "Last cigarette"), ("joint", "Last joint")) if last.get(k)]
+    return " · ".join(parts)
+
+
 APP_SEEN = {"t": 0.0}   # last time a LazyTrack page or window on this computer was on screen (it polls every 3 s)
 
 
@@ -95,7 +156,8 @@ def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
             left = timeout - (time.time() - t0)
             if _answered.is_set() or left < 5:
                 return
-            ans = system.ask(QUESTION_TEXT, BUTTONS, "Cigarette", timeout=int(left), cancel=_answered.is_set)
+            line = last_line()
+            ans = system.ask(QUESTION_TEXT + (f"\n\n{line}" if line else ""), BUTTONS, "Cigarette", timeout=int(left), cancel=_answered.is_set)
             if ans:
                 answer_question(QUESTION["id"], ans)
         threading.Thread(target=popup, name="ask", daemon=True).start()
@@ -501,6 +563,8 @@ class SmokeDetector(threading.Thread):
         self.status = "starting"
 
     def _paused(self) -> bool:
+        if paused_until():
+            return True
         if system.screen_locked():
             return True
         # watching a video counts as being here, so the camera keeps going
@@ -548,6 +612,8 @@ class SmokeDetector(threading.Thread):
                 self.status = "cooldown" if t0 < cooldown_until else "paused"
                 if t0 < cooldown_until:
                     _set("cooldown", "Camera off for a while after a cigarette, so it isn't counted twice.", until=cooldown_until)
+                elif paused_until():
+                    _set("paused", "Paused by you.", until=paused_until(), by_you=True)
                 else:
                     _set("paused", "Paused while you're away or the screen is locked.")
                 # picked up a freshly trained model?
