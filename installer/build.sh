@@ -21,7 +21,10 @@ with zipfile.ZipFile("installer/payload.zip", "w", zipfile.ZIP_DEFLATED) as z:
         info = zipfile.ZipInfo.from_file(f, f)
         info.compress_type = zipfile.ZIP_DEFLATED
         with open(f, "rb") as fh:
-            z.writestr(info, fh.read())
+            data = fh.read()
+        if f.endswith((".bat", ".vbs")):   # Windows scripts need Windows line endings (labels break otherwise)
+            data = data.replace(b"\r\n", b"\n").replace(b"\n", b"\r\n")
+        z.writestr(info, data)
     z.writestr("VERSION", sha + "\n")
 print("payload:", len(z.namelist()) if False else "ok", os.path.getsize("installer/payload.zip") // 1024, "KB, version", sha[:7])
 EOF
