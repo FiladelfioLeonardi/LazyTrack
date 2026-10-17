@@ -342,13 +342,23 @@ void setup() {
   Serial.begin(115200);
   for (auto &b : btns) pinMode(b.pin, INPUT_PULLUP);
   if (PIN_BL >= 0) { pinMode(PIN_BL, OUTPUT); digitalWrite(PIN_BL, HIGH); }
-  if (!gfx->begin()) Serial.println("screen didn't start: check the wiring and the chip setting");
+  // 27 MHz like TFT_eSPI: fast enough, and steady over jumper wires (faster can give a white screen)
+  if (!gfx->begin(27000000)) Serial.println("screen didn't start: check the wiring and the chip setting");
+  Serial.printf("LazyTrack Egg: screen %s on CS %d DC %d RST %d SCK %d MOSI %d\n",
+#if defined(SCREEN_ST7789)
+                "ST7789",
+#else
+                "ILI9341",
+#endif
+                PIN_CS, PIN_DC, PIN_RST, PIN_SCK, PIN_MOSI);
+  gfx->fillScreen(rgb(0xff0000)); delay(300); gfx->fillScreen(rgb(0x00ff00)); delay(300); gfx->fillScreen(rgb(0x0000ff)); delay(300);   // test: red, green, blue
   BG = rgb(0xefeaff); CARD = rgb(0xffffff); SOFT = rgb(0xf3f0fb); YELLOW = rgb(0xffe45e); GREEN = rgb(0x3fbf6f); RED = rgb(0xe0303a); GREY = rgb(0x6a6475);
   stage = (uint16_t *)malloc(SW * SH * 2);
   prefs.begin("lazytrack", false);
   refresh = prefs.getString("refresh", "");
   uid = prefs.getString("uid", "");
   tls.setInsecure();  // a pocket toy: skip certificate checks (the server still needs your login)
+  Serial.println("connecting to WiFi...");
   status = "Connecting to WiFi...";
   drawFrame();
   drawStage(0, 0, false);
