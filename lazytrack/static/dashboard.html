@@ -4841,6 +4841,23 @@ $("dGo").addEventListener("click", () => setup.finish());
   } else welcome.fill();
 })();
 setInterval(() => { if (!["settings", "friends"].includes(document.body.dataset.view)) render(); }, 60000);
+// LazyTrack updated itself (and restarted) while this page was open: reload it so the new version shows.
+// Waits while you're in the middle of something (a popup open, typing).
+const pageVersion = {v: null};
+async function checkVersion() {
+  try {
+    const j = await (await api("/api/ping")).json();
+    if (!j.version) return;
+    if (!pageVersion.v) { pageVersion.v = j.version; return; }
+    if (j.version === pageVersion.v) return;
+    const busy = [...document.querySelectorAll(".qmodal")].some(m => !m.hidden) || !$("tour").hidden
+      || (document.activeElement && document.activeElement.matches("input, textarea, select"));
+    if (busy) return;
+    location.reload();   // the new page says "✨ LazyTrack updated: …" by itself
+  } catch (_) {}
+}
+checkVersion();
+setInterval(checkVersion, 20000);
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); drawThemePicker(); render(); });
 </script>
 </body>

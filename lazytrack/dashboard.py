@@ -88,7 +88,7 @@ def make_handler(cfg: dict):
             if u.path in ("/", "/index.html"):   # the page itself shows the login screen
                 return self._send(200, HTML.read_bytes(), "text/html; charset=utf-8")
             if u.path == "/api/ping":
-                return self._send(200, {"ok": True})
+                return self._send(200, {"ok": True, "version": updater.installed()[:7]})
             if u.path == "/api/auth/state":
                 user = self._user(qs)
                 return self._send(200, {
