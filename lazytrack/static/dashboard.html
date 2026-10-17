@@ -247,6 +247,24 @@
   .trow select { padding: 6px 8px; border: 2px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); font: 600 14px var(--body); }
   .trow label { display: inline-flex; align-items: center; gap: 6px; } .trow .off { opacity: .55; }
   .tgroup { font: 700 12px var(--pixel); margin: 12px 0 4px; opacity: .8; }
+  /* the simple target rows: a sentence, a stepper, quick picks; the rest under "More options" */
+  .trow { grid-template-columns: auto 1fr auto; text-align: left; }
+  .trow .tusual { font: 400 12px var(--pixel); color: var(--ink-3); text-align: right; }
+  .trow .tline { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-weight: 700; font-size: 16px; }
+  .step { display: inline-flex; align-items: center; border: 2px solid var(--line); border-radius: 10px; background: var(--card); overflow: hidden; }
+  .step button { width: 34px; height: 34px; border: 0; background: none; color: var(--ink); font: 800 18px var(--body); cursor: pointer; }
+  .step button:hover { background: var(--yellow); color: var(--on-fill); }
+  .trow .step input[type=number] { width: 58px; border: 0; border-left: 2px solid var(--line); border-right: 2px solid var(--line); border-radius: 0; text-align: center; -moz-appearance: textfield; }
+  .step input::-webkit-outer-spin-button, .step input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .tpicks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tpicks button { border: 2px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); font: 700 12px var(--body); padding: 4px 9px; cursor: pointer; }
+  .tpicks button[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); }
+  .tmean { grid-column: 1 / -1; margin: 0; font-size: 14px; color: var(--ink-2); }
+  .tmore { grid-column: 1 / -1; } .tmore summary { cursor: pointer; font: 700 13px var(--body); color: var(--ink-3); width: max-content; }
+  .tmore .tc { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 14px; }
+  .thelp { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0 0 12px; }
+  .thelp div { padding: 8px 10px; border: 2px solid var(--line); border-radius: 12px; font-weight: 700; font-size: 14px; background: var(--soft); }
+  @media (max-width: 560px) { .thelp { grid-template-columns: 1fr; } }
   #welcome .tlist { max-height: min(52vh, 520px); overflow-y: auto; padding: 2px; text-align: left; }
   /* docs */
   .docs { display: grid; gap: 14px; } .docs .card { line-height: 1.6; } .docs h2 { margin-top: 0; } .docs h3 { margin: 18px 0 4px; font-size: 17px; }
@@ -497,7 +515,7 @@
   .wrtile .wrscene .pet { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
   .wrpreview.scene .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
   @media (hover: hover) { .wrtile:hover { transform: translate(-1px, -2px); box-shadow: 3px 4px 0 var(--line); } }
-  .wrcolors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+  .wrcolors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; } .wrcolors[hidden] { display: none; }
   .wrcolors .lbl { font: 12px Silkscreen, monospace; margin-right: 4px; }
   .wrsw { width: 26px; height: 26px; border: 3px solid var(--line); border-radius: 8px; padding: 0; cursor: pointer; }
   .wrsw[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--yellow); }
@@ -1406,11 +1424,11 @@ applyTheme();
       </section>
 
       <section class="card pad" id="sTargets" data-cat="habits">
-        <h2>Targets</h2>
-        <p class="sub">How Mochi's HP is decided. Exactly on target = 0 HP for the day; better heals Mochi, worse hurts it.
+        <h2>🎯 Your goals</h2>
+        <p class="sub">A daily limit for each bad habit and a goal for each good one. Not sure? Tap a suggestion: they come from what you usually do.
           <a href="#tab=docs&sec=hp">How HP works</a></p>
         <div id="tEdit"><p class="note">Loading…</p></div>
-        <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="tSave">Save targets</button><span class="note" id="tNote"></span></div>
+        <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="tSave">Save goals</button><span class="note" id="tNote"></span></div>
       </section>
 
       <section class="card pad" data-cat="app">
@@ -1906,7 +1924,7 @@ const MOCHI = {
 };
 const LOOK_DEFAULT = {body: "blob", skin: "theme", eyes: "normal", mouth: "smile", hat: "none", glasses: "none", neck: "none", outfit: "none", held: "none", place: "sky"};
 const SLOTS = {body: "bodies", skin: "skins", eyes: "eyes", mouth: "mouthItems", hat: "hats", glasses: "glasses", neck: "necks", outfit: "outfits", held: "held", place: "places"};
-const COLOR_SLOTS = ["hat", "glasses", "neck", "outfit", "held"];   // the item's main color can be anything ({slot}Color)
+const COLOR_SLOTS = ["hat", "eyes"];   // these can be any color ({slot}Color); the rest keep their own colors
 const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
 
 // ---- more bodies, eyes, mouths and outfits
@@ -2038,7 +2056,9 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   else if (drunk === 2) { eyes = FX_FACE.drunkEyes; }
   else if (drunk === 1) { eyes = FX_FACE.tipsyEyes; }
   else if (sick) eyes = ["....zz....zz....", ".....k....k....."];
-  else { eyes = pick("eyes").rows; eyeY = pick("eyes").y ?? 6; }
+  else { eyes = pick("eyes").rows; eyeY = pick("eyes").y ?? 6;
+    if (isHex(L.eyesColor)) eyes = eyes.map(r => r.replace(/[A-Z]/g, "\u0001").replace(/[a-z]/g, "\u0002"));   // recolored below
+  }
   if (!fx.cough) {
     if (high) mouth = FX_FACE.highMouth;
     if (drunk >= 2) mouth = FX_FACE.drunkMouth;
@@ -2046,6 +2066,7 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   if (!fx.cough && !blink) eyes = shift(eyes, fx.dx || 0);
   if (fx.up && !fx.cough && !blink && pick("hat").rows.length < 6) eyeY -= 1;   // a hat brim would cover raised eyes
   put(drunk ? ["..PPP......PPP.."] : high ? ["...rc......cr..."] : ["...cc......cc..."], 8);   // flushed cheeks when drunk
+  if (isHex(L.eyesColor)) { col["\u0002"] = L.eyesColor; col["\u0001"] = shade(L.eyesColor); }
   put(eyes, eyeY);
   put(mouth, 9);
   put(pick("neck").rows, 10, false, tintOf("neck"));
@@ -2990,18 +3011,19 @@ const wardrobe = {
   // the color row: for skin, and for any item whose main color can change
   colorNow() {
     if (this.tab === "skin") return skinColor(this.look).startsWith("#") ? skinColor(this.look) : null;
+    if (this.tab === "eyes") return isHex(this.look.eyesColor) ? this.look.eyesColor : "#1d1b20";
     const it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
     return it && it.tint ? (isHex(this.look[this.tab + "Color"]) ? this.look[this.tab + "Color"] : it.tint) : null;
   },
   drawColors() {
     const box = $("wrColors");
     const it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
-    const show = this.tab === "skin" || (COLOR_SLOTS.includes(this.tab) && it && it.tint);
+    const show = this.tab === "skin" || this.tab === "eyes" || (this.tab === "hat" && it && it.tint);
     box.hidden = !show;
     if (!show) return;
     const now = (this.colorNow() || "").toLowerCase();
     const list = this.tab === "skin" ? Object.values(MOCHI.skins).map(v => v.c).filter(Boolean)
-      : [it.tint, ...WR_COLORS.filter(c => c !== it.tint)];
+      : this.tab === "eyes" ? WR_COLORS : [it.tint, ...WR_COLORS.filter(c => c !== it.tint)];
     box.innerHTML = `<span class="lbl">Color</span>` + list.map(c => `<button type="button" class="wrsw" style="background:${c}" data-wrcolor="${c}"
       aria-pressed="${c.toLowerCase() === now}" aria-label="Color ${c}"></button>`).join("")
       + `<label class="wrpick" title="Any color"><input type="color" id="wrAny" value="${now || "#b9a7ff"}" aria-label="Pick any color"></label>`;
@@ -3014,7 +3036,10 @@ const wardrobe = {
   },
   pick(k) {
     if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look, place: this.look.place};
-    else this.look = {...this.look, [this.tab]: k};
+    else {
+      this.look = {...this.look, [this.tab]: k};
+      if (!COLOR_SLOTS.includes(this.tab)) delete this.look[this.tab + "Color"];   // these keep their own colors
+    }
     this.draw();
   },
   random() {
@@ -3492,30 +3517,55 @@ document.addEventListener("click", async e => {
 
 // ---------------------------------------------------------------- targets: what decides Mochi's HP
 const targets = {
+  // one plain sentence per habit: "Keep it under [ 3 ] a day" / "Do it at least [ 3 ] times a week",
+  // quick picks from your own history, and what that means for Mochi. Size, weekly tightening and
+  // "counts for HP" live under "More options".
   html(l) {
     const parts = Object.fromEntries((l.today.parts || []).map(p => [p.k, p]));
     const sug = l.suggestions || {};
     const row = (k, r) => {
-      const p = parts[k] || {k, n: k, e: "", bad: r.target !== undefined}, sg = sug[k] || {}, min = p.unit === "min";
-      const normal = sg.avg != null ? `your normal: ${min ? hm(sg.avg * 60) : sg.avg} a day (last ${sg.days} days)` : "no history yet";
-      const size = `<select class="ts" aria-label="How much it matters">${["small", "medium", "big"].map(z =>
-        `<option value="${z}" ${r.size === z ? "selected" : ""}>${z} (${p.bad ? "−" : "+"}${SIZE_HP[z]} HP)</option>`).join("")}</select>`;
+      const p = parts[k] || {k, n: k, e: "", bad: r.target !== undefined}, sg = sug[k] || {}, min = p.unit === "min", st = min ? 15 : 1;
+      const usual = sg.avg != null ? (min ? hm(sg.avg * 60) : Math.round(sg.avg * 10) / 10) : null;
+      const val = p.bad ? r.target : (r.goal ?? 1);
+      const stepper = cls => `<span class="step"><button type="button" data-tstep="-${st}" aria-label="Less">−</button><input type="number" class="${cls}" min="${p.bad ? 0 : 1}" step="${st}" value="${val ?? ""}" placeholder="?" aria-label="${esc(p.n)}"><button type="button" data-tstep="${st}" aria-label="More">+</button></span>`;
+      const picks = p.bad
+        ? [...(sg.avg != null ? [["Like usual", Math.round(sg.avg)], ["A bit less", Math.floor(sg.avg * 0.8)], ["Half", Math.floor(sg.avg / 2)]] : []), ["None", 0], ["Let Mochi learn it", ""]]
+        : [[min ? "15 min" : "1", min ? 15 : 1], [min ? "30 min" : "2", min ? 30 : 2], [min ? "1 hour" : "3", min ? 60 : 3]];
+      const seen = new Set(), uniq = picks.filter(([, v]) => { const key = String(v); if (seen.has(key)) return false; seen.add(key); return true; });
+      const unit = min ? "min" : p.bad ? "" : "times";
+      const line = p.bad
+        ? `No more than ${stepper("tt")} ${unit} a day`
+        : `Do it at least ${stepper("tg")} ${unit} <select class="tp" aria-label="Per"><option value="day" ${r.per !== "week" ? "selected" : ""}>a day</option><option value="week" ${r.per === "week" ? "selected" : ""}>a week</option></select>`;
+      const size = `<label>How much it matters <select class="ts">${["small", "medium", "big"].map(z =>
+        `<option value="${z}" ${r.size === z ? "selected" : ""}>${z} (${p.bad ? "−" : "+"}${SIZE_HP[z]} HP each)</option>`).join("")}</select></label>`;
       const on = p.k in {coding: 1, commits: 1, youtube: 1, social: 1, streaming: 1, gaming: 1, browsing: 1, screen: 1}
-        ? `<label><input type="checkbox" class="ton" ${r.on !== false ? "checked" : ""}> counts for HP</label>` : "";
-      const ctl = p.bad
-        ? `<label>at most <input type="number" class="tt" min="0" step="${min ? 5 : 1}" value="${r.target ?? ""}" placeholder="learn"> ${min ? "min" : ""} a day</label>
-           <label><input type="checkbox" class="ta" ${r.auto !== false ? "checked" : ""}> tighten 10% a week when I make it</label>`
-        : `<label>at least <input type="number" class="tg" min="1" step="${min ? 5 : 1}" value="${r.goal ?? 1}"> ${min ? "min" : ""}</label>
-           <select class="tp" aria-label="Per"><option value="day" ${r.per !== "week" ? "selected" : ""}>a day</option><option value="week" ${r.per === "week" ? "selected" : ""}>a week</option></select>`;
-      return `<div class="trow ${r.on === false ? "isoff" : ""}" data-tk="${esc(k)}"><span class="te" aria-hidden="true">${esc(p.e || "")}</span>
-        <span class="tn">${esc(p.n)}<small>${p.learning ? "learning your normal: counts after a week · " : ""}${esc(normal)}</small></span>
-        <div class="tc">${ctl}${size}${on}</div></div>`;
+        ? `<label><input type="checkbox" class="ton" ${r.on !== false ? "checked" : ""}> Counts for Mochi's HP</label>` : "";
+      const auto = p.bad ? `<label><input type="checkbox" class="ta" ${r.auto !== false ? "checked" : ""}> Make it a little harder each week I make it</label>` : "";
+      return `<div class="trow ${r.on === false ? "isoff" : ""}" data-tk="${esc(k)}" data-bad="${p.bad ? 1 : 0}" data-min="${min ? 1 : 0}" data-one="${esc(p.one || (INFO[k] || {}).one || p.n.toLowerCase())}">
+        <span class="te" aria-hidden="true">${esc(p.e || "")}</span><span class="tn">${esc(p.n)}</span>
+        <span class="tusual">${usual != null ? `you usually: ${!p.bad && r.per === "week" && !min ? `${Math.round(sg.avg * 70) / 10} a week` : `${usual}${min ? "" : " a day"}`}` : "no history yet"}</span>
+        <div class="tline">${line}</div>
+        <div class="tpicks">${uniq.map(([n, v]) => `<button type="button" data-tpick="${v}" aria-pressed="${String(val ?? "") === String(v)}">${esc(n)}${p.bad && v !== "" && n !== "None" ? ` (${min ? hm(v * 60) : v})` : ""}</button>`).join("")}</div>
+        <p class="tmean"></p>
+        <details class="tmore"><summary>More options</summary><div class="tc">${size}${auto}${on}</div></details></div>`;
     };
     const rs = l.rules || {}, keys = Object.keys(rs);
     const bad = keys.filter(k => (parts[k] || {}).bad), good = keys.filter(k => parts[k] && !parts[k].bad);
-    return (bad.length ? `<div class="tgroup">LESS OF</div><div class="tlist">${bad.map(k => row(k, rs[k])).join("")}</div>` : "")
-      + (good.length ? `<div class="tgroup">MORE OF</div><div class="tlist">${good.map(k => row(k, rs[k])).join("")}</div>` : "")
+    const out = (bad.length || good.length ? `<div class="thelp"><div>💚 Beat your goal: Mochi gains HP</div><div>💔 Go over your limit: Mochi loses HP</div></div>` : "")
+      + (bad.length ? `<div class="tgroup">BAD HABITS: YOUR DAILY LIMIT</div><div class="tlist">${bad.map(k => row(k, rs[k])).join("")}</div>` : "")
+      + (good.length ? `<div class="tgroup">GOOD HABITS: YOUR GOAL</div><div class="tlist">${good.map(k => row(k, rs[k])).join("")}</div>` : "")
       || `<p class="note">Nothing tracked yet. Add habits first.</p>`;
+    setTimeout(() => document.querySelectorAll(".trow[data-tk]").forEach(r => targets.explain(r)), 0);
+    return out;
+  },
+  // "Have 3 or fewer and Mochi heals. Each one over hurts him." under every row, kept up to date
+  explain(row) {
+    const q = c => row.querySelector(c), bad = row.dataset.bad === "1", min = row.dataset.min === "1", one = row.dataset.one;
+    const inp = q(".tt") || q(".tg"), v = inp.value, amount = n => min ? hm(n * 60) : `${n} ${bad ? (n === 1 ? one : one + "s") : n === 1 ? "time" : "times"}`;
+    q(".tmean").textContent = bad
+      ? (v === "" ? "Mochi watches your first week, then sets a fair limit for you." : +v === 0 ? `Any ${one} takes HP. A day without one heals Mochi.` : `Up to ${amount(+v)} is fine. ${min ? "Less" : "Fewer"} heals Mochi, more hurts him.`)
+      : `${amount(+v || 1)} ${q(".tp") && q(".tp").value === "week" ? "a week" : "a day"} or more heals Mochi. Less than that, he gets a little tired.`;
+    row.querySelectorAll("[data-tpick]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tpick === v));
   },
   read(box) {
     const out = {};
@@ -3533,6 +3583,16 @@ const targets = {
     catch (_) { $("tEdit").innerHTML = `<p class="note">Couldn't load targets right now.</p>`; }
   },
 };
+document.addEventListener("click", e => {
+  const st = e.target.closest("[data-tstep]"), pk = e.target.closest("[data-tpick]");
+  if (!st && !pk) return;
+  const row = e.target.closest(".trow"), inp = row.querySelector(".tt") || row.querySelector(".tg");
+  if (st) inp.value = Math.max(+inp.min || 0, (+inp.value || 0) + +st.dataset.tstep);
+  else inp.value = pk.dataset.tpick;
+  targets.explain(row);
+});
+document.addEventListener("input", e => { const r = e.target.closest && e.target.closest(".trow[data-tk]"); if (r) targets.explain(r); });
+document.addEventListener("change", e => { const r = e.target.closest && e.target.closest(".trow[data-tk]"); if (r) targets.explain(r); });
 document.addEventListener("click", async e => {
   if (!e.target.closest("#tSave")) return;
   $("tNote").textContent = "Saving…";

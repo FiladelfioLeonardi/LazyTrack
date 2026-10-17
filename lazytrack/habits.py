@@ -186,7 +186,7 @@ def save(body: dict) -> dict:
         db.kv_set("screen_stats", json.dumps([k for k in body["screen"] if k in SCREEN_KEYS]))
     if "pet" in body and isinstance(body["pet"], dict):
         slots = ("body", "skin", "eyes", "mouth", "hat", "glasses", "neck", "outfit", "held", "place")
-        colors = ("hatColor", "glassesColor", "neckColor", "outfitColor", "heldColor")
+        colors = ("hatColor", "eyesColor", "glassesColor", "neckColor", "outfitColor", "heldColor")
         pet = {k: str(v)[:24] for k, v in body["pet"].items() if k in slots}
         pet.update({k: v.lower() for k, v in body["pet"].items() if k in colors and isinstance(v, str) and _HEX.fullmatch(v)})
         db.kv_set("pet", json.dumps(pet))
