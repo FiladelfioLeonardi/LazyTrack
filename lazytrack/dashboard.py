@@ -170,22 +170,6 @@ def make_handler(cfg: dict):
         def _post(self):
             u = urlparse(self.path)
             qs = parse_qs(u.query)
-            if u.path == "/api/camera/phone-frame":   # a JPEG from the phone's camera, not JSON
-                if not self._authed(qs):
-                    return self._send(401, {"error": "log in first"})
-                n = int(self.headers.get("Content-Length") or 0)
-                if not 0 < n <= 2_000_000:
-                    return self._send(400, {"error": "picture missing or too big"})
-                data = self.rfile.read(n)
-                cfg_now = config.load()
-                if not cfg_now["smoke"]["enabled"]:
-                    return self._send(200, {"status": "off"})
-                from . import smoke
-                try:
-                    return self._send(200, smoke.PHONE.frame(data, cfg_now))
-                except Exception as e:
-                    log.exception("phone frame failed")
-                    return self._send(200, {"status": "error", "detail": f"{e.__class__.__name__}: {str(e)[:120]}"})
             b = self._body()
             if u.path.startswith("/api/auth/"):
                 return self._auth(u.path, b)
