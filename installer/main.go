@@ -5,9 +5,10 @@
 //  2. downloads a private, portable Python (python-build-standalone) next to it
 //  3. installs what LazyTrack needs (pip, ~1 GB: mostly the camera AI)
 //  4. adds shortcuts (Start menu + desktop + start with the computer) and an uninstaller
-//  5. starts LazyTrack and opens it in the browser
+//  5. starts LazyTrack and opens its app window
 //
-// Progress is shown as a small web page in the browser, in LazyTrack's style.
+// Progress is shown in a small window of its own (WebKit on Mac, Edge's app mode on Windows), in
+// LazyTrack's style. Only if that window can't open does it fall back to the browser.
 // The code stays as normal files, so LazyTrack's own updater keeps it up to date afterwards:
 // this installer is only ever needed once.
 //
@@ -73,6 +74,7 @@ var (
 		{Name: "Starting LazyTrack"},
 	}}
 	retry = make(chan bool, 1)
+	hello = make(chan bool, 1) // the progress page loaded (so its window really is on screen)
 )
 
 func setStep(i int, st, detail string, pct int) {
@@ -103,7 +105,7 @@ func main() {
 	dir := appDir()
 	again := fileExists(filepath.Join(dir, ".venv"))
 	msg := "LazyTrack will be installed for you on this computer (no admin needed).\n\n" +
-		"It downloads about 1 GB (mostly the camera AI), so it takes a few minutes. You can watch the progress in your browser.\n\nInstall now?"
+		"It downloads about 1 GB (mostly the camera AI), so it takes a few minutes. A small window shows the progress.\n\nInstall now?"
 	if again {
 		msg = "LazyTrack is already installed here.\n\nRepair it? Your data and settings are kept."
 	}
@@ -127,6 +129,17 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(state)
 	})
+	http.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
+		select {
+		case hello <- true:
+		default:
+		}
+		w.Write([]byte("ok"))
+	})
+	http.HandleFunc("/open", func(w http.ResponseWriter, r *http.Request) {
+		openApp(dir)
+		w.Write([]byte("ok"))
+	})
 	http.HandleFunc("/retry", func(w http.ResponseWriter, r *http.Request) {
 		select {
 		case retry <- true:
@@ -135,7 +148,17 @@ func main() {
 		w.Write([]byte("ok"))
 	})
 	go http.Serve(ln, nil)
-	openURL(fmt.Sprintf("http://%s/", ln.Addr().String()))
+	page := fmt.Sprintf("http://%s/", ln.Addr().String())
+	closeWindow := showProgress(page)
+	go func() { // no sign of the window after a while: show the progress in the browser instead
+		select {
+		case <-hello:
+		case <-time.After(12 * time.Second):
+			closeWindow()
+			closeWindow = func() {}
+			openURL(page)
+		}
+	}()
 
 	for {
 		if err := install(dir); err != nil {
@@ -153,7 +176,10 @@ func main() {
 	mu.Lock()
 	state.Done, state.URL = true, fmt.Sprintf("http://localhost:%d", port)
 	mu.Unlock()
-	time.Sleep(90 * time.Second) // let the page see "done" and move on, then quit
+	openApp(dir)                // LazyTrack's own window, not the browser
+	time.Sleep(8 * time.Second) // let the page say it's done, then close the progress window and quit
+	closeWindow()
+	time.Sleep(1 * time.Second)
 }
 
 // ---------------------------------------------------------------- the steps

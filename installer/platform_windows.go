@@ -51,6 +51,42 @@ func hideWindow(cmd *exec.Cmd) {
 
 func openURL(u string) { exec.Command("rundll32", "url.dll,FileProtocolHandler", u).Start() }
 
+// the progress window: Microsoft Edge (on every Windows 10/11) in app mode, so it's a plain window
+// without tabs or an address bar. Its own profile folder, so it's a separate Edge we can close.
+func showProgress(u string) func() {
+	var edge string
+	for _, base := range []string{os.Getenv("ProgramFiles(x86)"), os.Getenv("ProgramFiles"), os.Getenv("LOCALAPPDATA")} {
+		if p := filepath.Join(base, "Microsoft", "Edge", "Application", "msedge.exe"); base != "" && fileExists(p) {
+			edge = p
+			break
+		}
+	}
+	if edge == "" {
+		openURL(u)
+		return func() {}
+	}
+	prof := filepath.Join(os.TempDir(), "lazytrack-installer-window")
+	cmd := exec.Command(edge, "--app="+u, "--window-size=580,760", "--user-data-dir="+prof,
+		"--no-first-run", "--no-default-browser-check", "--disable-sync", "--disable-extensions")
+	if cmd.Start() != nil {
+		openURL(u)
+		return func() {}
+	}
+	return func() {
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		}
+		runTimed(appDir(), 10*time.Second, "taskkill", "/F", "/T", "/FI", "WINDOWTITLE eq Installing LazyTrack*")
+	}
+}
+
+// opens LazyTrack's own window (LazyTrack.vbs starts LazyTrack first if it isn't running)
+func openApp(dir string) {
+	cmd := exec.Command(filepath.Join(os.Getenv("WINDIR"), "System32", "wscript.exe"), filepath.Join(dir, "windows", "LazyTrack.vbs"))
+	cmd.Dir = dir
+	cmd.Start()
+}
+
 // stops a LazyTrack that runs from this folder (so its files can be replaced). Uses Windows' own
 // process list directly (no PowerShell, which can hang on some PCs).
 var (

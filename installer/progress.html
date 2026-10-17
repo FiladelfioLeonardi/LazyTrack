@@ -37,7 +37,7 @@
     <div><h1 id="title">Installing LazyTrack</h1><p class="sub" id="sub">Hang tight, Mochi is moving in. This takes a few minutes.</p></div></div>
   <ol class="steps" id="steps"></ol>
   <div id="end"></div>
-  <p class="note" id="note">You can leave this page open in the background. Closing it doesn't stop the install.</p>
+  <p class="note" id="note">You can leave this window in the background. Closing it doesn't stop the install.</p>
   <details><summary>DETAILS</summary><pre id="log"></pre></details>
 </div>
 <script>
@@ -48,6 +48,7 @@ const COL = {o: "#1d1b20", k: "#1d1b20", b: "#b9a7ff", B: "#9686d6", c: "#ff8fb1
 $("pet").innerHTML = PET.join("").split("").map(c => `<i${COL[c] ? ` style="background:${COL[c]}"` : ""}></i>`).join("");
 const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
 let moved = false, logLen = 0;
+fetch("/hello").catch(() => {});   // tells the installer this window is on screen
 async function tick() {
   let s;
   try { s = await (await fetch("/state", {cache: "no-store"})).json(); }
@@ -63,11 +64,12 @@ async function tick() {
     $("again").onclick = async () => { $("end").innerHTML = ""; await fetch("/retry"); };
   } else if (s.done) {
     $("title").textContent = "LazyTrack is installed 🎉";
-    $("sub").textContent = "Mochi is ready. Opening LazyTrack…";
+    $("sub").textContent = "Mochi is ready. LazyTrack is opening in its own window…";
     $("end").innerHTML = `<div class="msg ok">Find it any time in the Start menu or on your desktop (Mac: in Applications). It also starts by itself with your computer.</div>
-      <div class="btns"><a class="btn primary" href="${esc(s.url)}">Open LazyTrack →</a></div>`;
-    $("note").textContent = "";
-    if (!moved) { moved = true; setTimeout(() => { location.href = s.url; }, 3500); }
+      <div class="btns"><button class="btn primary" id="openApp">Open LazyTrack →</button></div>`;
+    $("openApp").onclick = () => fetch("/open").catch(() => {});
+    $("note").textContent = "This window closes by itself in a few seconds.";
+    moved = true;
     return;
   } else $("end").innerHTML = "";
   setTimeout(tick, 700);

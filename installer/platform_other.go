@@ -28,8 +28,12 @@ func openURL(u string) {
 	os.WriteFile(filepath.Join(os.TempDir(), "lt-installer-url"), []byte(u), 0o644)
 }
 func makeShortcuts(dir string) error { return nil }
-func stopRunning(dir string)         {}
-func uninstall()                     { os.RemoveAll(appDir()) }
+func showProgress(u string) func()   { openURL(u); return func() {} }
+func openApp(dir string) {
+	os.WriteFile(filepath.Join(os.TempDir(), "lt-installer-opened"), []byte(dir), 0o644)
+}
+func stopRunning(dir string) {}
+func uninstall()             { os.RemoveAll(appDir()) }
 func launch(dir string) error {
 	cmd := exec.Command(venvPython(dir), "-m", "lazytrack", "run")
 	cmd.Dir = dir

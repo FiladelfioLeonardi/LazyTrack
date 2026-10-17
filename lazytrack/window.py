@@ -163,14 +163,42 @@ def fix_mac_app() -> None:
         log.debug("couldn't update the mac app launcher", exc_info=True)
 
 
+def _log_to_file() -> None:
+    """The window runs as its own process with no console: keep what it says in ~/.lazytrack/window.log."""
+    try:
+        config.HOME.mkdir(parents=True, exist_ok=True)
+        path = config.HOME / "window.log"
+        if path.exists() and path.stat().st_size > 512 * 1024:
+            path.write_text("")
+        h = logging.FileHandler(path, encoding="utf-8")
+        h.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s", "%m-%d %H:%M:%S"))
+        logging.getLogger().addHandler(h)
+        logging.getLogger().setLevel(logging.INFO)
+    except Exception:
+        pass
+
+
 def cmd_window(cfg: dict, args=None) -> None:
     """`lazytrack window`: the app window. Waits for LazyTrack to be running, then shows it."""
+    _log_to_file()
+    log.info("window: starting (pid %s)", os.getpid())
+    try:
+        _window(cfg)
+    except Exception:
+        log.exception("window: crashed, opening the browser instead")
+        webbrowser.open(_url(cfg))
+    log.info("window: closed")
+
+
+def _window(cfg: dict) -> None:
     if _bring_existing_to_front():
+        log.info("window: one is already open, brought it to the front")
         return
     url = _url(cfg)
     try:
         import webview
     except Exception:
+        log.exception("window: pywebview isn't available, using the browser")
         webbrowser.open(url)
         return
     # one window only: listen for "come to the front" from later launches
@@ -189,8 +217,10 @@ def cmd_window(cfg: dict, args=None) -> None:
     if MAC:
         _mac_branding()
     if not _wait_for_server(url):
+        log.warning("window: LazyTrack didn't answer, using the browser")
         webbrowser.open(url)
         return
+    log.info("window: opening %s", url)
 
     api = _Api()
     window = webview.create_window("LazyTrack", url, width=1200, height=880, min_size=(380, 560),
