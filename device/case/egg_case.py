@@ -26,7 +26,7 @@ R_TOP, Y_TOP = 35.0, 107.0         # top circle  -> egg is 80 wide, 142 tall
 WALL = 2.2                         # side wall thickness
 PLATE = 2.0                        # front face / back plate thickness
 CHAMFER = 1.2                      # rounded-off outer front/back edge
-T_TOTAL = 31.0                     # total thickness of the closed egg
+T_TOTAL = 34.0                     # total thickness: screen pins reach 25 mm from the glass, +7 mm room behind them
 H_FRONT = 13.0                     # front shell depth (back shell = T_TOTAL - H_FRONT)
 LIP = 2.5                          # how far the back shell's lip slides into the front shell
 LIP_T = 1.0                        # lip thickness
@@ -35,6 +35,7 @@ FIT = 0.15                         # gap between lip and front wall
 # 2.8" screen module (red board, portrait, pin header at the TOP)
 SCR_W, SCR_H = 50.0, 86.0          # board size
 SCR_T = 6.5                        # front of glass -> back of red board (no pins)
+SCR_PINS = 25.0                    # front of glass -> tip of the pin header (measured)
 SCR_CLEAR = 0.4                    # extra room around the board
 SCR_CY = 83.8                      # board centre height
 AA_W, AA_H = 43.2, 57.6            # visible area of a 2.8" 320x240 panel

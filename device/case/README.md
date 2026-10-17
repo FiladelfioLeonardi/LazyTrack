@@ -2,7 +2,7 @@
 
 ![Preview](preview.png)
 
-An egg-shaped case (80 × 142 × 31 mm) for the 2.8" red-board screen, a 38-pin ESP32 (USB-C), three 12 × 12 mm buttons and a 10 mm buzzer.
+An egg-shaped case (80 × 142 × 34 mm) for the 2.8" red-board screen, a 38-pin ESP32 (USB-C), three 12 × 12 mm buttons and a 10 mm buzzer.
 It's powered over USB-C for now. There's room behind the screen for a battery later.
 
 ## Files
@@ -27,7 +27,7 @@ All sizes are at the top of `egg_case.py`, so the case can be adjusted to your p
 
 - 4 × M3 × 20 screws. They self-tap into the PLA bosses; M3 × 16 also works. Without screws, the lip holds the shells together, and a drop of glue makes it permanent.
 - Double-sided foam tape: one piece under the ESP32, and small dots on top of the 4 screen posts.
-- Thin wire and solder: inside the case the jumper-wire plugs are too tall, so solder wires straight to the pins.
+- Thin wire and solder: inside the case the jumper-wire plugs are too tall, so solder wires straight to the pins. The screen pins (25 mm from the glass to the tips) have 7 mm of room behind them, so they stay as they are and nothing needs cutting.
 
 ## Assembly
 
