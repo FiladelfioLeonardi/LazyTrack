@@ -1,7 +1,9 @@
 """Updates LazyTrack by itself from GitHub.
 
-When LazyTrack runs, this checks the GitHub repo a minute after starting and then every few
-hours. If there's a newer version, it downloads it (a zip of the repo, no git needed),
+When LazyTrack runs, this checks the GitHub repo a minute after starting and then every hour.
+A check is one tiny request (about 1 KB, the same thing `git` asks GitHub), so it costs nothing.
+Everyone follows the "stable" branch: versions marked ready. "Test versions" in Settings follows
+"main", which gets every change right away. If there's a newer version, it downloads it (a zip of the repo, no git needed),
 copies the new code over the old, installs new Python packages if the list changed, and
 restarts. Your data is never touched: it lives in ~/.lazytrack, not in the code folder.
 
@@ -49,8 +51,26 @@ def installed() -> str:
         return ""
 
 
+def head(repo: str, branch: str) -> str:
+    """The newest commit id on a branch, asked the way git does it: tiny, and not counted against GitHub's
+    API limit (60 an hour per network, which a school full of LazyTracks would run out of)."""
+    raw = _get(f"https://github.com/{repo}.git/info/refs?service=git-upload-pack")
+    want = f"refs/heads/{branch}".encode()
+    for line in raw.split(b"\n"):
+        part = line.split(b"\x00")[0]
+        if part.endswith(b" " + want) and len(part) >= 44:
+            return part[-len(want) - 41:-len(want) - 1].decode()
+    raise ValueError(f"branch {branch} not found")
+
+
 def latest(repo: str, branch: str) -> dict:
     """{"sha": ..., "message": first line of the commit message, "date": ...}"""
+    try:
+        sha = head(repo, branch)
+        if sha == installed():
+            return {"sha": sha, "message": "", "date": ""}   # nothing new: no need to ask for the message
+    except Exception:
+        pass
     j = json.loads(_get(f"https://api.github.com/repos/{repo}/commits/{branch}"))
     c = j.get("commit", {})
     return {"sha": j["sha"], "message": (c.get("message") or "").split("\n")[0][:140],
@@ -132,8 +152,13 @@ def apply(repo: str, branch: str, info: dict) -> None:
 
 def check(cfg: dict, install: bool = True) -> dict:
     """Looks for a new version; installs it (and restarts) if install=True. Returns what happened."""
+    from . import config as _config
+    try:
+        cfg = _config.load()          # fresh: "Test versions" may have just been switched
+    except Exception:
+        pass
     u = cfg.get("update", {})
-    repo, branch = u.get("repo", ""), u.get("branch", "main")
+    repo, branch = u.get("repo", ""), u.get("branch", "stable")
     if not repo:
         return {"state": "off", "text": "Updates aren't set up yet."}
     if (APP_DIR / ".git").exists():
@@ -163,7 +188,7 @@ def restart_soon(delay: float = 1.0) -> None:
 
 
 class UpdateWorker(threading.Thread):
-    """Checks a minute after starting, then every few hours."""
+    """Checks a minute after starting, then every hour."""
 
     def __init__(self, cfg: dict, stop: threading.Event):
         super().__init__(name="updater", daemon=True)
@@ -173,12 +198,16 @@ class UpdateWorker(threading.Thread):
         if self.stop_ev.wait(60):
             return
         while not self.stop_ev.is_set():
-            u = self.cfg.get("update", {})
+            from . import config as _config
+            try:
+                u = _config.load().get("update", {})
+            except Exception:
+                u = self.cfg.get("update", {})
             if u.get("auto", True) and u.get("repo"):
                 try:
                     r = check(self.cfg)
                     log.info("updater: %s", r["text"])
                 except Exception:
                     log.exception("update failed")
-            if self.stop_ev.wait(3600 * float(u.get("check_hours", 6))):
+            if self.stop_ev.wait(3600 * max(0.25, float(u.get("check_hours", 1)))):
                 return

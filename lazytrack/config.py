@@ -88,7 +88,8 @@ DEFAULT_CONFIG = {
     # 0 = Monday ... 6 = Sunday
     "summary": {"weekday": 6, "hour": 20},
     # auto-updates: the GitHub repo LazyTrack downloads new versions from ("owner/name")
-    "update": {"repo": "FiladelfioLeonardi/LazyTrack", "branch": "main", "auto": True, "check_hours": 6},
+    # "stable" = versions marked ready for everyone; "main" = every change right away (test versions)
+    "update": {"repo": "FiladelfioLeonardi/LazyTrack", "branch": "stable", "auto": True, "check_hours": 1},
     # the shared friends server (Supabase). The key is the public "publishable" one, made to sit in apps.
     "cloud": {"url": "https://zmrzumltciteeznzjwaw.supabase.co", "key": "sb_publishable_mmX_kRPufTOQk1M4fmjjFg_HenbqicQ"},
 }

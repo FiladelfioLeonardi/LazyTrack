@@ -1472,10 +1472,15 @@ applyTheme();
 
       <section class="card pad" data-cat="app">
         <h2>Updates</h2>
-        <p class="sub">LazyTrack updates itself: it checks for new versions a minute after starting and every few hours.</p>
+        <p class="sub">LazyTrack updates itself: it checks for new versions a minute after starting and then every hour, and installs them by itself (with a backup first).</p>
         <p class="note" id="uStatus"></p>
         <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="uCheck">Check for updates</button>
           <button type="button" class="btn primary" id="uInstall" hidden>Update now</button></div>
+        <div class="form" style="margin-top:14px">
+          <label class="toggle"><input type="checkbox" name="test_versions" data-autosave> Test versions</label>
+          <p class="hint">On: you get every change as soon as it's made, before everyone else (it may be unfinished now and then).
+            Off: you get the versions marked ready for everyone.</p>
+        </div>
       </section>
 
       <section class="card pad" data-cat="look">
@@ -1609,7 +1614,7 @@ applyTheme();
       <section class="card pad" data-cat="app">
         <h2>When you close the window</h2>
         <div class="form">
-          <label class="toggle"><input type="checkbox" name="keep_running"> Keep LazyTrack running in the background</label>
+          <label class="toggle"><input type="checkbox" name="keep_running" data-autosave> Keep LazyTrack running in the background</label>
           <p class="hint">On: closing the window keeps tracking your screen time (and the camera, if it's on), and friends see you online.
             Off: closing the window quits LazyTrack completely, and friends see you offline. Opening the app starts it again.</p>
         </div>
@@ -4412,6 +4417,14 @@ document.querySelectorAll('[name="ui_mode"]').forEach(el => el.addEventListener(
 document.querySelectorAll('[name="ui_motion"]').forEach(el => el.addEventListener("change", () => { saveTheme({motion: el.value}); location.reload(); }));
 document.querySelectorAll('[name="ui_sound"]').forEach(el => el.addEventListener("change", () => { saveTheme({sound: el.value}); if (el.value === "on") sfx.play("msg", true); }));
 document.addEventListener("click", e => { const b = e.target.closest("[data-sfx]"); if (b) sfx.play(b.dataset.sfx, true); });
+
+// toggles in the App section save as soon as you flip them (that section has no Save button)
+$("sForm").addEventListener("change", async e => {
+  const el = e.target;
+  if (!el.matches || !el.matches("[data-autosave]")) return;
+  const r = await post("/api/settings", {[el.name]: el.checked});
+  toast(r.ok ? "Saved" : "Couldn't save that", null);
+});
 
 $("sForm").addEventListener("submit", async e => {
   e.preventDefault();
