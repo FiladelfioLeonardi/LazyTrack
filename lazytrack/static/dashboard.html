@@ -1282,7 +1282,7 @@ applyTheme();
         <li><b>Places</b>: stadium show, rage show, moon base, neon rooftop, volcano, under the sea, cloud kingdom, arcade, and calm ones (sky, bedroom, park, beach)
           whose sky follows the time of day.</li>
         <li><b>Moods</b> follow your day: proud after lots of coding, smoky after more smoking than yesterday, sleepy late at night.</li>
-        <li><b>States</b>: weed makes it high (red eyes, smoke, swaying, for a couple of hours), alcohol makes it drunk (more drinks = dizzier),
+        <li><b>States</b>: weed makes it high (red eyes, smoke, swaying, for up to an hour after the last joint), alcohol makes it drunk (more drinks = dizzier),
           cigarettes make it cough, especially on heavy days.</li>
         <li><b>Idle</b>: it breathes, blinks, looks around and hops now and then. To keep everything still, set Settings → Look → Animations to Off (or "Like my computer").</li>
       </ul>
@@ -2441,7 +2441,7 @@ let LAB_PET = null;   // the Test lab's "show this Mochi on Home"
 
 /**
  * What today did to Mochi, from the logs: high (weed), drunk (alcohol), coughy (cigarettes).
- * Each is 0-3. They wear off: a joint for about 2 hours (longer after more), drinks after about 5.
+ * Each is 0-3. They wear off: weed within an hour of the last joint, drinks after about 5 hours.
  * Looking at an older day shows how that day ended.
  */
 function petState(O) {
@@ -2452,7 +2452,8 @@ function petState(O) {
   let high = Math.min(3, joints), drunk = drinks >= 5 ? 3 : drinks >= 3 ? 2 : drinks ? 1 : 0;
   if (O.is_today) {
     const hj = since("joint"), hd = since("alcohol");
-    if (high) high = hj == null ? (joints >= 3 ? 1 : 0) : hj < 1 + joints ? high : hj < 2 + joints ? Math.max(1, high - 1) : 0;
+    // weed wears off within an hour of the last joint: full for 40 min, a bit less until the hour, then sober
+    if (high) high = hj == null ? 0 : hj < 2 / 3 ? high : hj < 1 ? Math.max(1, high - 1) : 0;
     if (drunk) drunk = hd == null ? Math.max(0, drunk - 1) : hd < 5 ? drunk : hd < 8 ? drunk - 1 : 0;
   }
   const hc = O.is_today ? since("cigarette") : null;

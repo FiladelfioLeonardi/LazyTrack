@@ -210,7 +210,8 @@ def pet_fx(now: Optional[float] = None) -> dict:
     drunk = 3 if drinks >= 5 else 2 if drinks >= 3 else 1 if drinks else 0
     hj, hd, hc = hours_since("joint"), hours_since("alcohol"), hours_since("cigarette")
     if high:
-        high = (1 if joints >= 3 else 0) if hj is None else high if hj < 1 + joints else max(1, high - 1) if hj < 2 + joints else 0
+        # weed wears off within an hour of the last joint: full for 40 min, a bit less until the hour, then sober
+        high = 0 if hj is None else high if hj < 2 / 3 else max(1, high - 1) if hj < 1 else 0
     if drunk:
         drunk = max(0, drunk - 1) if hd is None else drunk if hd < 5 else drunk - 1 if hd < 8 else 0
     coughy = 0 if not cigs else 3 if cigs >= 10 else 2 if cigs >= 6 else 1 if (hc is not None and hc < 0.25) else 1 if cigs >= 4 else 0
