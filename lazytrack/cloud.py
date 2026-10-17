@@ -305,3 +305,64 @@ def _uuid(s: str) -> str:
     if len(s) != 36 or any(ch not in "0123456789abcdef-" for ch in s):
         raise CloudError("bad friend id")
     return s
+
+
+# ---------------------------------------------------------------- ideas box (the + button)
+# Ideas go to the "ideas" table (supabase/ideas.sql). If they can't be sent right now (offline, not
+# connected, the table isn't set up yet) they wait in the local outbox and go out with the next one.
+IDEA_AREAS = {"mochi", "habits", "tracking", "friends", "other"}
+IDEA_STATUS = {"new", "planned", "done", "no"}
+
+
+def _outbox() -> list:
+    try:
+        return json.loads(db.kv_get("ideas_outbox") or "[]")
+    except ValueError:
+        return []
+
+
+def submit_idea(title: str, body: str, area: str, want: int, platform: str, version: str) -> dict:
+    """Sends an idea (and any waiting ones). Returns {"sent": n, "waiting": n}."""
+    title, body = str(title).strip()[:120], str(body).strip()[:2000]
+    if len(title) < 3:
+        raise CloudError("Give your idea a short title (at least 3 letters).")
+    idea = {"title": title, "body": body, "area": area if area in IDEA_AREAS else "other",
+            "want": max(1, min(3, int(want or 2))), "platform": str(platform)[:20], "version": str(version)[:12]}
+    waiting = _outbox() + [idea]
+    sent = 0
+    try:
+        tok = _token()
+        while waiting:
+            _http("POST", "/rest/v1/ideas", waiting[0], token=tok, prefer="return=minimal")
+            waiting.pop(0)
+            sent += 1
+    except CloudError:
+        pass
+    db.kv_set("ideas_outbox", json.dumps(waiting[-50:]))
+    return {"sent": sent, "waiting": len(waiting)}
+
+
+def ideas() -> dict:
+    """Your own ideas (with their status), or every idea if you're the admin."""
+    if not state()["connected"]:
+        return {"admin": False, "ideas": [], "waiting": len(_outbox())}
+    tok = _token()
+    try:
+        admin = bool(_http("POST", "/rest/v1/rpc/is_admin", {}, token=tok))
+        rows = _http("GET", "/rest/v1/ideas?select=id,title,body,area,want,platform,version,status,created_at,user_id,profiles(username)"
+                            "&order=created_at.desc&limit=300", token=tok) or []
+    except CloudError as e:
+        if "could not find" in str(e).lower() or "does not exist" in str(e).lower():
+            return {"admin": False, "ideas": [], "waiting": len(_outbox()), "missing": True}
+        raise
+    me = state()["uid"]
+    for r in rows:
+        r["username"] = (r.pop("profiles", None) or {}).get("username") or ""
+        r["mine"] = r.get("user_id") == me
+    return {"admin": admin, "ideas": rows, "waiting": len(_outbox())}
+
+
+def set_idea_status(idea_id: int, status: str) -> None:
+    if status not in IDEA_STATUS:
+        raise CloudError("unknown status")
+    _http("PATCH", f"/rest/v1/ideas?id=eq.{int(idea_id)}", {"status": status}, token=_token(), prefer="return=minimal")

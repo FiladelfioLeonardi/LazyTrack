@@ -333,6 +333,8 @@ def make_handler(cfg: dict):
                     return self._send(200, cloud.messages(qs.get("with", [""])[0], int(qs.get("after", ["0"])[0] or 0)))
                 if path == "/api/cloud/unread":
                     return self._send(200, {"count": cloud.unread()})
+                if path == "/api/cloud/ideas":
+                    return self._send(200, cloud.ideas())
             except cloud.CloudError as e:
                 return self._send(502, {"error": str(e)})
             return self._send(404, {"error": "not found"})
@@ -347,6 +349,13 @@ def make_handler(cfg: dict):
                                                          new=bool(b.get("new"))))
                 if path == "/api/cloud/disconnect":
                     cloud.disconnect()
+                    return self._send(200, {"ok": True})
+                if path == "/api/cloud/idea":
+                    from . import updater
+                    return self._send(200, cloud.submit_idea(b.get("title", ""), b.get("body", ""), str(b.get("area", "")),
+                                                             int(b.get("want") or 2), sys.platform, updater.installed()[:7]))
+                if path == "/api/cloud/idea/status":
+                    cloud.set_idea_status(int(b.get("id", 0)), str(b.get("status", "")))
                     return self._send(200, {"ok": True})
                 if path == "/api/cloud/card":
                     return self._send(200, {"ok": True, "sent": cloud.push_card(b.get("card") or {})})
