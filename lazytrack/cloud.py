@@ -615,10 +615,13 @@ def egg_sync() -> int:
         def short(h):   # fits the egg's list: "glass of water", not "reading session" (-> "Reading")
             one = h.get("one") or ""
             return (one if one and len(one) <= 14 else (h.get("n") or h["k"]))[:14]
-        hs = [{"k": h["k"], "n": short(h), "bad": bool(h.get("bad"))} for h in _habits.get()["habits"]][:16]
-        body = json.dumps(hs, sort_keys=True)
+        all_h = _habits.get()["habits"]
+        hs = [{"k": h["k"], "n": short(h), "bad": bool(h.get("bad"))} for h in all_h][:16]
+        today = _egg_today(all_h)
+        body = json.dumps([hs, today], sort_keys=True)
         if body != _egg["setup"]:
-            _http("POST", "/rest/v1/egg_setup", {"user_id": state()["uid"], "habits": hs, "updated_at": _now()},
+            _http("POST", "/rest/v1/egg_setup", {"user_id": state()["uid"], "habits": {"list": hs, "today": today},
+                                                 "updated_at": _now()},
                   token=tok, prefer="resolution=merge-duplicates,return=minimal")
             _egg["setup"] = body
         rows = _http("GET", "/rest/v1/egg_inbox?select=id,kind,ts&order=id.asc&limit=50", token=tok) or []
@@ -644,6 +647,30 @@ def egg_sync() -> int:
         _last_card["t"] = 0.0      # Mochi changed (high, drunk...): friends and the egg get it on the next heartbeat
         log.info("egg: %d log(s) came in", n)
     return n
+
+
+def _egg_today(all_h: list) -> list:
+    """Everything about today for the egg's Today screen (private, unlike the friend card):
+    every habit you track, plus screen time. Seconds are rounded to minutes so it doesn't re-upload
+    every 30 seconds."""
+    from . import summary
+    t = summary.today()
+    ev, cats = t["events"], t["categories"]
+    out = []
+    for h in all_h:
+        name = (h.get("n") or h["k"])[:12]
+        out.append({"s": name, "v": int(ev.get(h["k"], 0)), "bad": bool(h.get("bad"))})
+    def mins(v):
+        return int((v or 0) // 60) * 60
+    out.append({"s": "Screen", "v": mins(t["screen_total"]), "u": "s"})
+    for k, n in (("coding", "Coding"), ("youtube", "YouTube"), ("gaming", "Gaming"), ("social", "Socials"), ("streaming", "Streaming")):
+        if cats.get(k, 0) >= 60:
+            out.append({"s": n, "v": mins(cats[k]), "u": "s"})
+    if t["commits"]:
+        out.append({"s": "Commits", "v": int(t["commits"])})
+    if t["steps_total"]:
+        out.append({"s": "Steps", "v": int(t["steps_total"])})
+    return out[:24]
 
 
 def poke(other: str, kind: str = "poke") -> None:

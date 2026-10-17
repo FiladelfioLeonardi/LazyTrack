@@ -65,17 +65,18 @@ Arduino_GFX *lcd = new Arduino_ILI9341(bus, PIN_RST, 0 /* portrait */, SCREEN_IN
 class Band : public Arduino_GFX {
  public:
   uint16_t *fb = nullptr;
-  int16_t oy = 0, bh = 0;
+  int16_t oy = 0, bh = 0, ox = 0;   // ox: everything drawn is shifted sideways by this much (for slides)
   Band() : Arduino_GFX(240, 320) {}
   bool begin(int32_t) override {
     for (int h : {80, 40}) { fb = (uint16_t *)malloc(240 * h * 2); if (fb) { bh = h; return true; } }   // 80 rows = 38 KB: plenty left for WiFi + HTTPS
     return false;
   }
   void writePixelPreclipped(int16_t x, int16_t y, uint16_t c) override {
-    y -= oy;
-    if (y >= 0 && y < bh) fb[y * 240 + x] = c;
+    y -= oy; x += ox;
+    if (y >= 0 && y < bh && x >= 0 && x < 240) fb[y * 240 + x] = c;
   }
   void writeFillRectPreclipped(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t c) override {
+    x += ox;
     int y0 = max(0, y - oy), y1 = min((int)bh, y - oy + h), x0 = max(0, (int)x), x1 = min(240, x + w);
     for (int yy = y0; yy < y1; yy++) { uint16_t *p = fb + yy * 240 + x0; for (int xx = x0; xx < x1; xx++) *p++ = c; }
   }
@@ -85,7 +86,7 @@ class Band : public Arduino_GFX {
     for (int r = 0; r < h; r++) {
       int yy = y + r - oy;
       if (yy < 0 || yy >= bh) continue;
-      for (int cx = 0; cx < w; cx++) { int xx = x + cx; if (xx >= 0 && xx < 240) fb[yy * 240 + xx] = bmp[r * w + cx]; }
+      for (int cx = 0; cx < w; cx++) { int xx = x + ox + cx; if (xx >= 0 && xx < 240) fb[yy * 240 + xx] = bmp[r * w + cx]; }
     }
   }
 } band;
@@ -118,6 +119,7 @@ struct Card {
 
 // (Arduino IDE declares every function near the top of the sketch, so no function takes these as a parameter)
 struct Habit { String k, n; bool bad = false; };
+struct Stat { String s, v; bool bad = false, good = false; };   // a line on the Today screen
 struct Friend {
   String id, name, user, tier = "okay", what, label;
   int hp = 0, drunk = 0, high = 0, coughy = 0;
@@ -350,22 +352,41 @@ Habit habits[16];
 int nhabits = 0, logSel = 0;
 uint32_t habitsAt = 0;
 
-void loadHabits() {   // which habits you track: LazyTrack puts them in egg_setup
+Stat today[24];
+int ntoday = 0, todayPage = 0;
+
+// egg_setup holds {"list": [your habits], "today": [today's numbers]} (older LazyTrack: just the list)
+void parseSetup(const String &body) {
+  JsonDocument d;
+  if (deserializeJson(d, body)) return;
+  JsonVariant h = d[0]["habits"];
+  JsonArray list = h.is<JsonArray>() ? h.as<JsonArray>() : h["list"].as<JsonArray>();
+  int n = 0;
+  for (JsonObject x : list) {
+    if (n >= 16) break;
+    habits[n].k = x["k"] | ""; habits[n].n = x["n"] | ""; habits[n].bad = x["bad"] | false;
+    if (habits[n].k.length()) n++;
+  }
+  if (n) nhabits = n;
+  int t = 0;
+  for (JsonObject x : h["today"].as<JsonArray>()) {
+    if (t >= 24) break;
+    long v = x["v"] | 0;
+    today[t].s = x["s"] | "";
+    today[t].v = String(x["u"] | "") == "s" ? (v >= 3600 ? String(v / 3600) + "h" + String((v % 3600) / 60) + "m" : String(v / 60) + "m") : String(v);
+    today[t].bad = (x["bad"] | false) && v > 0;
+    today[t].good = !(x["bad"] | true) && v > 0;
+    t++;
+  }
+  if (t) ntoday = t;
+}
+
+void loadHabits() {   // your habits + today's numbers, put in egg_setup by LazyTrack
   habitsAt = millis();
   String body;
   if (api("GET", "/rest/v1/egg_setup?select=habits", "", body) != 200) return;
-  JsonDocument d;
-  if (deserializeJson(d, body)) return;
-  int n = 0;
-  for (JsonObject h : d[0]["habits"].as<JsonArray>()) {
-    if (n >= 16) break;
-    habits[n].k = h["k"] | "";
-    habits[n].n = h["n"] | "";
-    habits[n].bad = h["bad"] | false;
-    if (habits[n].k.length()) n++;
-  }
-  nhabits = n;
-  if (n) prefs.putString("habits", body);
+  parseSetup(body);
+  if (nhabits) prefs.putString("habits", body);
 }
 
 // logs made without WiFi wait here ("kind,time" lines) and go out on the next sync
@@ -605,8 +626,8 @@ uint16_t cellColor(char ch, bool fromCard) {
 
 // Mochi standing on the ground, with the face that fits right now (high, drunk, coughing) like in the app.
 // dx: drunk wobble / coughing shake, sideways only (it never floats)
-void drawStage(int dx, bool blink, bool coughing = false) {
-  if (view != 0) return;
+void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) {
+  if (view != V_HOME && !anyView) return;
   for (int y = 0; y < SH; y++) for (int x = 0; x < SW; x++) stage[y * SW + x] = bgAt(SX + x, SY + y);
   const char *px = DEFAULT_N;
   bool petting = millis() < petUntil;
@@ -701,6 +722,98 @@ void drawList(const char *title, const String *items, const bool *dots, const bo
   text(20, 296, hint, 1, GREY);
 }
 
+// ---------------------------------------------------------------- the menu: a drawer over your (dimmed) Mochi
+void menuIcon(int i, int x, int y, bool on) {
+  uint16_t fill = on ? CARD : SOFT;
+  if (i == 0) {          // Log: a little notepad with a plus
+    gfx->fillRoundRect(x, y, 28, 28, 6, rgb(0xff8fb1)); gfx->drawRoundRect(x, y, 28, 28, 6, INK);
+    gfx->fillRect(x + 12, y + 6, 4, 16, INK); gfx->fillRect(x + 6, y + 12, 16, 4, INK);
+  } else if (i == 1) {   // Friends: two little heads
+    gfx->fillCircle(x + 9, y + 10, 6, rgb(0x9be8a9)); gfx->drawCircle(x + 9, y + 10, 6, INK);
+    gfx->fillCircle(x + 20, y + 12, 6, rgb(0xbfe9ff)); gfx->drawCircle(x + 20, y + 12, 6, INK);
+    gfx->fillRoundRect(x + 1, y + 18, 16, 10, 5, rgb(0x9be8a9)); gfx->drawRoundRect(x + 1, y + 18, 16, 10, 5, INK);
+    gfx->fillRoundRect(x + 12, y + 20, 16, 8, 4, rgb(0xbfe9ff)); gfx->drawRoundRect(x + 12, y + 20, 16, 8, 4, INK);
+  } else if (i == 2) {   // Today: bars
+    gfx->fillRoundRect(x, y, 28, 28, 6, fill); gfx->drawRoundRect(x, y, 28, 28, 6, INK);
+    gfx->fillRect(x + 5, y + 15, 5, 8, rgb(0xffe45e)); gfx->drawRect(x + 5, y + 15, 5, 8, INK);
+    gfx->fillRect(x + 12, y + 9, 5, 14, rgb(0x9be8a9)); gfx->drawRect(x + 12, y + 9, 5, 14, INK);
+    gfx->fillRect(x + 19, y + 5, 5, 18, rgb(0xc9b8ff)); gfx->drawRect(x + 19, y + 5, 5, 18, INK);
+  } else {               // Info: an "i"
+    gfx->fillCircle(x + 14, y + 14, 13, rgb(0xbfe9ff)); gfx->drawCircle(x + 14, y + 14, 13, INK);
+    gfx->fillRect(x + 12, y + 6, 4, 4, INK); gfx->fillRect(x + 12, y + 12, 4, 11, INK);
+  }
+}
+
+void dimBand(uint8_t level) {   // darkens what's already in the band: 1 = a bit, 2 = half
+  if (gfx != &band) return;
+  for (int i = 0; i < 240 * band.bh; i++) {
+    uint16_t p = band.fb[i];
+    band.fb[i] = level >= 2 ? (p >> 1) & 0x7BEF : p - ((p >> 2) & 0x39E7);
+  }
+}
+
+uint8_t menuDim = 2;
+void drawMenu() {
+  int16_t slide = band.ox;
+  band.ox = 0;
+  drawBackground();
+  drawStage(0, false, false, true);    // your Mochi stays there, dimmed, behind the drawer
+  dimBand(menuDim);
+  band.ox = slide;
+  const int W = 196;
+  gfx->fillRoundRect(-12 + 4, 4 + 4, W + 12, 312, 14, INK);   // hard shadow, like the app's cards
+  gfx->fillRoundRect(-12, 4, W + 12, 312, 14, CARD);
+  gfx->drawRoundRect(-12, 4, W + 12, 312, 14, INK);
+  gfx->drawRoundRect(-11, 5, W + 10, 310, 13, INK);
+  text(16, 18, "MENU", 3, INK);
+  text(16, 46, card.name.substring(0, 24), 1, GREY);
+  int online = 0; for (int i = 0; i < nfriends; i++) online += friends[i].online;
+  static const char *names[] = {"Log", "Friends", "Today", "Info"};
+  String subs[4] = {nhabits ? String(nhabits) + " habits" : String("set up in the app"),
+                    nfriends ? String(online) + " online" : String("add some in the app"),
+                    "HP " + String(card.hp) + " - " + card.tierName,
+                    WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 18) : String("no WiFi")};
+  for (int i = 0; i < 4; i++) {
+    int y = 66 + i * 58;
+    bool on = i == menuSel;
+    if (on) {
+      gfx->fillRoundRect(10 + 3, y + 3, W - 20, 50, 10, INK);
+      gfx->fillRoundRect(10, y, W - 20, 50, 10, YELLOW);
+      gfx->drawRoundRect(10, y, W - 20, 50, 10, INK);
+    }
+    menuIcon(i, 20, y + 11, on);
+    text(58, y + 10, names[i], 2, INK);
+    text(58, y + 32, subs[i], 1, on ? INK : GREY);
+    if (on) gfx->fillTriangle(W - 22, y + 18, W - 22, y + 32, W - 14, y + 25, INK);
+  }
+  text(16, 300, "A next  B open  C back", 1, GREY);
+}
+
+// ---------------------------------------------------------------- today: everything you track, in pages
+void drawToday() {
+  drawBackground();
+  panel(8, 8, 221, 304);
+  text(20, 20, "TODAY", 2, INK);
+  if (!ntoday) {   // older LazyTrack: only what's on your friend card
+    for (int i = 0; i < card.nstats; i++) text(20, 52 + i * 28, card.stats[i], 2, INK);
+    if (!card.nstats) text(20, 52, "Update LazyTrack to see", 1, GREY);
+    text(20, 296, "C  back", 1, GREY);
+    return;
+  }
+  const int per = 10;
+  int pages = (ntoday + per - 1) / per;
+  if (todayPage >= pages) todayPage = 0;
+  if (pages > 1) text(180, 24, String(todayPage + 1) + "/" + String(pages), 1, GREY);
+  for (int i = todayPage * per, r = 0; i < ntoday && r < per; i++, r++) {
+    int y = 50 + r * 24;
+    if (r % 2 == 0) gfx->fillRoundRect(14, y - 4, 209, 22, 5, SOFT);
+    if (today[i].bad || today[i].good) gfx->fillCircle(24, y + 7, 4, today[i].bad ? RED : GREEN);
+    text(34, y, today[i].s.substring(0, 11), 2, INK);
+    text(215 - today[i].v.length() * 12, y, today[i].v, 2, INK);
+  }
+  text(20, 296, pages > 1 ? "A next page   C back" : "C  back", 1, GREY);
+}
+
 uint16_t tierColor(const String &t) {
   return t == "legend" ? rgb(0xffeeb0) : t == "tired" ? rgb(0xd9d3e6) : t == "sick" ? rgb(0xd3dbc4) : t == "shiny" ? rgb(0xbfe9ff) : rgb(0xc9b8ff);
 }
@@ -765,6 +878,7 @@ void drawFrame() {   // a whole screen, without flicker: built band by band in m
   if (!banded) { drawScreen(); return; }
   gfx = &band;
   for (band.oy = 0; band.oy < 320; band.oy += band.bh) {
+    if (band.ox) { int16_t s = band.ox; band.ox = 0; drawBackground(); band.ox = s; }   // behind a sliding panel
     drawScreen();
     lcd->draw16bitRGBBitmap(0, band.oy, band.fb, 240, min((int)band.bh, 320 - band.oy));
   }
@@ -772,11 +886,8 @@ void drawFrame() {   // a whole screen, without flicker: built band by band in m
 }
 
 void drawScreen() {  // the background and everything on it; Mochi itself comes from drawStage
-  if (view == V_MENU) {
-    static const String items[] = {"Log", "Friends", "Today", "Info"};
-    drawList("MENU", items, nullptr, nullptr, 4, menuSel, "A down   B open   C back");
-    return;
-  }
+  if (view == V_MENU) { drawMenu(); return; }
+  if (view == V_STATS) { drawToday(); return; }
   if (view == V_LOG) {
     if (!nhabits) {
       drawBackground();
@@ -831,13 +942,6 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     text(31 + bw, 280, fx, 1, INK);
     text(18, 297, (doing().length() ? doing() : status).substring(0, 33), 1, GREY);
     drawStage(0, false);
-  } else if (view == V_STATS) {
-    panel(8, 8, 221, 304);
-    text(20, 20, "TODAY", 2, INK);
-    for (int i = 0; i < card.nstats; i++) text(20, 52 + i * 28, card.stats[i], 2, INK);
-    if (!card.nstats) text(20, 52, "No stats shared yet", 1, GREY);
-    text(20, 280, "Record " + String(max(card.best, card.age)) + "d  Deaths " + String(card.deaths), 1, GREY);
-    text(20, 296, "C  back", 1, GREY);
   } else {
     panel(8, 8, 221, 304);
     text(20, 20, "INFO", 2, INK);
@@ -868,8 +972,14 @@ int pressed() {  // which button was just pressed (0-2), or -1
 
 void setScreen(bool on) {
   screenOn = on;
-  if (PIN_BL >= 0) digitalWrite(PIN_BL, on ? HIGH : LOW);
-  on ? lcd->displayOn() : lcd->displayOff();
+  if (PIN_BL >= 0) {   // backlight on a pin: really off
+    digitalWrite(PIN_BL, on ? HIGH : LOW);
+    on ? lcd->displayOn() : lcd->displayOff();
+  } else if (!on) {
+    // backlight wired to 3.3V: the light can't go off, and "display off" shows white on these screens,
+    // so it goes black instead (move the screen's LED wire to a GPIO and set PIN_BL for a real off)
+    lcd->fillScreen(0x0000);
+  }
 }
 
 // ---------------------------------------------------------------- main
@@ -905,14 +1015,7 @@ void setup() {
   if (n > 0 && n < 16384) { char *buf = (char *)malloc(n + 1); prefs.getBytes("card", buf, n); buf[n] = 0; saved = buf; free(buf); }
   if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, false); }
   String hs = prefs.getString("habits", "");   // the Log menu works before the first sync too
-  if (hs.length()) {
-    JsonDocument d;
-    if (!deserializeJson(d, hs)) for (JsonObject h : d[0]["habits"].as<JsonArray>()) {
-      if (nhabits >= 16) break;
-      habits[nhabits].k = h["k"] | ""; habits[nhabits].n = h["n"] | ""; habits[nhabits].bad = h["bad"] | false;
-      if (habits[nhabits].k.length()) nhabits++;
-    }
-  }
+  if (hs.length()) parseSetup(hs);
   WiFi.mode(WIFI_STA);
   wifi.addAP(WIFI_SSID, WIFI_PASS);
 #ifdef WIFI2_SSID
@@ -928,30 +1031,56 @@ void setup() {
   drawFrame();
 }
 
+// slides: the new screen comes in from the left (an ease-out over ~6 frames)
+void slideIn(int to, int width = 240) {
+  view = to;
+  if (!banded) { drawFrame(); return; }
+  for (int i = 1; i <= 6; i++) {
+    float t = i / 6.0f, e = 1 - (1 - t) * (1 - t) * (1 - t);
+    band.ox = (int16_t)(-width * (1 - e));
+    if (to == V_MENU) menuDim = i < 3 ? 1 : 2;
+    drawFrame();
+  }
+  band.ox = 0; menuDim = 2;
+  drawFrame();
+}
+
+void slideMenuOut() {   // the drawer goes back out to the left, Mochi lights up again
+  if (banded) for (int i = 1; i <= 5; i++) {
+    float t = i / 5.0f;
+    band.ox = (int16_t)(-200 * t * t);
+    menuDim = i < 3 ? 2 : 1;
+    drawFrame();
+  }
+  band.ox = 0; menuDim = 2;
+  view = V_HOME;
+  drawFrame();
+}
+
 void onButton(int b) {
   if (!screenOn) { setScreen(true); drawFrame(); return; }   // any button wakes it up
   tuneClick();
   switch (view) {
     case V_HOME:
-      if (b == 0) { view = V_MENU; menuSel = 0; drawFrame(); }
+      if (b == 0) { menuSel = 0; slideIn(V_MENU, 210); }
       else if (b == 1) pet();
       else if (undoId && millis() < msgUntil) undoLog();
       else setScreen(false);
       break;
     case V_MENU:
       if (b == 0) { menuSel = (menuSel + 1) % 4; drawFrame(); }
-      else if (b == 2) { view = V_HOME; drawFrame(); }
+      else if (b == 2) slideMenuOut();
       else if (menuSel == 0) {
-        if (!nhabits || millis() - habitsAt > 300000) { status = "Loading..."; loadHabits(); }
-        view = V_LOG; logSel = 0; drawFrame();
+        if (!nhabits || millis() - habitsAt > 300000) loadHabits();
+        logSel = 0; slideIn(V_LOG);
       } else if (menuSel == 1) {
-        view = V_FRIENDS; friendSel = 0;
-        if (millis() - friendsAt > 60000 || !nfriends) {
-          panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK);
-          loadFriends();
-        }
-        status = ""; drawFrame();
-      } else { view = menuSel == 2 ? V_STATS : V_INFO; drawFrame(); }
+        friendSel = 0;
+        if (millis() - friendsAt > 60000 || !nfriends) { panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK); loadFriends(); }
+        status = ""; slideIn(V_FRIENDS);
+      } else if (menuSel == 2) {
+        if (millis() - habitsAt > 30000) loadHabits();   // fresh numbers
+        todayPage = 0; slideIn(V_STATS);
+      } else slideIn(V_INFO);
       break;
     case V_LOG:
       if (b == 0 && nhabits) { logSel = (logSel + 1) % nhabits; drawFrame(); }
@@ -965,7 +1094,12 @@ void onButton(int b) {
       break;
     case V_INFO:
       if (b == 1) { status = "Syncing..."; drawFrame(); sync(); checkPokes(); tuneClick(); if (view == V_INFO) drawFrame(); break; }
-      // fall through
+      if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
+      break;
+    case V_STATS:
+      if (b == 0 && ntoday > 10) { todayPage++; drawFrame(); }
+      else if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
+      break;
     default:
       if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
   }
