@@ -66,6 +66,7 @@ MODULES = {"school": True, "github": True}   # 42 deadlines / GitHub streak
 
 FILLS = ["--pink", "--green", "--yellow", "--blue", "--lilac", "--orange", "--lime"]
 SIZES = {"small": 3, "medium": 6, "big": 10}
+_HEX = re.compile(r"#[0-9a-fA-F]{6}")   # a pet color: #rrggbb
 
 
 def _load(key: str, default):
@@ -167,7 +168,10 @@ def save(body: dict) -> dict:
         db.kv_set("screen_stats", json.dumps([k for k in body["screen"] if k in SCREEN_KEYS]))
     if "pet" in body and isinstance(body["pet"], dict):
         slots = ("body", "skin", "eyes", "hat", "glasses", "neck", "outfit", "held")
-        db.kv_set("pet", json.dumps({k: str(v)[:24] for k, v in body["pet"].items() if k in slots}))
+        colors = ("hatColor", "glassesColor", "neckColor", "outfitColor", "heldColor")
+        pet = {k: str(v)[:24] for k, v in body["pet"].items() if k in slots}
+        pet.update({k: v.lower() for k, v in body["pet"].items() if k in colors and isinstance(v, str) and _HEX.fullmatch(v)})
+        db.kv_set("pet", json.dumps(pet))
     if "share" in body and isinstance(body["share"], list):
         db.kv_set("share", json.dumps([str(k)[:40] for k in body["share"]][:60]))
     if "modules" in body:

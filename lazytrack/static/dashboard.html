@@ -377,6 +377,13 @@
             cursor: pointer; font-weight: 700; font-size: 12px; transition: transform .14s ease, box-shadow .14s ease; }
   .wrtile .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
   @media (hover: hover) { .wrtile:hover { transform: translate(-1px, -2px); box-shadow: 3px 4px 0 var(--line); } }
+  .wrcolors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; }
+  .wrcolors .lbl { font: 12px Silkscreen, monospace; margin-right: 4px; }
+  .wrsw { width: 26px; height: 26px; border: 3px solid var(--line); border-radius: 8px; padding: 0; cursor: pointer; }
+  .wrsw[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--yellow); }
+  .wrpick { position: relative; display: inline-grid; place-items: center; width: 26px; height: 26px; border: 3px solid var(--line); border-radius: 8px; cursor: pointer;
+    background: conic-gradient(#e0303a, #f2b705, #3fae69, #2a78d6, #6250d6, #e0303a); }
+  .wrpick input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
   .wrtile[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 2px 2px 0 var(--line); }
   .wrbtm { display: flex; justify-content: flex-end; gap: 10px; }
   @media (max-width: 560px) { .wrpreview { width: 120px; height: 120px; } .wrpreview .pet { grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; } }
@@ -676,6 +683,7 @@ applyTheme();
         <div class="actions"><button type="button" class="btn" id="wrRandom">🎲 Surprise me</button></div></div>
     </div>
     <div class="wrtabs" id="wrTabs" role="tablist"></div>
+    <div class="wrcolors" id="wrColors" hidden></div>
     <div class="wrgrid" id="wrGrid"></div>
     <div class="wrbtm"><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save</button></div>
   </div>
@@ -1211,6 +1219,7 @@ const catColor = c => (CAT[c] || CAT.other)[dark() ? 1 : 0];
 
 // ---------------------------------------------------------------- Mochi: 16x16 pixel pet, drawn in layers
 // Every layer is rows of 16 characters; "." is see-through, the other letters are colors (MOCHI_COL).
+// Items with a "tint" can be any color: their h pixels get that color, H a darker shade, j a lighter one.
 // Order: body -> outfit (only on the body) -> cheeks/eyes/mouth -> neck -> glasses -> hat -> held item -> effects.
 // The face sits at the same place on every body: eyes rows 6-7 (columns 5 and 10), cheeks row 8, mouth rows 9-10.
 const MOCHI_COL = {
@@ -1219,6 +1228,8 @@ const MOCHI_COL = {
   U: "#2a78d6", e: "#9be8a9", E: "#3fae69", n: "#c99a6e", N: "#8a5a36", v: "#c9b8ff", V: "#6250d6", x: "#c4bfce",
   z: "#5b5370", m: "#1d1b20", t: "#f4ecd9",
 };
+const shade = c => `color-mix(in srgb, ${c} 72%, #000)`;
+const light = c => `color-mix(in srgb, ${c} 62%, #fff)`;
 const blob = [
   "................", "................", "................", "................",
   ".....oooooo.....", "...oobbbbbboo...", "..obbbbbbbbbbo..", ".obbbbbbbbbbbbo.",
@@ -1249,51 +1260,53 @@ const MOCHI = {
     red: {n: "Red", rows: [".....r....r.....", ".....R....R....."]},
     wink: {n: "Wink", rows: [".....k..........", ".....k...kkk...."]},
   },
-  hats: {   // from the top
+  hats: {   // from the top; outlined and shaded
     none: {n: "None", rows: []},
-    beanie: {n: "Beanie", rows: ["................", "......llll......", "....llllllll....", "...llllllllll...", "..llllllllllll..", "..LlLlLlLlLlLl.."]},
-    pinkbeanie: {n: "Pink beanie", rows: ["................", "......pppp......", "....pppppppp....", "...pppppppppp...", "..pppppppppppp..", "..PpPpPpPpPpPp.."]},
-    cap: {n: "Cap", rows: ["................", "................", ".....uuuuuu.....", "....uuuuuuuu....", "...uuuuuuuuuu...", "..UUUUUUUUUUUUUU"]},
-    bucket: {n: "Bucket hat", rows: ["................", "................", "................", ".....nnnnnn.....", "....nnnnnnnn....", "..NNNNNNNNNNNN.."]},
-    spiky: {n: "Spiky hair", rows: ["................", "...k..k..k..k...", "...kk.kk.kk.kk..", "..kkkkkkkkkkkk..", "..kkkkkkkkkkkk..", "..kk.kk..kk.kk.."]},
-    crown: {n: "Crown", rows: ["................", "....g..gg..g....", "....gg.gg.gg....", "....gggggggg....", "....GrGgGuGG...."]},
-    halo: {n: "Halo", rows: ["....yyyyyyyy....", "...y........y...", "....yyyyyyyy...."]},
-    horns: {n: "Devil horns", rows: ["................", "................", "..R..........R..", "..rR........Rr..", "...rr......rr..."]},
-    headphones: {n: "Headphones", rows: ["................", "................", "................", ".....kkkkkk.....", "....k......k....", "...k........k...", "...k........k...", ".rk..........kr.", ".rk..........kr.", "..k..........k.."]},
-    bandana: {n: "Bandana", rows: ["................", "................", "................", ".....rrrrrr.....", "...rrrrrrrrrr...", "..rwrrrwrrrwrrrr", "..............rr"]},
+    beanie: {n: "Beanie", tint: "#2b2733", rows: ["......kjjk......", ".....kkhhkk.....", "....khjhhhhk....", "...khjhhhhhhk...", "..kjHjHjHjHjHk..", "..kkkkkkkkkkkk.."]},
+    cap: {n: "Cap", tint: "#2a78d6", rows: ["................", ".......kk.......", ".....khhhhk.....", "....khjhhhhk....", "...khjhhhhhhkkk.", "..kHHHHHHHHHHHHk"]},
+    bucket: {n: "Bucket hat", tint: "#c99a6e", rows: ["................", "................", ".....kkkkkk.....", "....khjhhhhk....", "....kHHHHHHk....", ".kkhhhhhhhhhhkk."]},
+    tophat: {n: "Top hat", tint: "#2b2733", rows: ["....kkkkkkkk....", "....khjhhhhk....", "....khjhhhhk....", "....krrrrrrk....", "..kkhhhhhhhhkk..", "..kkkkkkkkkkkk.."]},
+    beret: {n: "Beret", tint: "#e0303a", rows: ["................", "................", "........kk......", "...kkkkkhhkkk...", "..khjjhhhhhhhk..", "..kkHHHHHHHHkk.."]},
+    crown: {n: "Crown", tint: "#f2b705", rows: ["...k...kk...k...", "..kjk.kjjk.kjk..", "..khhkhjjhkhhk..", "..khrhhuuhhrhk..", "..kHHHHHHHHHHk..", "..kkkkkkkkkkkk.."]},
+    halo: {n: "Halo", tint: "#ffe45e", rows: [".....hhhhhh.....", "...hj......jh...", ".....hhhhhh....."]},
+    spiky: {n: "Spiky hair", tint: "#1d1b20", rows: ["...k...k....k...", "..khk.khk..khk..", "..khhkhhhkkhhk..", ".khjhhhhhhhhhhk.", ".khjhhhhhhhhhhk.", ".khhkhhkkhhkhhk."]},
+    horns: {n: "Devil horns", tint: "#e0303a", rows: ["................", ".k............k.", ".khk........khk.", "..khk......khk..", "...kk......kk..."]},
+    catears: {n: "Cat ears", tint: "#1d1b20", rows: ["................", "..k..........k..", "..kk........kk..", "..khk......khk..", "..khhkkkkkkhhk.."]},
+    headphones: {n: "Headphones", tint: "#2b2733", rows: ["................", "................", ".....kkkkkk.....", "....khhhhhhk....", "...kk......kk...", "..k..........k..", "kkk..........kkk", "khk..........khk", "kjk..........kjk", "kkk..........kkk"]},
+    bandana: {n: "Bandana", tint: "#e0303a", rows: ["................", "................", "................", ".....kkkkkk.....", "...kkhhhhhhkkkk.", "..khjhwhhwhhkhjk"]},
   },
   glasses: {   // rows 5-7
     none: {n: "None", rows: []},
-    shades: {n: "Shades", rows: ["................", "...kwkkkkkwkkk..", "....kkk..kkk...."]},
-    night: {n: "Night shades", rows: ["................", "...kRkkkkkRkkk..", "....kkk..kkk...."]},
-    round: {n: "Round glasses", rows: ["....sss..sss....", "...s...ss...s...", "....sss..sss...."]},
+    shades: {n: "Shades", tint: "#1d1b20", rows: ["................", "...khwhhkhwhhk..", "....khhk.khhk..."]},
+    round: {n: "Round glasses", tint: "#dfe3ea", rows: ["....hhh..hhh....", "...h...hh...h...", "....hhh..hhh...."]},
+    visor: {n: "Visor", tint: "#7ad3ff", rows: ["................", "..khhhhhhhhhhk..", "..kjjjjjjjjjjk.."]},
     patch: {n: "Eye patch", rows: ["...kkkkkkkkkkk..", "....kkk.........", "....kkk........."]},
   },
   necks: {   // rows 10-13
     none: {n: "None", rows: []},
-    gold: {n: "Gold chain", rows: ["....g......g....", ".....g....g.....", "......gggg......"]},
-    silver: {n: "Silver chains", rows: ["....s......s....", ".....s.SS.s.....", "......ssss......", ".......SS......."]},
-    cross: {n: "Cross", rows: ["....S......S....", ".....S.ss.S.....", "......ssss......", ".......ss......."]},
-    choker: {n: "Spike choker", rows: ["................", "..lslslslslsls.."]},
-    bowtie: {n: "Bow tie", rows: ["................", "......rRRr......"]},
+    chain: {n: "Chain", tint: "#f2b705", rows: ["....h......h....", ".....h....h.....", "......hhhh......"]},
+    chains: {n: "Layered chains", tint: "#dfe3ea", rows: ["....h......h....", ".....h.HH.h.....", "......hhhh......", ".......HH......."]},
+    cross: {n: "Cross", tint: "#dfe3ea", rows: ["....H......H....", ".....H.hh.H.....", "......hhhh......", ".......hh......."]},
+    choker: {n: "Spike choker", tint: "#dfe3ea", rows: ["................", "..khkhkhkhkhkh.."]},
+    bowtie: {n: "Bow tie", tint: "#e0303a", rows: ["................", "......hHHh......"]},
+    scarf: {n: "Scarf", tint: "#e0303a", rows: ["................", ".khhhhhhhhhhhhk.", "..........khhk..", "..........kHHk.."]},
   },
   outfits: {   // rows 11-13, only drawn where the body is
     none: {n: "None", rows: []},
-    hoodie: {n: "Hoodie", rows: ["VvvvvvwvvwvvvvvV", "vvvvvvwvvwvvvvvv", "vvvvVVVVVVVVvvvv"]},
-    blackhoodie: {n: "Black hoodie", rows: ["LllllllllllllllL", "llllllwllwllllll", "llllLLLLLLLLllll"]},
-    leather: {n: "Leather jacket", rows: ["llsllllbbllllsll", "lllllLlbblLlllll", "lllsllbbbbllslll"]},
-    puffer: {n: "Puffer", rows: ["rrrrrrrrrrrrrrrr", "RRRRRRRRRRRRRRRR", "rrrrrrrrrrrrrrrr"]},
-    tee: {n: "Tee", rows: ["wwwwwwwwwwwwwwww", "wwwwwwwrrwwwwwww", "wwwwwwwwwwwwwwww"]},
-    jersey: {n: "Jersey", rows: ["uuuuuuuuuuuuuuuu", "uuuuuuuwwuuuuuuu", "UUUUUUUUUUUUUUUU"]},
+    hoodie: {n: "Hoodie", tint: "#6250d6", rows: ["Hhhhhhwhhwhhhhhh", "hhhhhhwhhwhhhhhh", "hhhhHHHHHHHHhhhh"].map(r => r.padEnd(16, "H"))},
+    leather: {n: "Leather jacket", tint: "#2b2733", rows: ["hhshhhhbbhhhhshh", "hhhhhjhbbhjhhhhh", "hhhshhbbbbhhshhh"]},
+    puffer: {n: "Puffer", tint: "#e0303a", rows: ["hhhhhhhhhhhhhhhh", "HHHHHHHHHHHHHHHH", "hhhhhhhhhhhhhhhh"]},
+    tee: {n: "Tee", tint: "#ffffff", rows: ["hhhhhhhhhhhhhhhh", "hhhhhhhrrhhhhhhh", "hhhhhhhhhhhhhhhh"]},
+    jersey: {n: "Jersey", tint: "#7ad3ff", rows: ["hhhhhhhhhhhhhhhh", "hhhhhhhwwhhhhhhh", "HHHHHHHHHHHHHHHH"]},
   },
   held: {   // right side
     none: {n: "None", rows: []},
     coffee: {n: "Coffee", rows: {9: "............NNN.", 10: "............wwwk", 11: "............wwwk", 12: "............www."}},
-    balloon: {n: "Balloon", rows: {1: "............rr..", 2: "...........rrrr.", 3: "...........rrrr.", 4: "............rr..", 5: ".............k..", 6: "............k...", 7: ".............k..", 8: "............k...", 9: ".............k.."}},
-    controller: {n: "Controller", rows: {11: "..........SSSSS.", 12: "..........SkSuS.", 13: "..........SS.SS."}},
+    balloon: {n: "Balloon", tint: "#e0303a", rows: {1: "............hh..", 2: "...........hjhh.", 3: "...........hhhh.", 4: "............hh..", 5: ".............k..", 6: "............k...", 7: ".............k..", 8: "............k...", 9: ".............k.."}},
+    controller: {n: "Controller", tint: "#8a8f9c", rows: {11: "..........hhhhh.", 12: "..........hkhuh.", 13: "..........hh.hh."}},
     phone: {n: "Phone", rows: {9: "............kkk.", 10: "............kuk.", 11: "............kuk.", 12: "............kkk."}},
-    skate: {n: "Skateboard", rows: {15: ".NnnnnnnnnnnnnN.", 14: "...obbo..obbo..."}},
-    flower: {n: "Flower", rows: {8: "............p.p.", 9: ".............y..", 10: "............p.p.", 11: ".............E..", 12: ".............E.."}},
+    skate: {n: "Skateboard", tint: "#c99a6e", rows: {15: ".Hhhhhhhhhhhhhh.", 14: "...obbo..obbo..."}},
+    flower: {n: "Flower", tint: "#ff8fb1", rows: {8: "............h.h.", 9: ".............y..", 10: "............h.h.", 11: ".............E..", 12: ".............E.."}},
   },
   mouths: {   // rows 9-10, by mood
     happy: ["......k..k......", ".......kk......."], proud: ["......kkkk......", ".......rr......."],
@@ -1302,51 +1315,58 @@ const MOCHI = {
   },
   looks: {
     classic: {n: "Classic", look: {}},
-    vamp: {n: "Vamp", look: {body: "blob", skin: "void", eyes: "red", hat: "spiky", glasses: "none", neck: "cross", outfit: "leather", held: "none"}},
-    drip: {n: "Drip", look: {body: "cat", skin: "sun", eyes: "normal", hat: "beanie", glasses: "shades", neck: "gold", outfit: "puffer", held: "phone"}},
-    angel: {n: "Angel", look: {body: "bunny", skin: "cloud", eyes: "star", hat: "halo", glasses: "none", neck: "none", outfit: "tee", held: "flower"}},
-    gamer: {n: "Gamer", look: {body: "bear", skin: "choco", eyes: "normal", hat: "headphones", glasses: "round", neck: "none", outfit: "hoodie", held: "controller"}},
-    night: {n: "Night out", look: {body: "blob", skin: "lilac", eyes: "normal", hat: "none", glasses: "night", neck: "choker", outfit: "blackhoodie", held: "none"}},
+    vamp: {n: "Vamp", look: {body: "blob", skin: "void", eyes: "red", hat: "spiky", neck: "cross", outfit: "leather"}},
+    drip: {n: "Drip", look: {body: "cat", skin: "sun", hat: "beanie", glasses: "shades", neck: "chain", outfit: "puffer", held: "phone"}},
+    angel: {n: "Angel", look: {body: "bunny", skin: "cloud", eyes: "star", hat: "halo", outfit: "tee", held: "flower"}},
+    gamer: {n: "Gamer", look: {body: "bear", skin: "choco", hat: "headphones", glasses: "round", outfit: "hoodie", held: "controller"}},
+    night: {n: "Night out", look: {body: "blob", skin: "lilac", glasses: "shades", glassesColor: "#9b1c24", neck: "choker", outfit: "hoodie", outfitColor: "#2b2733"}},
   },
 };
 const LOOK_DEFAULT = {body: "blob", skin: "theme", eyes: "normal", hat: "none", glasses: "none", neck: "none", outfit: "none", held: "none"};
 const SLOTS = {body: "bodies", skin: "skins", eyes: "eyes", hat: "hats", glasses: "glasses", neck: "necks", outfit: "outfits", held: "held"};
+const COLOR_SLOTS = ["hat", "glasses", "neck", "outfit", "held"];   // the item's main color can be anything ({slot}Color)
+const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
+
+/** The skin: a preset name ("mint") or any color ("#12ab34"). */
+const skinColor = L => isHex(L.skin) ? L.skin : (MOCHI.skins[L.skin] || MOCHI.skins.theme).c || "var(--pet)";
 
 /** Draws Mochi: returns the 256 pixel cells. mood: happy/proud/meh/smoky/sleepy; tier: legend/shiny/okay/tired/sick. */
 function mochiCells(look, mood = "happy", tier = "okay", blink = false) {
   const L = {...LOOK_DEFAULT, ...(look || {})};
   const pick = (slot) => MOCHI[SLOTS[slot]][L[slot]] || MOCHI[SLOTS[slot]][LOOK_DEFAULT[slot]];
-  const skin = pick("skin").c || "var(--pet)";
+  const skin = skinColor(L);
   const sick = tier === "sick", tired = tier === "tired";
-  const bodyCol = sick ? "#b4c29a" : tired ? `color-mix(in srgb, ${skin} 75%, #8a8178)` : skin;
+  // sick: the same color, just paler; tired: a little greyer
+  const bodyCol = sick ? `color-mix(in srgb, ${skin} 55%, #fff)` : tired ? `color-mix(in srgb, ${skin} 78%, #8a8178)` : skin;
   const col = {...MOCHI_COL, b: bodyCol, B: `color-mix(in srgb, ${bodyCol} 80%, #000)`};
   const g = Array.from({length: 16}, () => Array(16).fill(null));
   const body = pick("body").rows;
-  const put = (rows, y0 = 0, onlyBody = false) => {
+  const put = (rows, y0 = 0, onlyBody = false, tint = null) => {
+    const c = tint ? {...col, h: tint, H: shade(tint), j: light(tint)} : col;
     const list = Array.isArray(rows) ? rows.map((r, i) => [y0 + i, r]) : Object.entries(rows).map(([y, r]) => [+y, r]);
     for (const [y, r] of list) for (let x = 0; x < 16; x++) {
       const ch = r[x];
       if (!ch || ch === "." || y < 0 || y > 15) continue;
       if (onlyBody && !"bB".includes(body[y][x])) continue;
-      g[y][x] = col[ch] || ch;
+      g[y][x] = c[ch] || ch;
     }
   };
+  const tintOf = slot => { const it = pick(slot); return it.tint ? (isHex(L[slot + "Color"]) ? L[slot + "Color"] : it.tint) : null; };
   put(body);
-  put(pick("outfit").rows, 11, true);
+  put(pick("outfit").rows, 11, true, tintOf("outfit"));
   // face: closed eyes when asleep or blinking, droopy when sick, the chosen eyes otherwise
   const eyes = blink || mood === "sleepy" ? ["................", "....kk....kk...."]
     : sick ? ["....zz....zz....", ".....k....k....."] : pick("eyes").rows;
   put(["...cc......cc..."], 8);
   put(eyes, 6);
   put(MOCHI.mouths[sick ? "sick" : MOCHI.mouths[mood] ? mood : "happy"], 9);
-  put(pick("neck").rows, 10);
-  put(pick("glasses").rows, 5);
-  const hat = pick("hat");
-  put(hat.rows, 0);
-  put(pick("held").rows);
+  put(pick("neck").rows, 10, false, tintOf("neck"));
+  put(pick("glasses").rows, 5, false, tintOf("glasses"));
+  put(pick("hat").rows, 0, false, tintOf("hat"));
+  put(pick("held").rows, 0, false, tintOf("held"));
   // mood + HP effects
   if (tier === "legend") {
-    if (L.hat === "none") put(MOCHI.hats.crown.rows, 0);
+    if (L.hat === "none") put(MOCHI.hats.crown.rows, 0, false, MOCHI.hats.crown.tint);
     put({0: "y..............y", 1: ".y............y."});
   }
   if (sick && L.hat === "none") put({3: "........tt......", 4: "........tt......"});
@@ -1354,7 +1374,6 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false) {
   if (mood === "sleepy") put({0: "...........zz...", 1: "............z...", 2: "...........zz..."});
   return g.flat().map(c => `<i${c ? ` style="background:${c}"` : ""}></i>`).join("");
 }
-
 let PET_LOOK = {...LOOK_DEFAULT};   // what Mochi wears, saved on the account (/api/habits "pet")
 // kept so older bits that ask for PET.smoky etc. still work: they now just mean a mood
 const PET = {happy: "happy", smoky: "smoky", proud: "proud", sleepy: "sleepy", meh: "meh", legend: "proud", sick: "happy"};
@@ -1808,6 +1827,7 @@ async function loadSettings() {
 // ---------------------------------------------------------------- the wardrobe
 const WR_TABS = [["looks", "Looks"], ["body", "Body"], ["skin", "Color"], ["eyes", "Eyes"], ["hat", "Head"], ["glasses", "Glasses"],
                  ["neck", "Neck"], ["outfit", "Outfit"], ["held", "Holding"]];
+const WR_COLORS = ["#1d1b20", "#ffffff", "#8a8f9c", "#e0303a", "#ff8fb1", "#f2b705", "#3fae69", "#7ad3ff", "#2a78d6", "#6250d6", "#c99a6e"];
 const wardrobe = {
   tab: "looks", look: null, blink: null,
   open() {
@@ -1831,8 +1851,34 @@ const wardrobe = {
     } else {
       items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
     }
+    this.drawColors();
     $("wrGrid").innerHTML = items.map(it => `<button type="button" class="wrtile" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
       <div class="pet">${mochiCells(it.look)}</div><span>${esc(it.n)}</span></button>`).join("");
+  },
+  // the color row: for skin, and for any item whose main color can change
+  colorNow() {
+    if (this.tab === "skin") return skinColor(this.look).startsWith("#") ? skinColor(this.look) : null;
+    const it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
+    return it && it.tint ? (isHex(this.look[this.tab + "Color"]) ? this.look[this.tab + "Color"] : it.tint) : null;
+  },
+  drawColors() {
+    const box = $("wrColors");
+    const it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
+    const show = this.tab === "skin" || (COLOR_SLOTS.includes(this.tab) && it && it.tint);
+    box.hidden = !show;
+    if (!show) return;
+    const now = (this.colorNow() || "").toLowerCase();
+    const list = this.tab === "skin" ? Object.values(MOCHI.skins).map(v => v.c).filter(Boolean)
+      : [it.tint, ...WR_COLORS.filter(c => c !== it.tint)];
+    box.innerHTML = `<span class="lbl">Color</span>` + list.map(c => `<button type="button" class="wrsw" style="background:${c}" data-wrcolor="${c}"
+      aria-pressed="${c.toLowerCase() === now}" aria-label="Color ${c}"></button>`).join("")
+      + `<label class="wrpick" title="Any color"><input type="color" id="wrAny" value="${now || "#b9a7ff"}" aria-label="Pick any color"></label>`;
+  },
+  setColor(c) {
+    if (!isHex(c)) return;
+    if (this.tab === "skin") this.look = {...this.look, skin: c.toLowerCase()};
+    else this.look = {...this.look, [this.tab + "Color"]: c.toLowerCase()};
+    this.draw();
   },
   pick(k) {
     if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look};
@@ -1862,8 +1908,16 @@ $("wrRandom").addEventListener("click", () => wardrobe.random());
 $("wardrobe").addEventListener("click", e => {
   const t = e.target.closest("[data-wrtab]"); if (t) { wardrobe.tab = t.dataset.wrtab; wardrobe.draw(); return; }
   const p = e.target.closest("[data-wrpick]"); if (p) { wardrobe.pick(p.dataset.wrpick); return; }
+  const c = e.target.closest("[data-wrcolor]"); if (c) { wardrobe.setColor(c.dataset.wrcolor); return; }
   if (e.target.id === "wardrobe") wardrobe.close();   // tap outside the card
 });
+$("wardrobe").addEventListener("input", e => {   // live while dragging in the color picker
+  if (e.target.id !== "wrAny") return;
+  const c = e.target.value.toLowerCase(), slot = wardrobe.tab;
+  wardrobe.look = slot === "skin" ? {...wardrobe.look, skin: c} : {...wardrobe.look, [slot + "Color"]: c};
+  $("wrPet").innerHTML = mochiCells(wardrobe.look);
+});
+$("wardrobe").addEventListener("change", e => { if (e.target.id === "wrAny") wardrobe.setColor(e.target.value); });
 addEventListener("keydown", e => { if (e.key === "Escape" && !$("wardrobe").hidden) wardrobe.close(); });
 
 // ---------------------------------------------------------------- the smoking question, on every page
