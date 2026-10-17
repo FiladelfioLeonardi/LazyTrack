@@ -341,6 +341,21 @@
   .acct { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .acct .apet { width: 64px; height: 64px; border-radius: 14px; } .acct .apet .pet { grid-template-columns: repeat(10, 5px); grid-auto-rows: 5px; }
   .acct .who { flex: 1; min-width: 160px; } .acct .who b { font-size: 18px; display: block; }
+  .camstat { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 3px solid var(--line); border-radius: 14px; background: var(--soft); }
+  .camstat .dot { flex: none; width: 14px; height: 14px; margin-top: 4px; border-radius: 4px; border: 2px solid var(--line); background: var(--ink-3); }
+  .camstat .dot.ok { background: #3fbf6f; animation: pulse 2s ease-in-out infinite; } .camstat .dot.warn { background: var(--orange); }
+  .camstat .dot.bad { background: #e0735a; } .camstat .dot.busy { background: var(--blue); animation: pulse 1s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .camstat b { display: block; }
+  .camview { display: grid; gap: 16px; grid-template-columns: minmax(0, 480px) minmax(0, 1fr); margin-top: 14px; align-items: start; }
+  @media (max-width: 760px) { .camview { grid-template-columns: 1fr; } }
+  .camimg { position: relative; aspect-ratio: 16 / 9; background: #1d1b20; border: 3px solid var(--line); border-radius: 14px; overflow: hidden; display: grid; place-items: center; }
+  .camimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .camimg .note { position: absolute; color: #fff; }
+  .camside .meter i { background: var(--today); transition: width .4s; }
+  .camwarn { display: block; margin-top: 14px; padding: 12px 16px; border: 3px solid var(--line); border-radius: 14px; background: var(--red);
+             color: #1d1b20; font-weight: 800; text-decoration: none; box-shadow: 3px 3px 0 var(--line); }
+  .camwarn[hidden] { display: none; }
   .fxs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
   .fxb { display: grid; gap: 2px; align-content: start; text-align: left; padding: 10px 12px; cursor: pointer; background: var(--card); border: 3px solid var(--line); border-radius: 12px;
          box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s; }
@@ -647,6 +662,7 @@ applyTheme();
       <div class="hp" id="hp"></div>
     </section>
 
+    <a class="camwarn" id="camWarn" href="#tab=settings" hidden></a>
     <div class="logbar" id="logbar" aria-label="Log something"></div>
     <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
 
@@ -824,6 +840,18 @@ applyTheme();
             <input id="cool" type="number" name="smoke_cooldown_minutes" min="1" max="120" style="max-width:140px">
           </div>
           <label class="toggle"><input type="checkbox" name="save_training_photos"> Keep the photo it asked about, to train it on you</label>
+        </div>
+        <div class="camstat" id="camStat" style="margin-top:16px"></div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="camView">Show what the camera sees</button></div>
+        <div class="camview" id="camBox" hidden>
+          <div class="camimg"><img id="camImg" alt="What the camera sees right now"><p class="note" id="camWait">Starting the camera…</p></div>
+          <div class="camside">
+            <div class="label">SMOKING EVIDENCE</div>
+            <div class="meter"><i id="camEv" style="width:0%"></i></div>
+            <p class="note" id="camNums"></p>
+            <p class="note">Hold a pen like a cigarette near your mouth: the bar fills up. When it's full, LazyTrack asks you.
+              The yellow box is your face.</p>
+          </div>
         </div>
       </section>
 
@@ -1583,6 +1611,67 @@ async function loadSettings() {
   }
   settingsLoaded = true;
 }
+// ---------------------------------------------------------------- smoking camera: status + live view
+const CAM_TEXT = {
+  watching: ["ok", "Camera is watching"], paused: ["warn", "Camera paused"], cooldown: ["warn", "Camera resting"],
+  loading: ["busy", "Getting the camera ready"], no_camera: ["bad", "Can't open the camera"],
+  error: ["bad", "The camera AI didn't load"], off: ["", "The smoking detector is off"],
+};
+async function camStatus() {
+  try { const r = await api("/api/camera/status"); return r.ok ? await r.json() : null; } catch (_) { return null; }
+}
+async function drawCam() {
+  const c = await camStatus(); if (!c || !$("camStat")) return c;
+  const [cls, title] = CAM_TEXT[c.status] || ["", c.status];
+  let detail = c.detail || "";
+  if (c.status === "off") detail = c.enabled ? "It starts when LazyTrack starts. Restart LazyTrack if you just turned it on." : "Turn on \"Use the webcam detector\" above and save.";
+  if (c.status === "cooldown" && c.until) detail += ` Back at ${clock(c.until)}.`;
+  if (c.status === "watching" && c.model) detail += ` Using ${c.model}.`;
+  $("camStat").innerHTML = `<span class="dot ${cls}" aria-hidden="true"></span><span><b>${esc(title)}</b><span class="note">${esc(detail)}</span></span>`;
+  $("camView").hidden = !c.can_view || !["watching", "paused", "loading"].includes(c.status);
+  if (!c.can_view && c.status === "watching") $("camStat").querySelector(".note").textContent += " Open LazyTrack on the computer to see the live camera.";
+  return c;
+}
+const camLive = {
+  timer: null, url: null,
+  start() {
+    $("camBox").hidden = false; $("camView").textContent = "Hide the camera";
+    this.timer = setInterval(() => this.tick(), 700); this.tick();
+  },
+  stop() {
+    clearInterval(this.timer); this.timer = null;
+    if ($("camBox")) { $("camBox").hidden = true; $("camView").textContent = "Show what the camera sees"; }
+  },
+  async tick() {
+    if (document.body.dataset.view !== "settings") return this.stop();
+    try {
+      const r = await api("/api/camera/frame.jpg");
+      if (r.status === 200) {
+        const b = await r.blob(), u = URL.createObjectURL(b);
+        $("camImg").src = u; if (this.url) URL.revokeObjectURL(this.url); this.url = u;
+        $("camWait").hidden = true;
+      }
+      const c = await drawCam();
+      if (c) {
+        const pct = c.trigger ? Math.min(100, 100 * c.evidence / c.trigger) : 0;
+        $("camEv").style.width = pct.toFixed(0) + "%";
+        $("camNums").textContent = c.status !== "watching" ? (CAM_TEXT[c.status] || ["", ""])[1] + "."
+          : `${c.face ? "Face found." : "Looking for your face…"} Last score ${c.score.toFixed(2)} (counts from ${c.threshold.toFixed(2)}).`;
+      }
+    } catch (_) {}
+  },
+};
+document.addEventListener("click", e => {
+  if (e.target.closest("#camView")) { camLive.timer ? camLive.stop() : camLive.start(); }
+});
+// on Home: only speak up when something's wrong
+async function camWarn() {
+  const c = await camStatus(), w = $("camWarn");
+  const bad = c && c.enabled && ["no_camera", "error"].includes(c.status) && HABITS.some(h => h.smoke);
+  w.hidden = !bad;
+  if (bad) w.textContent = `📷 ${CAM_TEXT[c.status][1]}, so cigarettes aren't noticed. Tap to check.`;
+}
+
 // ---------------------------------------------------------------- friends
 // The dashboard only talks to your own LazyTrack (/api/cloud/...), which talks to the
 // friends server. Your card goes up whenever a dashboard is open; chat polls every few seconds.
@@ -1986,13 +2075,15 @@ async function render() {
   $("nextDay").disabled = day >= todayISO();
   document.querySelector(".daynav").style.visibility = view === "settings" || view === "friends" ? "hidden" : "";
   if (view !== "friends") chat.stop();
+  if (view !== "settings") camLive.stop();
   updateBadge();
   try {
     if (view === "detail") await loadDetail(r.k);
-    else if (view === "settings") { drawAccount(); drawUpdates(); await loadSettings(); }
+    else if (view === "settings") { drawAccount(); drawUpdates(); drawCam(); await loadSettings(); }
     else {
       await loadOverview();
       ({home: renderHome, habits: renderHabits, screen: renderScreen, school: renderSchool, friends: renderFriends})[view]();
+      if (view === "home") camWarn();
     }
     $("offline").style.display = "none";
     if (animNow) entrance(view);
@@ -2396,7 +2487,8 @@ const setup = {
     const name = AUTH.user ? AUTH.user.display_name : "";
     $("dTitle").textContent = this.mode === "edit" ? "Saved your picks." : `All set${name ? ", " + name : ""}.`;
     $("dLine").textContent = `Mochi will help you with ${less} thing${less === 1 ? "" : "s"} to cut down, ${more} to do more of, and ${this.sel.screen.length} screen stat${this.sel.screen.length === 1 ? "" : "s"}.`
-      + (this.mode === "edit" ? " Anything you removed keeps its history, in case you add it back." : "");
+      + (this.mode === "edit" ? " Anything you removed keeps its history, in case you add it back." : "")
+      + (hs.some(h => h.smoke) ? " The webcam notices cigarettes by itself: check it in Settings → Smoking detector." : "");
     $("dGo").firstChild.textContent = this.mode === "edit" ? "Back to the app " : "Meet Mochi ";
     $("dPet").innerHTML = petCells(PET.legend, "legend");
   },

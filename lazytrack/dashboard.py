@@ -101,6 +101,21 @@ def make_handler(cfg: dict):
                 return self._send(200, habits.get())
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_get(u.path, qs)
+            if u.path == "/api/camera/status":
+                from . import smoke
+                live = {k: v for k, v in smoke.LIVE.items() if k not in ("frame",)}
+                return self._send(200, {**live, "enabled": bool(config.load()["smoke"]["enabled"]), "now": time.time(),
+                                        "can_view": self._local()})
+            if u.path == "/api/camera/frame.jpg":
+                # the live view: only on the computer itself, camera pictures never go over the network
+                if not self._local():
+                    return self._send(403, {"error": "only on the computer itself"})
+                from . import smoke
+                smoke.LIVE["want_until"] = time.time() + 4
+                fr = smoke.LIVE["frame"]
+                if not fr or time.time() - smoke.LIVE["frame_t"] > 5:
+                    return self._send(204, b"", "image/jpeg")
+                return self._send(200, fr, "image/jpeg")
             if u.path == "/api/settings":
                 if not self._local():
                     return self._send(403, {"error": "settings can only be changed on the Mac itself"})

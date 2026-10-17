@@ -206,6 +206,30 @@ def save_crop(crop, label: str) -> None:
     cv2.imwrite(str(d / (datetime.now().strftime("%Y%m%d-%H%M%S-%f") + ".jpg")), crop)
 
 
+# ---------------------------------------------------------------- what the dashboard can see
+# The detector runs in the same program as the dashboard, so it shares its state through this
+# dict: status for Settings, and (only while someone looks at the live view) a small JPEG.
+LIVE = {"status": "off", "detail": "", "score": 0.0, "threshold": 0.0, "evidence": 0.0, "trigger": 0.0,
+        "model": "", "face": False, "until": 0.0, "frame": None, "frame_t": 0.0, "want_until": 0.0}
+
+
+def _set(status: str, detail: str = "", **kw) -> None:
+    LIVE.update(status=status, detail=detail, **kw)
+
+
+def _preview(frame, face, cv2) -> None:
+    """Small picture for the live view, with the face box drawn in."""
+    h, w = frame.shape[:2]
+    scale = 480.0 / max(1, w)
+    small = cv2.resize(frame, (480, int(h * scale)))
+    if face is not None:
+        x, y, fw, fh = [int(v * scale) for v in face]
+        cv2.rectangle(small, (x, y), (x + fw, y + fh), (94, 228, 255), 2)
+    ok, jpg = cv2.imencode(".jpg", small, [cv2.IMWRITE_JPEG_QUALITY, 70])
+    if ok:
+        LIVE.update(frame=jpg.tobytes(), frame_t=time.time())
+
+
 # ---------------------------------------------------------------- background detector
 
 class SmokeDetector(threading.Thread):
@@ -223,14 +247,17 @@ class SmokeDetector(threading.Thread):
         return system.idle_seconds() > self.scfg["pause_when_idle_seconds"] and not system.video_playing()
 
     def run(self) -> None:
+        _set("loading", "Loading the camera AI. The first time it downloads it (about 400 MB).")
         try:
             import cv2
             self.scorer = make_scorer(self.scfg)
             self.faces = FaceTracker()
-        except Exception:
+        except Exception as e:
             log.exception("smoke detector disabled: could not load model / OpenCV")
             self.status = "disabled (load error)"
+            _set("error", f"The camera AI couldn't load: {e.__class__.__name__}: {str(e)[:160]}")
             return
+        LIVE.update(model=self.scorer.name, threshold=float(self.scorer.threshold), trigger=float(self.scfg["trigger_score"]))
         log.info("smoke detector running with the %s", self.scorer.name)
         model_mtime = PERSONAL_MODEL.stat().st_mtime if PERSONAL_MODEL.exists() else 0.0
 
@@ -258,6 +285,10 @@ class SmokeDetector(threading.Thread):
                     prev = None
                     evidence.reset()
                 self.status = "cooldown" if t0 < cooldown_until else "paused"
+                if t0 < cooldown_until:
+                    _set("cooldown", "Camera off for a while after a cigarette, so it isn't counted twice.", until=cooldown_until)
+                else:
+                    _set("paused", "Paused while you're away or the screen is locked.")
                 # picked up a freshly trained model?
                 mtime = PERSONAL_MODEL.stat().st_mtime if PERSONAL_MODEL.exists() else 0.0
                 if mtime != model_mtime:
@@ -273,11 +304,16 @@ class SmokeDetector(threading.Thread):
                     log.warning("camera %s not available, retrying in 30s", s["camera_index"])
                     cap = None
                     self.status = "no camera"
+                    _set("no_camera", "Can't open the camera. Is another app using it, or is camera access turned off "
+                         + ("(Settings > Privacy & security > Camera > Let desktop apps access your camera)?" if sys.platform == "win32"
+                            else "(System Settings > Privacy & Security > Camera)?"))
                     self.stop_ev.wait(30)
                     continue
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
             self.status = "watching"
+            if LIVE["status"] != "watching":
+                _set("watching", "Watching for cigarettes.")
 
             ok, frame = cap.read()
             if not ok:
@@ -294,6 +330,9 @@ class SmokeDetector(threading.Thread):
             prev = gray
             if face is not None or moving:
                 last_presence = t0
+            LIVE["face"] = face is not None
+            if LIVE["want_until"] > t0:   # someone has the live view open in the dashboard
+                _preview(frame, face, cv2)
 
             # --- stage 2: score the face/hand area ---
             if t0 - last_presence < 5 and n % every == 0:
@@ -306,6 +345,7 @@ class SmokeDetector(threading.Thread):
                 glow = face is not None and glowing_tip(crop)
                 if evidence.add_score(score, self.scorer.threshold, glow) > 0:
                     hit_crop = crop.copy()
+                LIVE.update(score=float(score), evidence=float(evidence.value()))
                 # --- stage 3: enough evidence -> ask (the camera stays on while asking) ---
                 if evidence.value() >= trigger and t0 >= quiet_until:
                     evidence.reset()
@@ -328,6 +368,7 @@ class SmokeDetector(threading.Thread):
 
         if cap is not None:
             cap.release()
+        _set("off")
 
     def _ask(self, crop) -> str:
         system.notify("LazyTrack 👀", "Looks like you're smoking")
