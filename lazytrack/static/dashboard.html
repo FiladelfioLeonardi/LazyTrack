@@ -1375,10 +1375,73 @@ const MOCHI = {
     night: {n: "Night out", look: {body: "blob", skin: "lilac", glasses: "shades", glassesColor: "#9b1c24", neck: "choker", outfit: "hoodie", outfitColor: "#2b2733"}},
   },
 };
-const LOOK_DEFAULT = {body: "blob", skin: "theme", eyes: "normal", hat: "none", glasses: "none", neck: "none", outfit: "none", held: "none", place: "sky"};
-const SLOTS = {body: "bodies", skin: "skins", eyes: "eyes", hat: "hats", glasses: "glasses", neck: "necks", outfit: "outfits", held: "held", place: "places"};
+const LOOK_DEFAULT = {body: "blob", skin: "theme", eyes: "normal", mouth: "smile", hat: "none", glasses: "none", neck: "none", outfit: "none", held: "none", place: "sky"};
+const SLOTS = {body: "bodies", skin: "skins", eyes: "eyes", mouth: "mouthItems", hat: "hats", glasses: "glasses", neck: "necks", outfit: "outfits", held: "held", place: "places"};
 const COLOR_SLOTS = ["hat", "glasses", "neck", "outfit", "held"];   // the item's main color can be anything ({slot}Color)
 const isHex = v => typeof v === "string" && /^#[0-9a-f]{6}$/i.test(v);
+
+// ---- more bodies, eyes, mouths and outfits
+const B0 = MOCHI.bodies.blob.rows;
+Object.assign(MOCHI.bodies, {
+  poop: {n: "Poop", skin: "#8a5a36", rows: ["................", ".......oo.......", "......obbo......", ".....obbbbo.....", "....oBBBBBBo....", "...obbbbbbbbo...",
+    "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", ".oBBbbbbbbbbBBo.", ".obbbbbbbbbbbbo.", "obbbbbbbbbbbbbbo", "oBBBbbbbbbbbBBBo", "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", ".oBbbbbbbbbbbBo.", "..oooooooooooo.."]},
+  mushroom: {n: "Mushroom", skin: "#f4ecd9", rows: ["................", "....oooooooo....", "..oorrwwrrrroo..", ".orrrrrrrrwwrro.", "orwwrrrrrrrrrrro", "oRRRRRRRRRRRRRRo",
+    "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..oBbbbbbbbbBo..", "...oBbbbbbbBo...", "...obbo..obbo...", "...oooo..oooo..."]},
+  slime: {n: "Slime", skin: "#9be38a", rows: withRows(B0, {6: "..obwbbbbbbbbo..", 7: ".obwbbbbbbbbbbo.", 12: ".obbbbbbbbbbbbo.", 13: "obbbbbbbbbbbbbbo", 14: "oBbbbbbbbbbbbbBo", 15: ".oooooooooooooo."})},
+  frog: {n: "Frog", skin: "#7cd17a", rows: withRows(B0, {1: "................", 2: "..oooo....oooo..", 3: ".obbbbo..obbbbo.", 4: ".obbbbobbobbbbo.", 5: ".obbbbbbbbbbbbo.", 6: ".obbbbbbbbbbbbo.",
+    14: "..obbbo..obbbo..", 15: ".oooooo..oooooo."})},
+  dino: {n: "Dino", skin: "#7cd17a", rows: withRows(B0, {0: "................", 1: ".......o..o.....", 2: "......oyooyo....", 3: ".....oyyoyyyo...", 4: "....ooooooooo...", 9: ".obbbbbbbbbbbbo.", 11: ".obbbbbbbbbbbbbo", 12: ".oBbbbbbbbbbbbBo", 13: "..oBbbbbbbbbBooo"})},
+  robot: {n: "Robot", skin: "#c4c9d4", rows: ["................", ".......y........", ".......o........", "..oooooooooooo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..",
+    "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", ".SobbbbbbbbbboS.", ".SobbbbbbbbbboS.", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..oBBBBBBBBBBo..", "..oooooooooooo..", "....oSo..oSo....", "...oooo..oooo..."]},
+  penguin: {n: "Penguin", skin: "#2b2733", rows: withRows(B0, {6: "..obbwwwwwwbbo..", 7: ".obbwwwwwwwwbbo.", 8: ".obwwwwwwwwwwbo.", 9: ".obwwwwwwwwwwbo.", 10: ".obwwwwwwwwwwbo.", 11: ".obwwwwwwwwwwbo.",
+    12: ".oBbwwwwwwwwbBo.", 13: "..oBbwwwwwwbBo..", 14: "...oggo..oggo...", 15: "...oooo..oooo..."})},
+  cloud: {n: "Cloud", skin: "#f1eef8", rows: ["................", "................", "................", "....ooo.ooo.....", "...obbbobbbo....", ".ooobbbbbbbbooo.",
+    "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", ".obbbbbbbbbbbbo.", "..oobbooobbboo..", "....oo...ooo....", "................"]},
+  egg: {n: "Egg", skin: "#fff3dc", rows: ["................", "......oooo......", ".....obbbbo.....", "....obbbbbbo....", "...obbbbbbbbo...", "..obbbbbbbbbbo..",
+    ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.", ".oBbbbbbbbbbbBo.", "..oBbbbbbbbbBo..", "...ooBBBBBBoo...", ".....oooooo....."]},
+});
+Object.assign(MOCHI.eyes, {
+  big: {n: "Big", rows: ["....kw....kw....", "....kk....kk...."]},
+  chill: {n: "Chill", rows: ["....kkk..kkk....", ".....k....k....."]},
+  angry: {n: "Angry", y: 5, rows: ["...k........k...", "....kk....kk....", ".....k....k....."]},
+  teary: {n: "Teary", rows: [".....k....k.....", ".....k....k.....", ".....u.........."]},
+  cash: {n: "Cash", rows: ["....ggg..ggg....", "....gGg..gGg...."]},
+  cyclops: {n: "Cyclops", y: 5, rows: ["......kkkk......", ".....kwwkkk.....", "......kkkk......"]},
+  ko: {n: "K.O.", rows: ["....k.k..k.k....", ".....k....k.....", "....k.k..k.k...."]},
+  crying: {n: "Crying", rows: ["....kkk..kkk....", ".....u....u.....", ".....u....u....."]},
+  squint: {n: "Squint", rows: ["....k......k....", ".....k....k.....", "....k......k...."]},
+  side: {n: "Side-eye", rows: ["....kkk..kkk....", "....wwk..wwk...."]},
+  lizard: {n: "Lizard", rows: ["....yky..yky....", "....yky..yky...."]},
+});
+MOCHI.mouthItems = {   // rows 9-10
+  smile: {n: "Smile", rows: ["......k..k......", ".......kk......."]},
+  grin: {n: "Big grin", rows: [".....kwwwwk.....", "......kkkk......"]},
+  tongue: {n: "Tongue out", rows: ["......kkkk......", ".......pp......."]},
+  fangs: {n: "Fangs", rows: ["......kkkk......", "......w..w......"]},
+  grillz: {n: "Gold grillz", rows: [".....kggggk.....", "......kkkk......"]},
+  iced: {n: "Iced grillz", rows: [".....kswusk.....", "......kkkk......"]},
+  shocked: {n: "Shocked", rows: [".......kk.......", "......kRRk......"]},
+  smirk: {n: "Smirk", rows: ["..........k.....", "......kkkk......"]},
+  frown: {n: "Frown", rows: ["......kkkk......", ".....k....k....."]},
+  mustache: {n: "Mustache", rows: ["....kkkkkkkk....", "...k...kk...k..."]},
+  buck: {n: "Buck teeth", rows: ["......kkkk......", ".......ww......."]},
+  kiss: {n: "Kiss", rows: [".......pp.......", ".......pp......."]},
+  drool: {n: "Drool", rows: ["......k..k......", ".......kk.u....."]},
+  zipped: {n: "Zipped", rows: ["....kSkSkSkS....", "................"]},
+};
+Object.assign(MOCHI.outfits, {
+  tracksuit: {n: "Tracksuit", tint: "#2a78d6", rows: ["hwhhhhhkkhhhhhwh", "hwhhhhhjjhhhhhwh", "hwHHHHHHHHHHHHwh"]},
+  overalls: {n: "Overalls", tint: "#2a78d6", rows: ["bbbhbbbbbbbbhbbb", "bbbhhhkkkkhhhbbb", "hhhhhhhhhhhhhhhh"]},
+  suit: {n: "Suit & tie", tint: "#2b2733", rows: ["hhhhhhwrrwhhhhhh", "hhhhhhhwrwhhhhhh", "hhhhhhhwrhhhhhhh"]},
+  hawaii: {n: "Hawaiian shirt", tint: "#3fae69", rows: ["hphhhyhhhhphhyhh", "hhyhhhhphhhhyhhp", "phhhhyhhhphhhhyh"]},
+  raincoat: {n: "Raincoat", tint: "#ffd84a", rows: ["hhhhhhhkhhhhhhhh", "hhhhhhhkhhhhhhhh", "HHHHHHHkHHHHHHHH"]},
+  labcoat: {n: "Lab coat", rows: ["wwwwwwsbswwwwwww", "wwwwwwwswwwwUwww", "SSSSSSSsSSSSSSSS"]},
+  camo: {n: "Camo", tint: "#5e7a3a", rows: ["hHHhhjhhHHhhjjhh", "jhhHHhhjjhhHhhHH", "hhjjhHHhhhjhHHhh"]},
+  stripes: {n: "Striped sweater", tint: "#e0303a", rows: ["hhhhhhhhhhhhhhhh", "wwwwwwwwwwwwwwww", "hhhhhhhhhhhhhhhh"]},
+  ragetee: {n: "Rage tee", rows: ["llllllllllllllll", "llllllrlrlrlllll", "lllllllrrrllllll"]},
+  varsity: {n: "Varsity jacket", tint: "#e0303a", rows: ["wwhhhhhkkhhhhhww", "wwhhhhwhhwhhhhww", "SShhhhhhhhhhhhSS"]},
+  diaper: {n: "Diaper", rows: ["................", "wwwwwwwwwwwwwwww", "wwwwwwwSwwwwwwww"]},
+});
 
 /** The skin: a preset name ("mint") or any color ("#12ab34"). */
 const skinColor = L => isHex(L.skin) ? L.skin : (MOCHI.skins[L.skin] || MOCHI.skins.theme).c || "var(--pet)";
@@ -1403,7 +1466,7 @@ const FX_FACE = {
 function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {}) {
   const L = {...LOOK_DEFAULT, ...(look || {})};
   const pick = (slot) => MOCHI[SLOTS[slot]][L[slot]] || MOCHI[SLOTS[slot]][LOOK_DEFAULT[slot]];
-  const skin = skinColor(L);
+  const skin = L.skin === "theme" && pick("body").skin ? pick("body").skin : skinColor(L);   // some bodies have their own color (poop is brown)
   const sick = tier === "sick", tired = tier === "tired";
   // sick: the same color, just paler; tired: a little greyer
   const bodyCol = sick ? `color-mix(in srgb, ${skin} 55%, #fff)` : tired ? `color-mix(in srgb, ${skin} 78%, #8a8178)` : skin;
@@ -1426,7 +1489,10 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   // face: what's going on decides the eyes and mouth; otherwise the chosen eyes
   const high = fx.high || 0, drunk = fx.drunk || 0, f = fx.frame || 0;
   const shift = (rows, dx) => dx ? rows.map(r => dx > 0 ? "." + r.slice(0, 15) : r.slice(1) + ".") : rows;
-  let eyes, eyeY = 6, mouth = MOCHI.mouths[sick ? "sick" : MOCHI.mouths[mood] ? mood : "happy"];
+  const chosen = pick("mouth");
+  // the chosen mouth, unless the mood needs its own (meh, smoky, sleepy, sick); the plain smile still smiles wider when proud
+  let eyes, eyeY = 6, mouth = sick ? MOCHI.mouths.sick : ["meh", "smoky", "sleepy"].includes(mood) ? MOCHI.mouths[mood]
+    : L.mouth === "smile" ? MOCHI.mouths[MOCHI.mouths[mood] ? mood : "happy"] : chosen.rows;
   if (fx.cough) { eyes = FX_FACE.coughEyes; mouth = FX_FACE.coughMouth; }
   else if (blink || mood === "sleepy") eyes = ["................", "....kk....kk...."];
   else if (drunk >= 3) { eyes = FX_FACE.wastedEyes; }
@@ -1434,7 +1500,7 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   else if (drunk === 2) { eyes = FX_FACE.drunkEyes; }
   else if (drunk === 1) { eyes = FX_FACE.tipsyEyes; }
   else if (sick) eyes = ["....zz....zz....", ".....k....k....."];
-  else eyes = pick("eyes").rows;
+  else { eyes = pick("eyes").rows; eyeY = pick("eyes").y ?? 6; }
   if (!fx.cough) {
     if (high) mouth = FX_FACE.highMouth;
     if (drunk >= 2) mouth = FX_FACE.drunkMouth;
@@ -2244,7 +2310,7 @@ async function loadSettings() {
   settingsLoaded = true;
 }
 // ---------------------------------------------------------------- the wardrobe
-const WR_TABS = [["looks", "Looks"], ["body", "Body"], ["skin", "Color"], ["eyes", "Eyes"], ["hat", "Head"], ["glasses", "Glasses"],
+const WR_TABS = [["looks", "Looks"], ["body", "Body"], ["skin", "Color"], ["eyes", "Eyes"], ["mouth", "Mouth"], ["hat", "Head"], ["glasses", "Glasses"],
                  ["neck", "Neck"], ["outfit", "Outfit"], ["held", "Holding"], ["place", "Place"]];
 const WR_COLORS = ["#1d1b20", "#ffffff", "#8a8f9c", "#e0303a", "#ff8fb1", "#f2b705", "#3fae69", "#7ad3ff", "#2a78d6", "#6250d6", "#c99a6e"];
 const wardrobe = {
@@ -2309,7 +2375,7 @@ const wardrobe = {
   random() {
     const any = slot => { const ks = Object.keys(MOCHI[SLOTS[slot]]); return ks[Math.floor(Math.random() * ks.length)]; };
     const maybe = slot => Math.random() < .45 ? "none" : any(slot);
-    this.look = {body: any("body"), skin: any("skin"), eyes: any("eyes"), hat: maybe("hat"), glasses: Math.random() < .7 ? "none" : any("glasses"),
+    this.look = {body: any("body"), skin: any("skin"), eyes: any("eyes"), mouth: Math.random() < .4 ? "smile" : any("mouth"), hat: maybe("hat"), glasses: Math.random() < .7 ? "none" : any("glasses"),
                  neck: maybe("neck"), outfit: maybe("outfit"), held: Math.random() < .6 ? "none" : any("held"), place: this.look.place};
     this.draw();
   },
