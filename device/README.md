@@ -11,6 +11,8 @@ It logs into your LazyTrack account over WiFi and reads your friend card every m
 
 ## Wiring
 
+![Wiring](wiring.png)
+
 | Screen pin | ESP32 pin |
 |---|---|
 | VCC | 3V3 |
