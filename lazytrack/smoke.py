@@ -519,6 +519,8 @@ class SmokeDetector(threading.Thread):
         # runs on the processor: look half as often so the fan stays quiet. Evidence still adds up.
         every = max(1, int(s["yolo_every_n_frames"])) * (2 if pick_device() == "cpu" else 1)
         hit_crop = None
+        fails = 0            # pictures in a row the camera didn't deliver
+        drops: list = []     # when the camera last dropped out (to tell a flaky camera from a slow start)
         while not self.stop_ev.is_set():
             t0 = time.time()
             cooldown_until = SHARED["cooldown_until"]
@@ -557,16 +559,33 @@ class SmokeDetector(threading.Thread):
                     continue
                 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
                 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+            if fails == 0 and LIVE["status"] not in ("watching", "starting_camera"):
+                _set("starting_camera", "Turning the camera on.")
+            ok, frame = cap.read()
+            if not ok or frame is None:
+                # webcams (Macs especially) can take a few seconds to deliver their first pictures:
+                # keep the camera on and wait, instead of switching it off and on every 2 seconds
+                fails += 1
+                if fails < 40:
+                    self.stop_ev.wait(0.25)
+                    continue
+                fails = 0
+                cap.release()
+                cap = None
+                drops = [x for x in drops if t0 - x < 600] + [t0]
+                log.warning("camera gave no pictures for 10 s (dropout %d in 10 min), reopening", len(drops))
+                if len(drops) >= 3:
+                    _set("no_camera", "The camera keeps switching off: another app may be using it, or LazyTrack isn't allowed to use it "
+                         + ("(Settings > Privacy & security > Camera > Let desktop apps access your camera)." if sys.platform == "win32"
+                            else "(System Settings > Privacy & Security > Camera: turn on LazyTrack, or Terminal/Python)."))
+                self.stop_ev.wait(min(60, 5 * len(drops)))   # back off instead of flickering
+                continue
+            if fails:
+                log.info("camera delivered pictures after %d tries", fails)
+            fails = 0
             self.status = "watching"
             if LIVE["status"] != "watching":
                 _set("watching", "Watching for cigarettes.")
-
-            ok, frame = cap.read()
-            if not ok:
-                cap.release()
-                cap = None
-                self.stop_ev.wait(2)
-                continue
             n += 1
             raw = frame   # the ember makes its own light: look for it on the original picture
             frame, LIVE["light"] = fix_light(frame, s.get("light_fix", "auto"))

@@ -476,6 +476,8 @@
   .camwarn { display: block; margin-top: 14px; padding: 12px 16px; border: 3px solid var(--line); border-radius: 14px; background: var(--red);
              color: #1d1b20; font-weight: 800; text-decoration: none; box-shadow: 3px 3px 0 var(--line); }
   .camwarn[hidden] { display: none; }
+  .camwarn.ok, .camwarn.info { padding: 7px 12px; border-width: 2px; font-weight: 700; font-size: 14px; box-shadow: none; }
+  .camwarn.ok { background: #c9f2d4; color: #0f6b34; } .camwarn.info { background: var(--soft); color: var(--ink); }
   .fxs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
   .fxb { display: grid; gap: 2px; align-content: start; text-align: left; padding: 10px 12px; cursor: pointer; background: var(--card); border: 3px solid var(--line); border-radius: 12px;
          box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s; }
@@ -2745,7 +2747,7 @@ setInterval(() => question.poll(), 3000);
 // ---------------------------------------------------------------- smoking camera: status + live view
 const CAM_TEXT = {
   watching: ["ok", "Camera is watching"], paused: ["warn", "Camera paused"], cooldown: ["warn", "Camera resting"],
-  loading: ["busy", "Getting the camera ready"], no_camera: ["bad", "Can't open the camera"],
+  loading: ["busy", "Getting the camera ready"], starting_camera: ["busy", "Turning the camera on"], no_camera: ["bad", "Can't open the camera"],
   error: ["bad", "The camera AI didn't load"], off: ["", "The smoking detector is off"],
 };
 async function camStatus() {
@@ -2798,12 +2800,22 @@ document.addEventListener("click", e => {
   if (e.target.closest("#camView")) { camLive.timer ? camLive.stop() : camLive.start(); }
 });
 // on Home: only speak up when something's wrong
+// the camera's state, always visible on Home (when a smoking habit is tracked): is it watching right now?
 async function camWarn() {
   const c = await camStatus(), w = $("camWarn");
-  const bad = c && c.enabled && ["no_camera", "error"].includes(c.status) && HABITS.some(h => h.smoke);
-  w.hidden = !bad;
-  if (bad) w.textContent = `📷 ${CAM_TEXT[c.status][1]}, so cigarettes aren't noticed. Tap to check.`;
+  const show = c && c.enabled && c.status !== "off" && HABITS.some(h => h.smoke);
+  w.hidden = !show;
+  if (!show) return;
+  const bad = ["no_camera", "error"].includes(c.status);
+  w.classList.toggle("ok", c.status === "watching");
+  w.classList.toggle("info", !bad && c.status !== "watching");
+  w.textContent = bad ? `📷 ${CAM_TEXT[c.status][1]}, so cigarettes aren't noticed right now. Tap to check.`
+    : c.status === "watching" ? "📷 Watching for cigarettes"
+    : c.status === "paused" ? "📷 Camera off while you're away. It turns back on when you're back."
+    : c.status === "cooldown" ? `📷 Camera resting${c.until ? ` until ${clock(c.until)}` : ""}, after a cigarette.`
+    : "📷 Getting the camera ready…";
 }
+setInterval(() => { if (document.body.dataset.view === "home" && !document.hidden) camWarn(); }, 10000);
 
 // ---------------------------------------------------------------- friends
 // The dashboard only talks to your own LazyTrack (/api/cloud/...), which talks to the
