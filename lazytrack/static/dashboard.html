@@ -992,7 +992,8 @@ applyTheme();
         <li><b>Install.</b> Windows: double-click <code>LazyTrack-Setup.exe</code> (if Windows warns: More info → Run anyway).
           Mac: unzip <code>Install-LazyTrack-Mac.zip</code>, right-click <b>Install LazyTrack</b> → Open. It installs everything by itself, no Python needed.</li>
         <li><b>Start.</b> LazyTrack is in the Start menu / desktop (Windows) or Applications (Mac), starts with the computer and runs in the background.
-          The app opens in your browser at <code>localhost:8042</code>.</li>
+          LazyTrack opens in <b>its own app window</b>. Closing the window doesn't stop it: it keeps tracking in the background, and the shortcut brings the window back.
+          (It also works in any browser at <code>localhost:8042</code>, which is how the phone uses it.)</li>
         <li><b>Make your account</b>: name, username, email and password. The same account logs in on your other devices.</li>
         <li><b>Setup</b>: pick what you want to do less of and more of (or add your own), what to show from your screen, extras (42, GitHub), then set your <a href="#tab=docs&sec=targets">targets</a>.</li>
       </ol>
@@ -1155,7 +1156,8 @@ applyTheme();
     <section class="card pad" id="doc-trouble">
       <h2>Troubleshooting</h2>
       <ul>
-        <li><b>The page won't load:</b> LazyTrack isn't running. Start it again (start.command / start.bat).</li>
+        <li><b>The page won't load:</b> LazyTrack isn't running. Open it from the Start menu / Applications (or start.command / start.bat).</li>
+        <li><b>It opens in the browser instead of its own window:</b> the window part is still being installed after an update; it switches by itself after the next restart.</li>
         <li><b>Windows "protected your PC":</b> More info → Run anyway.</li>
         <li><b>Camera doesn't work:</b> allow camera access for desktop apps in the system settings, close other apps using it, then check the live view in Settings.</li>
         <li><b>Screen time looks low:</b> idle time and the lock screen don't count; on Windows unknown sites count as "Other websites".</li>
@@ -3139,6 +3141,17 @@ $("ripGo").addEventListener("click", async () => {
   try { await post("/api/life/seen", {}); } catch (_) {}
   render();
 });
+
+// ---------------------------------------------------------------- inside the LazyTrack app window
+// Links to other websites open in the real browser, so the app window always stays LazyTrack.
+document.addEventListener("click", e => {
+  const a = e.target.closest("a[href]");
+  if (!a || !window.pywebview || !window.pywebview.api) return;
+  const u = new URL(a.getAttribute("href"), location.href);
+  if (u.origin === location.origin) return;
+  e.preventDefault();
+  window.pywebview.api.open_external(u.href);
+}, true);
 
 // ---------------------------------------------------------------- the guided tour
 // Steps point at parts of the app (switching tabs when needed). Skip any step with the dots,

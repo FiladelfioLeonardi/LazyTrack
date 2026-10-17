@@ -69,10 +69,12 @@ def cmd_run(cfg: dict, args) -> None:
     from . import dashboard
 
     stop = threading.Event()
+    from .window import fix_mac_app
+    fix_mac_app()
     dashboard.start(cfg)
     if cfg["dashboard"].get("open_on_start", True) and not os.environ.get("LAZYTRACK_RESTARTED"):
-        import webbrowser
-        webbrowser.open(f"http://localhost:{cfg['dashboard']['port']}")
+        from .window import open_app
+        open_app(cfg)   # LazyTrack's own window (or the browser if windows aren't supported here)
     SyncWorker(cfg, stop).start()
     from .updater import UpdateWorker
     UpdateWorker(cfg, stop).start()
@@ -296,6 +298,11 @@ def cmd_phone(cfg: dict, args) -> None:
     print(f"\nLater, for the LazyTrack iPhone app (once it's installed), open this link on the phone:\n  {app_link}\n")
 
 
+def cmd_window(cfg: dict, args) -> None:
+    from .window import cmd_window as w
+    w(cfg, args)
+
+
 def main() -> None:
     p = argparse.ArgumentParser(prog="lazytrack", description="Track your life without lifting a finger.")
     p.add_argument("-v", "--verbose", action="store_true")
@@ -310,6 +317,7 @@ def main() -> None:
     tr = sub.add_parser("train", help="train your personal smoking model")
     tr.add_argument("--epochs", type=int, default=25)
     sub.add_parser("dashboard", help="only serve the dashboard")
+    sub.add_parser("window", help="open LazyTrack in its own app window")
     s = sub.add_parser("summary", help="print the weekly summary")
     s.add_argument("--last", action="store_true", help="last week instead of this week")
     sub.add_parser("sync", help="sync commits and 42 now")
@@ -327,4 +335,4 @@ def main() -> None:
         print(f"config: {config.CONFIG_PATH}")
         return
     {"run": cmd_run, "check": cmd_check, "camtest": cmd_camtest, "dashboard": cmd_dashboard,
-     "summary": cmd_summary, "sync": cmd_sync, "log": cmd_log, "phone": cmd_phone, "collect": cmd_collect, "train": cmd_train}[args.cmd](cfg, args)
+     "summary": cmd_summary, "sync": cmd_sync, "log": cmd_log, "phone": cmd_phone, "collect": cmd_collect, "train": cmd_train, "window": cmd_window}[args.cmd](cfg, args)

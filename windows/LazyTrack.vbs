@@ -1,5 +1,5 @@
 ' Starts LazyTrack without a black window. Used by the Start menu, desktop and startup shortcuts.
-' If it's already running, it just opens it in the browser. "/background" = start without opening the browser.
+' If it's already running, it just opens its window. "/background" = start without opening the browser.
 Option Explicit
 Dim sh, fso, dir, background, running, http
 Set sh = CreateObject("WScript.Shell")
@@ -17,7 +17,15 @@ If Err.Number = 0 Then running = True
 On Error GoTo 0
 
 If running Then
-  If Not background Then sh.Run "http://localhost:8042"
+  ' already running: show its window (or the browser if the window isn't available)
+  If Not background Then
+    If fso.FileExists(dir & "\.venv\Scripts\pythonw.exe") Then
+      sh.CurrentDirectory = dir
+      sh.Run """" & dir & "\.venv\Scripts\pythonw.exe"" -m lazytrack window", 0, False
+    Else
+      sh.Run "http://localhost:8042"
+    End If
+  End If
   WScript.Quit
 End If
 

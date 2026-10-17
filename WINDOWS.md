@@ -13,8 +13,8 @@ so friends can see you.
 3. When it's done, LazyTrack opens: **Let's go → make your account** (name, username, email, password) → pick your habits
    and targets → a short guided tour.
 
-LazyTrack is now in the **Start menu** and on the **desktop**, starts by itself with Windows, and runs quietly in the
-background (no black window). It **updates itself**: you never need the installer again.
+LazyTrack is now in the **Start menu** and on the **desktop**, opens in **its own window** (not the browser), starts by itself
+with Windows, and keeps tracking quietly in the background when you close the window (no black window). It **updates itself**: you never need the installer again.
 To remove it: Settings → Apps → LazyTrack → Uninstall (your data stays unless you choose to delete it).
 
 <details><summary>The manual way (without the installer)</summary>

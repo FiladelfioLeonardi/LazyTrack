@@ -5,3 +5,4 @@ opencv-python
 ultralytics
 clip @ https://github.com/ultralytics/CLIP/archive/refs/heads/main.zip
 qrcode
+pywebview

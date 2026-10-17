@@ -68,9 +68,12 @@ func makeShortcuts(dir string) error {
 		}
 	}
 	os.WriteFile(filepath.Join(app, "Contents", "Info.plist"), []byte(infoPlist), 0o644)
-	if err := copyFile(filepath.Join(dir, "mac", "launcher.sh"), filepath.Join(app, "Contents", "MacOS", "LazyTrack")); err != nil {
+	// a tiny stub that runs mac/launcher.sh from the app folder, so updates to the launcher reach this app too
+	stub := "#!/bin/bash\nexec \"$HOME/Library/Application Support/LazyTrack/mac/launcher.sh\" \"$@\"\n"
+	if err := os.WriteFile(filepath.Join(app, "Contents", "MacOS", "LazyTrack"), []byte(stub), 0o755); err != nil {
 		return err
 	}
+	os.Chmod(filepath.Join(dir, "mac", "launcher.sh"), 0o755)
 	copyFile(filepath.Join(dir, "assets", "lazytrack.icns"), filepath.Join(app, "Contents", "Resources", "lazytrack.icns"))
 	os.Chmod(filepath.Join(dir, "mac", "run.sh"), 0o755)
 	os.Chmod(filepath.Join(dir, "mac", "uninstall.command"), 0o755)
