@@ -3370,9 +3370,46 @@ function buildCard() {
           // how Mochi is doing right now (drunk, high, coughing) so friends see it too; "built" = when
           mood: (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy",
           fx: (({high, drunk, coughy}) => ({high, drunk, coughy}))(petState(O)), built: Math.round(Date.now() / 1000),
-          share_now: !shareKeys().includes("!now"),   // LazyTrack adds what you're doing right now (only the category)
+          share_now: !shareKeys().includes("!now"),
+          sprite: deviceSprite(PET_LOOK, (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy", O.health.tier),   // LazyTrack adds what you're doing right now (only the category)
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
           stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
+}
+/**
+ * Mochi as plain pixels for the LazyTrack device (the egg): the exact look, worked out by the same
+ * renderer as here. {w:16, p:["#rrggbb",...], n:"..", b:".."}: n = normal, b = blinking; one char
+ * per pixel, "." = see-through, else an index into p (0-9a-z).
+ */
+const spriteCache = {key: "", val: null};
+function deviceSprite(look, mood, tier) {
+  const key = JSON.stringify([look, mood, tier]);
+  if (spriteCache.key === key) return spriteCache.val;
+  const box = document.createElement("div");
+  box.style.cssText = "position:absolute;left:-9999px;top:0";
+  box.className = "pet";
+  document.body.appendChild(box);
+  const pal = [], frame = blink => {
+    box.innerHTML = mochiCells(look, mood, tier, blink);
+    return [...box.children].map(i => {
+      const c = getComputedStyle(i).backgroundColor;
+      let rgb = null, m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/);
+      if (m) { if (m[4] !== undefined && +m[4] < .5) return "."; rgb = [+m[1], +m[2], +m[3]]; }
+      else if ((m = c.match(/color\(srgb\s+([\d.e-]+)\s+([\d.e-]+)\s+([\d.e-]+)(?:\s*\/\s*([\d.]+))?/))) {   // what color-mix() gives back
+        if (m[4] !== undefined && +m[4] < .5) return ".";
+        rgb = [m[1], m[2], m[3]].map(v => Math.max(0, Math.min(255, +v * 255)));
+      }
+      if (!rgb) return ".";
+      const hex = "#" + rgb.map(v => Math.round(v).toString(16).padStart(2, "0")).join("");
+      let k = pal.indexOf(hex);
+      if (k < 0) { if (pal.length >= 36) return "."; pal.push(hex); k = pal.length - 1; }
+      return k.toString(36);
+    }).join("");
+  };
+  let val = null;
+  try { const n = frame(false), b = frame(true); val = n.length === 256 ? {w: 16, p: pal, n, b} : null; } catch (_) {}
+  box.remove();
+  spriteCache.key = key; spriteCache.val = val;
+  return val;
 }
 let lastPush = 0;
 function pushCard(force) {
