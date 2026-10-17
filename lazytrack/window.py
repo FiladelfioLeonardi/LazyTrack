@@ -91,6 +91,21 @@ def _wait_for_server(url: str, seconds: int = 90) -> bool:
 class _Api:
     """What the page can ask the window for (window.pywebview.api.*)."""
 
+    _window = None   # private: pywebview doesn't hand underscore names to the page
+
+    def front(self) -> None:
+        """Bring the window to the front (the smoking question just popped up in it)."""
+        w = self._window
+        if w is None:
+            return
+        try:
+            w.restore()
+            w.show()
+            w.on_top = True
+            w.on_top = False
+        except Exception:
+            pass
+
     def open_external(self, url: str) -> None:
         if str(url).startswith(("http://", "https://", "mailto:")):
             webbrowser.open(url)
@@ -175,8 +190,10 @@ def cmd_window(cfg: dict, args=None) -> None:
         webbrowser.open(url)
         return
 
+    api = _Api()
     window = webview.create_window("LazyTrack", url, width=1200, height=880, min_size=(380, 560),
-                                   background_color="#efeaff", text_select=True, js_api=_Api())
+                                   background_color="#efeaff", text_select=True, js_api=api)
+    api._window = window
 
     def front():
         try:

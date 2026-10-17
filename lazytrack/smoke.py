@@ -70,6 +70,13 @@ def answer_question(qid: int, answer: str) -> bool:
     return True
 
 
+APP_SEEN = {"t": 0.0}   # last time a LazyTrack page or window on this computer was on screen (it polls every 3 s)
+
+
+def app_on_screen() -> bool:
+    return time.time() - APP_SEEN["t"] < 7
+
+
 def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
     """Asks "cigarette or joint?" on every open LazyTrack page, and with the system popup when the
     computer's own camera noticed it. Returns the first answer, or None. Only one question at a time."""
@@ -80,7 +87,15 @@ def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
         _answered.clear()
     if source == "computer":
         def popup():
-            ans = system.ask(QUESTION_TEXT, BUTTONS, "Cigarette", timeout=timeout, cancel=_answered.is_set)
+            # LazyTrack open on this computer shows the question itself (and comes to the front):
+            # no system popup then. If it gets closed or hidden before an answer, the popup takes over.
+            t0 = time.time()
+            while not _answered.is_set() and app_on_screen() and time.time() - t0 < timeout:
+                _answered.wait(1)
+            left = timeout - (time.time() - t0)
+            if _answered.is_set() or left < 5:
+                return
+            ans = system.ask(QUESTION_TEXT, BUTTONS, "Cigarette", timeout=int(left), cancel=_answered.is_set)
             if ans:
                 answer_question(QUESTION["id"], ans)
         threading.Thread(target=popup, name="ask", daemon=True).start()

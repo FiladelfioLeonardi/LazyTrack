@@ -99,6 +99,11 @@ def make_handler(cfg: dict):
                 return self._send(401, {"error": "log in first"})
             if u.path == "/api/habits":
                 return self._send(200, habits.get())
+            if u.path == "/api/phone":
+                if not self._local():
+                    return self._send(403, {"error": "only on the computer itself"})
+                from . import phone
+                return self._send(200, phone.status(cfg))
             if u.path == "/api/life":
                 return self._send(200, {**life.status(), "suggestions": life.suggestions()})
             if u.path.startswith("/api/cloud/"):
@@ -110,6 +115,8 @@ def make_handler(cfg: dict):
                                         "can_view": self._local()})
             if u.path == "/api/camera/question":
                 from . import smoke
+                if self._local() and qs.get("visible", [""])[0] == "1":
+                    smoke.APP_SEEN["t"] = time.time()   # the app is on screen here: it asks, not the system popup
                 q = smoke.QUESTION
                 return self._send(200, {"open": q["open"], "id": q["id"], "source": q["source"], "asked_at": q["asked_at"],
                                         "text": smoke.QUESTION_TEXT, "buttons": smoke.BUTTONS})
@@ -190,6 +197,15 @@ def make_handler(cfg: dict):
                 return self._send(200, {"ok": smoke.answer_question(int(b.get("id", 0)), str(b.get("answer", "")))})
             if u.path == "/api/update/check":
                 return self._send(200, updater.check(config.load(), install=bool(b.get("install"))))
+            if u.path == "/api/phone/enable":
+                if not self._local():
+                    return self._send(403, {"error": "only on the computer itself"})
+                from . import phone
+                restart = phone.enable()
+                self._send(200, {"ok": True, "restarting": restart})
+                if restart:
+                    settings.restart_soon(1.0)   # start listening for the phone (with the token)
+                return None
             if u.path == "/api/life/rules":
                 life.save_rules(b.get("rules") or {})
                 return self._send(200, life.status())

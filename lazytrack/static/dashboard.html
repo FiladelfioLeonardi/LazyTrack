@@ -206,6 +206,11 @@
   .ripcard { text-align: center; } .ripcard .tomb { display: grid; grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; margin: 4px auto 10px; width: max-content; }
   .ripcard .tomb i { display: block; } .ripcard .stats { font: 400 13px var(--pixel); opacity: .8; margin: 6px 0 14px; }
   /* targets */
+  .phsteps { margin: 0 0 12px; padding-left: 22px; line-height: 1.6; } .phsteps li { margin: 4px 0; }
+  .phqr { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
+  .phqr .qr { width: 200px; height: 200px; padding: 8px; background: #fff; border: 3px solid var(--line); border-radius: 14px; }
+  .phqr .qr svg { width: 100%; height: 100%; display: block; }
+  .phqr code { word-break: break-all; font-size: 12px; }
   .tlist { display: grid; gap: 8px; }
   .trow { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; padding: 10px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--soft); }
   .trow .te { font-size: 22px; grid-row: span 2; } .trow .tn { font-weight: 800; } .trow .tn small { display: block; font: 400 11px var(--pixel); color: var(--ink-3); margin-top: 2px; }
@@ -1116,9 +1121,10 @@ applyTheme();
 
     <section class="card pad" id="doc-phone">
       <h2>Your phone</h2>
-      <p>The phone opens your LazyTrack from the computer through <b>Tailscale</b> (a free private connection between your own devices):
-        install it on both, log in with the same account, run <code>phone.bat</code> (Windows) or <code>./lt phone</code> (Mac), scan the QR code,
-        then Share → Add to Home Screen. The computer must be on with LazyTrack running.</p>
+      <p>The phone opens your LazyTrack from the computer through <b>Tailscale</b> (a free private connection between your own devices).
+        In <a href="#tab=settings">Settings → Your phone</a>: install Tailscale on the computer and the phone with the same account,
+        press <b>Connect my phone</b>, scan the QR code, then Share → Add to Home Screen (Android: ⋮ → Add to Home screen).
+        The computer must be on with LazyTrack running. It's private: only your own devices on Tailscale can reach it, with a secret code from the QR.</p>
     </section>
 
     <section class="card pad" id="doc-school">
@@ -1181,6 +1187,12 @@ applyTheme();
         <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.</p>
         <div class="hlist" id="hList"></div>
         <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
+      </section>
+
+      <section class="card pad" id="sPhone" hidden>
+        <h2>📱 Your phone</h2>
+        <p class="sub">Use LazyTrack on your phone too: Mochi, your stats, the log buttons, friends and chat, from anywhere.</p>
+        <div id="phBox"><p class="note">Loading…</p></div>
       </section>
 
       <section class="card pad" id="sTargets">
@@ -2718,7 +2730,7 @@ const question = {
   async poll() {
     if (!AUTH.logged_in || document.hidden) return;
     try {
-      const r = await api("/api/camera/question"); if (!r.ok) return;
+      const r = await api("/api/camera/question?visible=1"); if (!r.ok) return;
       const q = await r.json();
       if (q.open && !this.done.has(q.id)) this.show(q); else if (!q.open && this.shown) this.hide();
     } catch (_) {}
@@ -2731,6 +2743,7 @@ const question = {
     $("qBtns").innerHTML = q.buttons.map(b => `<button type="button" class="btn ${b === "Cigarette" ? "primary" : ""}" data-qa="${esc(b)}" data-qid="${q.id}">${esc(Q_LABEL[b] || b)}</button>`).join("");
     $("qModal").hidden = false;
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+    try { if (window.pywebview && window.pywebview.api && window.pywebview.api.front) window.pywebview.api.front(); } catch (_) {}   // the app window comes to the front
   },
   hide() { this.shown = 0; $("qModal").hidden = true; },
   async answer(id, a) {
@@ -3132,6 +3145,53 @@ document.addEventListener("click", async e => {
   } catch (_) { $("tNote").textContent = "Couldn't save."; }
 });
 
+// ---------------------------------------------------------------- your phone (Settings): Tailscale + a QR code
+const phoneSetup = {
+  async load() {
+    $("sPhone").hidden = !AUTH.local;   // only on the computer itself
+    if (!AUTH.local) return;
+    let s;
+    try { s = await (await api("/api/phone")).json(); } catch (_) { $("phBox").innerHTML = `<p class="note">Couldn't check right now.</p>`; return; }
+    const ts = `<a href="https://tailscale.com/download" target="_blank" rel="noopener">Tailscale</a>`;
+    if (!s.tailscale || !s.ip) {
+      $("phBox").innerHTML = `<ol class="phsteps">
+          <li>Install ${ts} on <b>this computer</b> and log in (it's free: a private connection between your own devices).</li>
+          <li>Install <b>Tailscale</b> on your <b>phone</b> (App Store / Play Store) and log in with the <b>same account</b>. Switch it on.</li>
+          <li>Come back here and press the button.</li></ol>
+        <p class="note">${s.tailscale ? "Tailscale is installed here but not logged in or switched on yet." : "Tailscale isn't on this computer yet."}</p>
+        <div class="actions"><button type="button" class="btn primary" data-phone="check">I did it, check again</button></div>`;
+      return;
+    }
+    if (!s.live) {
+      $("phBox").innerHTML = `<p>Tailscale is on ✅ (this computer is <code>${esc(s.ip)}</code>). Now let LazyTrack talk to your phone.
+          It stays private: only your own devices on Tailscale can reach it, and only with a secret code from the QR.</p>
+        ${s.windows ? `<p class="note">If Windows asks whether to allow LazyTrack (Python) on networks, click <b>Allow</b>.</p>` : ""}
+        <div class="actions"><button type="button" class="btn primary" data-phone="enable">Connect my phone</button></div>`;
+      return;
+    }
+    $("phBox").innerHTML = `<div class="phqr">${s.qr ? `<div class="qr" aria-label="QR code for your phone">${s.qr}</div>` : ""}
+        <ol class="phsteps"><li>Make sure <b>Tailscale is on</b> on your phone.</li>
+          <li>Scan this with your phone's <b>camera</b> and open the link.</li>
+          <li>iPhone: <b>Share → Add to Home Screen</b>. Android: <b>⋮ → Add to Home screen</b>. Now it's an app icon.</li></ol></div>
+      <p class="note" style="margin-top:10px">Or open this on the phone: <code>${esc(s.url)}</code><br>
+        Keep this computer on with LazyTrack running: the phone shows what this computer tracks.</p>`;
+  },
+};
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-phone]"); if (!b) return;
+  if (b.dataset.phone === "check") return phoneSetup.load();
+  b.disabled = true; b.textContent = "Connecting…";
+  try {
+    const r = await (await post("/api/phone/enable", {})).json();
+    if (r.restarting) {   // LazyTrack restarts once to start listening for the phone
+      $("phBox").innerHTML = `<p class="note">Restarting LazyTrack so your phone can reach it…</p>`;
+      await new Promise(res => setTimeout(res, 2500));
+      for (let i = 0; i < 40; i++) { try { if ((await fetch("/api/ping")).ok) break; } catch (_) {} await new Promise(res => setTimeout(res, 750)); }
+    }
+  } catch (_) {}
+  phoneSetup.load();
+});
+
 // ---------------------------------------------------------------- when Mochi dies
 const TOMB = ["................", ".....oooooo.....", "....osssssso....", "...osssssssso...", "...osssSSssso...", "...osSSSSSSso...", "...osssSSssso...", "...osssSSssso...", "...osssSSssso...", "...osssSSssso...", "...osssssssso...", "...osssssssso...", ".EEooooooooooEE.", "EEEEEEEEEEEEEEEE", "................", "................"];
 const rip = {
@@ -3428,7 +3488,7 @@ async function render() {
   updateBadge();
   try {
     if (view === "detail") await loadDetail(r.k);
-    else if (view === "settings") { drawAccount(); drawUpdates(); drawCam(); targets.load(); await loadSettings(); }
+    else if (view === "settings") { drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
