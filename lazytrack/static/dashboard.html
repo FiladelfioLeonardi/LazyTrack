@@ -144,9 +144,9 @@
   .statsheet { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 22px; align-content: center; }
   @media (min-width: 900px) { .statsheet { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .petside { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
-  .petwho { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding: 0 6px; min-width: 0; }
-  .petwho b { font: 800 20px/1.15 var(--body); overflow-wrap: anywhere; }
-  .petwho span { font: 700 13px var(--pixel); opacity: .7; overflow-wrap: anywhere; }
+  .petwho { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; padding: 0 6px 8px; margin-bottom: 6px; border-bottom: 2px dashed rgba(29,27,32,.25); min-width: 0; }
+  .petwho b { font: 900 26px/1.1 var(--body); letter-spacing: -.01em; overflow-wrap: anywhere; }
+  .petwho span { font: 700 14px var(--pixel); opacity: .6; overflow-wrap: anywhere; }
   .stat { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 5px 6px; border: 0; background: none; border-radius: 10px; cursor: pointer; color: var(--on-fill); text-align: left; }
   .stat:hover { background: rgba(255,255,255,.45); }
   .stat .se { font-size: 18px; flex: none; }
@@ -194,7 +194,7 @@
     .pettop { gap: 12px; align-items: flex-start; }
     .petbox { width: 96px; height: 96px; } .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
     .petbox.scene { width: 120px; height: 120px; } .petbox.scene .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
-    .statsheet { grid-template-columns: 1fr; gap: 0; } .petwho { padding: 0 4px; } .petwho b { font-size: 17px; }
+    .statsheet { grid-template-columns: 1fr; gap: 0; } .petwho { padding: 0 4px 6px; margin-bottom: 4px; } .petwho b { font-size: 21px; }
     .stat { padding: 3px 4px; } .stat .sv { font-size: 16px; }
   }
 
