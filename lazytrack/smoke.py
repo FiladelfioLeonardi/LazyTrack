@@ -32,6 +32,91 @@ from . import config, db, system
 log = logging.getLogger(__name__)
 
 ANSWERS = {"Cigarette": "cigarette", "Joint": "joint"}
+ALREADY = "Already registered"   # you logged it yourself already: camera off, nothing logged twice
+BUTTONS = ["Cigarette", "Joint", ALREADY, "Neither"]
+QUESTION_TEXT = "Caught you 👀\nIs that a cigarette or a joint?"
+
+# Shared between the computer's camera and a phone watching: one cigarette is one cigarette.
+SHARED = {"cooldown_until": 0.0,   # after a cigarette/joint: cameras off
+          "quiet_until": 0.0}      # after "Neither": cameras on, but no new question for a bit
+QUESTION = {"id": 0, "open": False, "source": "", "asked_at": 0.0, "answer": None}
+_question_lock = threading.Lock()
+_answered = threading.Event()
+_SCORER = {"scorer": None}
+_scorer_lock = threading.Lock()
+
+
+def shared_scorer(s: dict):
+    """One AI model for every camera (it's big). Scoring goes through a lock."""
+    with _scorer_lock:
+        if _SCORER["scorer"] is None:
+            _SCORER["scorer"] = make_scorer(s)
+        return _SCORER["scorer"]
+
+
+def score_crop(s: dict, crop) -> float:
+    sc = shared_scorer(s)
+    with _scorer_lock:
+        return sc.score(crop)
+
+
+def answer_question(qid: int, answer: str) -> bool:
+    """An answer from any LazyTrack page (computer or phone). The first answer wins."""
+    with _question_lock:
+        if not QUESTION["open"] or QUESTION["id"] != int(qid) or answer not in BUTTONS or QUESTION["answer"]:
+            return False
+        QUESTION["answer"] = answer
+    _answered.set()
+    return True
+
+
+def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
+    """Asks "cigarette or joint?" on every open LazyTrack page, and with the system popup when the
+    computer's own camera noticed it. Returns the first answer, or None. Only one question at a time."""
+    with _question_lock:
+        if QUESTION["open"]:
+            return None
+        QUESTION.update(id=QUESTION["id"] + 1, open=True, source=source, asked_at=time.time(), answer=None)
+        _answered.clear()
+    if source == "computer":
+        def popup():
+            ans = system.ask(QUESTION_TEXT, BUTTONS, "Cigarette", timeout=timeout, cancel=_answered.is_set)
+            if ans:
+                answer_question(QUESTION["id"], ans)
+        threading.Thread(target=popup, name="ask", daemon=True).start()
+    _answered.wait(timeout)
+    with _question_lock:
+        QUESTION["open"] = False
+        ans = QUESTION["answer"]
+    _answered.set()   # closes the popup if it's still up
+    return ans
+
+
+def handle_answer(ans: Optional[str], crop, s: dict, device: str, source: str) -> str:
+    """Logs the answer, sets the shared cooldowns, keeps the photo for training. Returns a label."""
+    now = time.time()
+    if ans in ANSWERS:
+        label = ANSWERS[ans]
+        db.add_event(label, device, source=source)
+    elif ans == ALREADY:
+        label = "already"
+    elif ans == "Neither":
+        label = "none"
+        db.add_event("smoke_false_alarm", device, source=source)
+    else:
+        label = ""
+        db.add_event("smoke_unconfirmed", device, source=source)
+    if label in ("cigarette", "joint", "already"):
+        SHARED["cooldown_until"] = now + s["cooldown_minutes"] * 60
+    else:
+        SHARED["quiet_until"] = now + s["false_alarm_cooldown_minutes"] * 60
+    log.info("smoke question (%s): answer=%s", source, ans)
+    if label and crop is not None and s.get("save_labeled_frames"):
+        try:
+            save_crop(crop, "not_smoking" if label == "none" else "smoking")
+        except Exception:
+            log.exception("could not save training crop")
+    return label
 DATASET = config.HOME / "dataset"            # dataset/smoking/*.jpg, dataset/not_smoking/*.jpg
 PERSONAL_MODEL = config.HOME / "smoke-personal.pt"
 # photo-loading helper processes for training: none on Windows (spawning them there is slow and fragile)
@@ -410,7 +495,7 @@ class SmokeDetector(threading.Thread):
         _set("loading", "Loading the camera AI. The first time it downloads it (about 400 MB).")
         try:
             import cv2
-            self.scorer = make_scorer(self.scfg)
+            self.scorer = shared_scorer(self.scfg)
             self.faces = FaceTracker()
             self.ember = EmberTracker()
         except Exception as e:
@@ -434,11 +519,9 @@ class SmokeDetector(threading.Thread):
         # runs on the processor: look half as often so the fan stays quiet. Evidence still adds up.
         every = max(1, int(s["yolo_every_n_frames"])) * (2 if pick_device() == "cpu" else 1)
         hit_crop = None
-        cooldown_until = 0.0   # after a confirmed cigarette/joint: camera off
-        quiet_until = 0.0      # after "Neither": camera stays on, just no new question for a bit
-
         while not self.stop_ev.is_set():
             t0 = time.time()
+            cooldown_until = SHARED["cooldown_until"]
             if t0 < cooldown_until or self._paused():
                 if cap is not None:  # release camera -> green light off
                     cap.release()
@@ -454,7 +537,9 @@ class SmokeDetector(threading.Thread):
                 mtime = PERSONAL_MODEL.stat().st_mtime if PERSONAL_MODEL.exists() else 0.0
                 if mtime != model_mtime:
                     model_mtime = mtime
-                    self.scorer = make_scorer(s)
+                    with _scorer_lock:
+                        _SCORER["scorer"] = make_scorer(s)
+                    self.scorer = _SCORER["scorer"]
                     log.info("smoke detector switched to the %s", self.scorer.name)
                 self.stop_ev.wait(5)
                 continue
@@ -511,7 +596,7 @@ class SmokeDetector(threading.Thread):
             if t0 - last_presence < 5 and n % every == 0:
                 crop, _ = roi(frame, face)
                 try:
-                    score = self.scorer.score(crop)
+                    score = score_crop(s, crop)
                 except Exception:
                     log.exception("scoring failed")
                     score = 0.0
@@ -523,17 +608,15 @@ class SmokeDetector(threading.Thread):
 
             # --- stage 3: enough evidence -> ask (the camera stays on while asking) ---
             if t0 - last_presence < 5:
-                if evidence.value() >= trigger and t0 >= quiet_until:
+                if evidence.value() >= trigger and t0 >= SHARED["quiet_until"] and not QUESTION["open"]:
                     evidence.reset()
                     label = self._ask(hit_crop)
-                    if label in ("cigarette", "joint"):
-                        # confirmed: switch the camera off so one cigarette isn't counted twice
+                    if label in ("cigarette", "joint", "already"):
+                        # confirmed (or you logged it yourself): camera off so one cigarette isn't counted twice
                         cap.release()
                         cap = None
-                        cooldown_until = time.time() + s["cooldown_minutes"] * 60
                     else:
                         # "Neither" or no answer: keep watching, but don't ask again right away
-                        quiet_until = time.time() + s["false_alarm_cooldown_minutes"] * 60
                         for _ in range(5):  # skip frames buffered while the question was open
                             cap.grab()
                     prev = None
@@ -549,26 +632,79 @@ class SmokeDetector(threading.Thread):
 
     def _ask(self, crop) -> str:
         system.notify("LazyTrack 👀", "Looks like you're smoking")
-        ans = system.ask("Caught you 👀\nIs that a cigarette or a joint?",
-                        ["Neither", "Joint", "Cigarette"], "Cigarette", timeout=120)
-        if ans in ANSWERS:
-            label = ANSWERS[ans]
-            db.add_event(label, self.device_name, source="camera")
-        elif ans == "Neither":
-            label = "none"
-            db.add_event("smoke_false_alarm", self.device_name, source="camera")
-        else:
-            label = ""
-            db.add_event("smoke_unconfirmed", self.device_name, source="camera")
-        log.info("smoke detector: answer=%s", ans)
+        ans = ask_everywhere("computer", timeout=120)
+        return handle_answer(ans, crop, self.scfg, self.device_name, "camera")
 
-        # every answer becomes a training example for `lt train`
-        if label and crop is not None and self.scfg.get("save_labeled_frames"):
-            try:
-                save_crop(crop, "not_smoking" if label == "none" else "smoking")
-            except Exception:
-                log.exception("could not save training crop")
-        return label
+
+# ---------------------------------------------------------------- a phone as the camera
+class PhoneWatcher:
+    """The phone sends a few small pictures per second while LazyTrack is open on it; this runs
+    the same checks as the computer's camera (face, glowing tip and pulls, the AI) and asks on
+    every open page when it's sure. iPhones only allow the camera while the page is on screen."""
+
+    def __init__(self):
+        self.faces = FaceTracker()
+        self.ember = EmberTracker()
+        self.evidence = None
+        self.n = 0
+        self.last_presence = 0.0
+        self.last_frame = 0.0
+        self.hit_crop = None
+        self.prev = None
+        self.lock = threading.Lock()
+
+    def frame(self, jpg: bytes, cfg: dict) -> dict:
+        import cv2
+        import numpy as np
+        s = cfg["smoke"]
+        now = time.time()
+        trigger = float(s["trigger_score"])
+        if now < SHARED["cooldown_until"]:
+            return {"status": "cooldown", "until": SHARED["cooldown_until"], "evidence": 0.0, "trigger": trigger}
+        with self.lock:
+            if self.evidence is None or now - self.last_frame > 60:   # a new watching session
+                self.evidence = Evidence(s["evidence_half_life"])
+                self.ember = EmberTracker()
+            self.last_frame = now
+            img = cv2.imdecode(np.frombuffer(jpg, np.uint8), cv2.IMREAD_COLOR)
+            if img is None:
+                return {"status": "bad_picture", "evidence": 0.0, "trigger": trigger}
+            raw = img
+            img, light = fix_light(img, s.get("light_fix", "auto"))
+            face, gray = self.faces.update(img)
+            moving = self.prev is not None and self.prev.shape == gray.shape and \
+                float(cv2.absdiff(gray, self.prev).mean()) > s["motion_threshold"]
+            self.prev = gray
+            if face is not None or moving:   # someone's there (a hand can hide the face while smoking)
+                self.last_presence = now
+            ember = self.ember.update(raw, face, now)
+            if ember == "pull":
+                self.hit_crop = roi(img, face)[0].copy()
+                self.evidence.add_bonus(2.0 + (trigger if self.ember.pulls_recent() >= 2 else 0.0))
+            self.n += 1
+            score = None
+            if now - self.last_presence < 5 and self.n % 2 == 0:
+                crop, _ = roi(img, face)
+                score = score_crop(s, crop)
+                if self.evidence.add_score(score, shared_scorer(s).threshold, ember in ("glow", "pull")) > 0:
+                    self.hit_crop = crop.copy()
+            ev = self.evidence.value()
+            ask = ev >= trigger and now >= SHARED["quiet_until"] and not QUESTION["open"]
+            if ask:
+                self.evidence.reset()
+                crop, device = self.hit_crop, cfg.get("device_name", "computer")
+                self.hit_crop = None
+                self.ember.pulls.clear()
+
+                def run():
+                    ans = ask_everywhere("phone", timeout=120)
+                    handle_answer(ans, crop, s, "iphone", "phone_camera")
+                threading.Thread(target=run, name="ask-phone", daemon=True).start()
+        return {"status": "watching", "face": face is not None, "ember": ember, "light": light,
+                "score": score, "evidence": min(ev, trigger), "trigger": trigger, "asking": ask or QUESTION["open"]}
+
+
+PHONE = PhoneWatcher()
 
 
 # ---------------------------------------------------------------- interactive tools (main thread)

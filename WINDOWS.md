@@ -43,6 +43,16 @@ your PC, from anywhere, through Tailscale (a free private connection between you
 
 The PC has to be on with LazyTrack running for the phone to show your stats.
 
+**The phone as a smoking camera:** on Home, tap **📷 Watch with this phone's camera** and prop the
+phone up so it sees your face and hands. It works while LazyTrack is open on screen (iPhones never let
+apps use the camera in the background) and keeps the screen awake. For this, phone.bat makes a secure
+(https) link through Tailscale: if it says https has to be switched on, open the link it shows, click
+Enable, and run phone.bat again. Then scan the new QR code and add that page to the home screen.
+
+**The question pops up everywhere:** when a camera catches you, "cigarette or joint?" shows on the PC
+and in every open LazyTrack page, phone included. Answer anywhere. **Already registered** means you
+logged it yourself already: nothing is logged twice, and the camera rests for a while.
+
 ## Test it
 
 - **`camtest.bat`**: opens the camera with the live smoking score. Hold a pen like a cigarette:

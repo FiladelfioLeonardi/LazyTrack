@@ -353,6 +353,25 @@
   .camimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .camimg .note { position: absolute; color: #fff; }
   .camside .meter i { background: var(--today); transition: width .4s; }
+  .qmodal { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 16px; background: rgba(23, 20, 31, .55);
+            animation: fadeIn .25s ease; }
+  .qmodal[hidden] { display: none; }
+  .qcard { width: min(420px, 100%); background: var(--card); border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line);
+           padding: 22px 20px; display: grid; gap: 12px; justify-items: center; text-align: center; animation: slideUp .35s cubic-bezier(.2, .8, .2, 1); }
+  .qbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 6px; }
+  .qbtns .btn { justify-content: center; height: 52px; }
+  .qbtns .btn.wide { grid-column: 1 / -1; }
+  .watch { position: fixed; inset: 0; z-index: 30; background: var(--bg); display: grid; grid-template-rows: minmax(0, 1fr) auto; gap: 14px;
+           padding: calc(14px + env(safe-area-inset-top)) 14px calc(16px + env(safe-area-inset-bottom)); }
+  .watch[hidden] { display: none; }
+  .wvid { position: relative; border: 3px solid var(--line); border-radius: 18px; overflow: hidden; background: #1d1b20; min-height: 0; }
+  .wvid video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
+  .wbadge { position: absolute; left: 12px; top: 12px; background: var(--card); color: var(--ink); border: 2px solid var(--line); border-radius: 10px;
+            padding: 4px 10px; font: 700 13px var(--body); }
+  .wpanel { display: grid; gap: 10px; }
+  .wpanel .meter i { background: var(--today); transition: width .4s; }
+  .phonecam { margin-top: 14px; width: 100%; justify-content: center; }
+  .phonecam[hidden], .btn[hidden] { display: none; }
   .camwarn { display: block; margin-top: 14px; padding: 12px 16px; border: 3px solid var(--line); border-radius: 14px; background: var(--red);
              color: #1d1b20; font-weight: 800; text-decoration: none; box-shadow: 3px 3px 0 var(--line); }
   .camwarn[hidden] { display: none; }
@@ -398,6 +417,14 @@
   .w { display: inline-block; animation: wordIn .5s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: var(--d, 0ms); }
   .tl.anim .dot { animation: pop .4s cubic-bezier(.3, 1.4, .5, 1) backwards; animation-delay: var(--d, 0ms); }
   .tl.anim .block, .meter.anim i { animation: grow .7s cubic-bezier(.2, .7, .2, 1) backwards; transform-origin: left center; animation-delay: var(--d, 250ms); }
+  /* buttons lift a little under the mouse (only with a mouse: on phones there's no hover) */
+  @media (hover: hover) {
+    .btn, .tab, .logbtn, .chip, .barrow, .daynav { transition: transform .16s ease, box-shadow .16s ease, background-color .2s; }
+    .btn:hover:not(:disabled), .tab:hover:not([aria-current="page"]), .daynav:hover { transform: translate(-1px, -2px); box-shadow: 4px 5px 0 var(--line); }
+    .logbtn:hover, .chip:hover { transform: translate(-1px, -2px); box-shadow: 5px 6px 0 var(--line); }
+    .btn:hover:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
+    .logbtn:hover:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--line); }
+  }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
 
   /* ------------------------------------------------------------ welcome screen (every time the app opens) */
@@ -627,6 +654,26 @@ applyTheme();
   </div>
 </section>
 <canvas id="aura" aria-hidden="true"></canvas>
+<!-- the smoking question, shown on every open LazyTrack page (computer and phone) -->
+<div class="qmodal" id="qModal" hidden role="dialog" aria-modal="true" aria-labelledby="qTitle">
+  <div class="qcard">
+    <div class="apet"><div class="pet bob" id="qPet" aria-hidden="true"></div></div>
+    <h2 class="ptitle" id="qTitle" style="font-size:26px">Caught you 👀</h2>
+    <p class="psub" id="qSub">Is that a cigarette or a joint?</p>
+    <div class="qbtns" id="qBtns"></div>
+  </div>
+</div>
+<!-- the phone as the camera -->
+<div class="watch" id="watch" hidden>
+  <div class="wvid"><video id="wVideo" playsinline muted autoplay></video>
+    <span class="wbadge" id="wBadge">Starting…</span></div>
+  <div class="wpanel">
+    <div class="label">SMOKING EVIDENCE</div>
+    <div class="meter"><i id="wEv" style="width:0%"></i></div>
+    <p class="note" id="wNote">Prop the phone up so it sees your face and hands. Keep LazyTrack open: iPhones only let the camera work while the page is on screen.</p>
+    <button type="button" class="btn primary" id="wStop" style="justify-self:start">Stop watching</button>
+  </div>
+</div>
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#"><span class="mini" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 10 10" shape-rendering="crispEdges"><path fill="#1d1b20" d="M2 2h6v1H2zM1 3h1v5H1zM8 3h1v5H8zM3 4h1v1H3zM6 4h1v1H6zM2 8h2v1H2zM6 8h2v1H6zM4 6h2v1H4z"/></svg></span>LAZYTRACK</a>
@@ -663,6 +710,7 @@ applyTheme();
     </section>
 
     <a class="camwarn" id="camWarn" href="#tab=settings" hidden></a>
+    <button type="button" class="btn phonecam" id="phoneCam" hidden>📷 Watch with this phone's camera</button>
     <div class="logbar" id="logbar" aria-label="Log something"></div>
     <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
 
@@ -1612,6 +1660,95 @@ async function loadSettings() {
   }
   settingsLoaded = true;
 }
+// ---------------------------------------------------------------- the smoking question, on every page
+// When a camera (the computer's or a phone's) thinks you're smoking, LazyTrack opens one question.
+// Every open page shows it; the first answer wins and closes it everywhere (the PC popup too).
+const Q_LABEL = {Cigarette: "🚬 Cigarette", Joint: "🌿 Joint", "Already registered": "✅ Already registered", Neither: "Neither"};
+const question = {
+  shown: 0, done: new Set(),
+  async poll() {
+    if (!AUTH.logged_in || document.hidden) return;
+    try {
+      const r = await api("/api/camera/question"); if (!r.ok) return;
+      const q = await r.json();
+      if (q.open && !this.done.has(q.id)) this.show(q); else if (!q.open && this.shown) this.hide();
+    } catch (_) {}
+  },
+  show(q) {
+    if (this.shown === q.id) return;
+    this.shown = q.id;
+    $("qPet").innerHTML = petCells(PET.smoky, "okay");
+    $("qSub").textContent = (q.source === "phone" ? "Your phone saw it. " : "") + "Is that a cigarette or a joint?";
+    $("qBtns").innerHTML = q.buttons.map(b => `<button type="button" class="btn ${b === "Cigarette" ? "primary" : ""}" data-qa="${esc(b)}" data-qid="${q.id}">${esc(Q_LABEL[b] || b)}</button>`).join("");
+    $("qModal").hidden = false;
+    if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
+  },
+  hide() { this.shown = 0; $("qModal").hidden = true; },
+  async answer(id, a) {
+    this.done.add(id); this.hide();
+    try { await post("/api/camera/answer", {id, answer: a}); } catch (_) {}
+    toast(a === "Cigarette" || a === "Joint" ? `Logged a ${a.toLowerCase()}. Camera off for a bit so it isn't counted twice.`
+        : a === "Already registered" ? "Got it, nothing logged twice. Camera off for a bit." : "Okay, my bad. Still watching.", null);
+    render();
+  },
+};
+document.addEventListener("click", e => { const b = e.target.closest("[data-qa]"); if (b) question.answer(+b.dataset.qid, b.dataset.qa); });
+setInterval(() => question.poll(), 3000);
+
+// ---------------------------------------------------------------- a phone as the camera
+// Safari only gives the camera to secure (https) pages: `lt phone` / phone.bat makes that link.
+const isPhone = () => matchMedia("(pointer: coarse)").matches && innerWidth < 900;
+const watcher = {
+  stream: null, timer: null, lock: null, busy: false,
+  canUse: () => !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) && window.isSecureContext,
+  async start() {
+    if (!this.canUse()) {
+      toast("The phone camera needs the secure link. On the computer, run phone.bat (Windows) or ./lt phone (Mac) and open the new link.", null);
+      return;
+    }
+    $("watch").hidden = false; $("wBadge").textContent = "Starting the camera…";
+    try {
+      this.stream = await navigator.mediaDevices.getUserMedia({video: {facingMode: "user", width: {ideal: 1280}, height: {ideal: 720}}, audio: false});
+    } catch (e) {
+      $("wBadge").textContent = "No camera access"; $("wNote").textContent = "Allow the camera for this page (Safari: aA → Website Settings → Camera), then try again.";
+      return;
+    }
+    $("wVideo").srcObject = this.stream;
+    try { this.lock = await navigator.wakeLock.request("screen"); } catch (_) {}   // keep the screen on while watching
+    this.timer = setInterval(() => this.send(), 500);
+  },
+  stop() {
+    clearInterval(this.timer); this.timer = null;
+    if (this.stream) this.stream.getTracks().forEach(t => t.stop());
+    this.stream = null;
+    if (this.lock) { this.lock.release().catch(() => {}); this.lock = null; }
+    $("watch").hidden = true;
+  },
+  async send() {
+    const v = $("wVideo");
+    if (this.busy || !v.videoWidth || document.hidden) return;
+    this.busy = true;
+    try {
+      const w = 640, h = Math.round(640 * v.videoHeight / v.videoWidth);
+      const c = this.canvas || (this.canvas = document.createElement("canvas"));
+      c.width = w; c.height = h; c.getContext("2d").drawImage(v, 0, 0, w, h);
+      const blob = await new Promise(res => c.toBlob(res, "image/jpeg", 0.7));
+      const r = await api("/api/camera/phone-frame", {method: "POST", headers: {"Content-Type": "image/jpeg"}, body: blob});
+      const j = await r.json();
+      const pct = j.trigger ? Math.min(100, 100 * (j.evidence || 0) / j.trigger) : 0;
+      $("wEv").style.width = pct.toFixed(0) + "%";
+      $("wBadge").textContent = j.status === "cooldown" ? `Resting until ${clock(j.until)}` : j.status === "off" ? "The smoking detector is off (Settings)"
+        : j.status === "error" ? "The camera AI had a problem" : j.ember === "pull" ? "🔥 Pull!" : j.ember === "glow" ? "🔥 Glowing tip"
+        : j.face ? "Watching 👀" : "Looking for your face…";
+      if (j.asking) question.poll();
+    } catch (_) { $("wBadge").textContent = "Can't reach your computer"; }
+    this.busy = false;
+  },
+};
+$("phoneCam").addEventListener("click", () => watcher.start());
+$("wStop").addEventListener("click", () => watcher.stop());
+document.addEventListener("visibilitychange", () => { if (document.hidden && watcher.stream) watcher.stop(); });
+
 // ---------------------------------------------------------------- smoking camera: status + live view
 const CAM_TEXT = {
   watching: ["ok", "Camera is watching"], paused: ["warn", "Camera paused"], cooldown: ["warn", "Camera resting"],
@@ -2086,7 +2223,7 @@ async function render() {
     else {
       await loadOverview();
       ({home: renderHome, habits: renderHabits, screen: renderScreen, school: renderSchool, friends: renderFriends})[view]();
-      if (view === "home") camWarn();
+      if (view === "home") { camWarn(); $("phoneCam").hidden = !(isPhone() && HABITS.some(h => h.smoke)); }
     }
     $("offline").style.display = "none";
     if (animNow) entrance(view);

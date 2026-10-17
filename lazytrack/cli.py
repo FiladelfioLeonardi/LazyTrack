@@ -184,13 +184,47 @@ def cmd_log(cfg: dict, args) -> None:
     print(f"logged {args.kind}")
 
 
-def _tailscale_ip() -> str:
+def _tailscale_exes():
     import shutil
+    return [e for e in [shutil.which("tailscale"), "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+                        r"C:\Program Files\Tailscale\tailscale.exe"] if e and os.path.exists(e)]
+
+
+def _tailscale_https(port: int) -> str:
+    """Puts LazyTrack behind Tailscale's https (`tailscale serve`), so Safari lets the page use the
+    phone's camera. Returns the https address, or "" (then the phone still works, just no camera)."""
+    import json
+    import re
     import subprocess
-    for exe in [shutil.which("tailscale"), "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
-                r"C:\Program Files\Tailscale\tailscale.exe"]:
-        if not exe or not os.path.exists(exe):
+    for exe in _tailscale_exes():
+        try:
+            st = json.loads(subprocess.run([exe, "status", "--json"], capture_output=True, text=True, timeout=10).stdout or "{}")
+            dns = ((st.get("Self") or {}).get("DNSName") or "").rstrip(".")
+            if not dns:
+                continue
+            r = subprocess.run([exe, "serve", "--bg", str(port)], capture_output=True, text=True, timeout=25)
+            out = (r.stdout or "") + (r.stderr or "")
+            if r.returncode == 0:
+                return f"https://{dns}"
+            link = re.search(r"https://login\.tailscale\.com/\S+", out)
+            print("\n!! For the phone camera, Tailscale's https has to be switched on once (free):")
+            print(f"   open {link.group(0)} and click Enable," if link else
+                  "   open https://login.tailscale.com/admin/dns and enable HTTPS Certificates,")
+            print(f"   then run {LT} phone again.")
+            if "access denied" in out.lower() or "permission" in out.lower():
+                print("   (If it says access denied: run it once as administrator / with sudo.)")
+            return ""
+        except subprocess.TimeoutExpired:
+            print(f"\n!! Tailscale is waiting for https to be switched on: check the Tailscale admin page, then run {LT} phone again.")
+            return ""
+        except (OSError, ValueError):
             continue
+    return ""
+
+
+def _tailscale_ip() -> str:
+    import subprocess
+    for exe in _tailscale_exes():
         try:
             out = subprocess.run([exe, "ip", "-4"], capture_output=True, text=True, timeout=10)
             ip = out.stdout.strip().splitlines()[0] if out.returncode == 0 and out.stdout.strip() else ""
@@ -275,6 +309,13 @@ def cmd_phone(cfg: dict, args) -> None:
         return
 
     dashboard_url = f"{remote}/?token={quote(token)}"
+    # the secure link (lets the phone use its camera for the smoking detector)
+    https = _tailscale_https(port)
+    if https and _ping(f"{https}/api/ping?token={quote(token)}", timeout=8):
+        dashboard_url = f"{https}/?token={quote(token)}"
+        print("✅ Secure link ready: the phone can use its camera too.")
+    elif https:
+        print("!! The secure link isn't answering yet. Using the normal link (everything works except the phone camera).")
     app_link = f"lazytrack://setup?url={quote(remote, safe='')}&token={quote(token, safe='')}"
     print(f"\nOpen this on your iPhone (Tailscale must be ON on the phone):\n  {dashboard_url}\n")
     try:

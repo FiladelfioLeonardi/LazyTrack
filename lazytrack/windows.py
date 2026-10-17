@@ -222,11 +222,11 @@ r = tk.Tk(); r.title("LazyTrack"); r.attributes("-topmost", True); r.resizable(F
 def pick(b): res.update(v=b); r.destroy()
 tk.Label(r, text=a["msg"], font=("Segoe UI", 13), justify="left", bg="#efeaff", fg="#1d1b20", padx=26, pady=18).pack()
 f = tk.Frame(r, bg="#efeaff", padx=18, pady=14); f.pack()
-for b in a["buttons"]:
+for i, b in enumerate(a["buttons"]):
     main = b == a["default"]
-    btn = tk.Button(f, text=b, width=12, font=("Segoe UI", 11, "bold" if main else "normal"), command=lambda b=b: pick(b),
+    btn = tk.Button(f, text=b, width=16, font=("Segoe UI", 11, "bold" if main else "normal"), command=lambda b=b: pick(b),
                     bg="#ffe45e" if main else "#ffffff", relief="solid", bd=2, cursor="hand2")
-    btn.pack(side="left", padx=6)
+    btn.grid(row=i // 2, column=i % 2, padx=6, pady=5)
     if main:
         r.bind("<Return>", lambda e, b=b: pick(b))
 r.bind("<Escape>", lambda e: r.destroy())
@@ -239,13 +239,20 @@ print(res["v"])
 """
 
 
-def ask(message: str, buttons: List[str], default: str, timeout: int = 120) -> Optional[str]:
-    """Shows a small window with buttons. Returns the pressed button, or None on timeout."""
+def ask(message: str, buttons: List[str], default: str, timeout: int = 120, cancel=None) -> Optional[str]:
+    """Shows a small window with buttons. Returns the pressed button, or None on timeout or when
+    cancel() turns True (answered on another device, e.g. the phone)."""
     args = json.dumps({"msg": message, "buttons": buttons, "default": default, "timeout": timeout})
     try:
-        r = subprocess.run([_pythonw(), "-c", _ASK, args], capture_output=True, text=True, timeout=timeout + 15,
-                           creationflags=NO_WINDOW, encoding="utf-8")
-    except (OSError, subprocess.TimeoutExpired):
+        proc = subprocess.Popen([_pythonw(), "-c", _ASK, args], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                                creationflags=NO_WINDOW, text=True, encoding="utf-8")
+    except OSError:
         return None
-    out = (r.stdout or "").strip()
+    deadline = time.time() + timeout + 15
+    while proc.poll() is None:
+        if (cancel and cancel()) or time.time() > deadline:
+            proc.kill()
+            return None
+        time.sleep(0.3)
+    out = (proc.stdout.read() or "").strip()
     return out if out in buttons else None

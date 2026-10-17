@@ -133,16 +133,37 @@ def notify(title: str, message: str) -> None:
         log.info("[notification] %s: %s", title, message)
 
 
-def ask(message: str, buttons: List[str], default: str, timeout: int = 120) -> Optional[str]:
-    """Shows a dialog. Returns the pressed button, or None on timeout / no GUI."""
-    btns = ", ".join('"' + _esc(b) + '"' for b in buttons)
-    script = (f'display dialog "{_esc(message)}" with title "LazyTrack" buttons {{{btns}}} '
-              f'default button "{_esc(default)}" giving up after {int(timeout)}')
-    out = osascript(script, timeout=timeout + 10)
-    if not out or "gave up:true" in out:
+def ask(message: str, buttons: List[str], default: str, timeout: int = 120, cancel=None) -> Optional[str]:
+    """Shows a dialog. Returns the pressed button, or None on timeout / no GUI / cancelled.
+    macOS dialogs have at most 3 buttons; with more, it's a short list to pick from.
+    cancel: a function; when it returns True (answered somewhere else) the dialog closes."""
+    if len(buttons) <= 3:
+        btns = ", ".join('"' + _esc(b) + '"' for b in buttons)
+        script = (f'display dialog "{_esc(message)}" with title "LazyTrack" buttons {{{btns}}} '
+                  f'default button "{_esc(default)}" giving up after {int(timeout)}')
+    else:
+        items = ", ".join('"' + _esc(b) + '"' for b in buttons)
+        # plain osascript (like the 3-button dialog), so no new "control System Events" permission is needed
+        script = (f'activate\n'
+                  f'choose from list {{{items}}} with title "LazyTrack" '
+                  f'with prompt "{_esc(message)}" default items {{"{_esc(default)}"}} '
+                  f'OK button name "That\'s it" cancel button name "Not now"')
+    try:
+        proc = subprocess.Popen(["osascript", "-e", script], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    except OSError:
         return None
-    # "button returned:Cigarette, gave up:false"
-    for part in out.split(", "):
+    deadline = time.time() + timeout + 5
+    while proc.poll() is None:
+        if (cancel and cancel()) or time.time() > deadline:
+            proc.kill()
+            return None
+        time.sleep(0.3)
+    out = (proc.stdout.read() or "").strip()
+    if not out or out == "false" or "gave up:true" in out:
+        return None
+    if out in buttons:                       # choose from list returns the item itself
+        return out
+    for part in out.split(", "):             # display dialog: "button returned:Cigarette, gave up:false"
         if part.startswith("button returned:"):
             return part[len("button returned:"):]
     return None

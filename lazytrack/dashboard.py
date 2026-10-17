@@ -106,6 +106,11 @@ def make_handler(cfg: dict):
                 live = {k: v for k, v in smoke.LIVE.items() if k not in ("frame",)}
                 return self._send(200, {**live, "enabled": bool(config.load()["smoke"]["enabled"]), "now": time.time(),
                                         "can_view": self._local()})
+            if u.path == "/api/camera/question":
+                from . import smoke
+                q = smoke.QUESTION
+                return self._send(200, {"open": q["open"], "id": q["id"], "source": q["source"], "asked_at": q["asked_at"],
+                                        "text": smoke.QUESTION_TEXT, "buttons": smoke.BUTTONS})
             if u.path == "/api/camera/frame.jpg":
                 # the live view: only on the computer itself, camera pictures never go over the network
                 if not self._local():
@@ -165,6 +170,22 @@ def make_handler(cfg: dict):
         def _post(self):
             u = urlparse(self.path)
             qs = parse_qs(u.query)
+            if u.path == "/api/camera/phone-frame":   # a JPEG from the phone's camera, not JSON
+                if not self._authed(qs):
+                    return self._send(401, {"error": "log in first"})
+                n = int(self.headers.get("Content-Length") or 0)
+                if not 0 < n <= 2_000_000:
+                    return self._send(400, {"error": "picture missing or too big"})
+                data = self.rfile.read(n)
+                cfg_now = config.load()
+                if not cfg_now["smoke"]["enabled"]:
+                    return self._send(200, {"status": "off"})
+                from . import smoke
+                try:
+                    return self._send(200, smoke.PHONE.frame(data, cfg_now))
+                except Exception as e:
+                    log.exception("phone frame failed")
+                    return self._send(200, {"status": "error", "detail": f"{e.__class__.__name__}: {str(e)[:120]}"})
             b = self._body()
             if u.path.startswith("/api/auth/"):
                 return self._auth(u.path, b)
@@ -176,6 +197,9 @@ def make_handler(cfg: dict):
                 return self._send(401, {"error": "log in first"})
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_post(u.path, b)
+            if u.path == "/api/camera/answer":
+                from . import smoke
+                return self._send(200, {"ok": smoke.answer_question(int(b.get("id", 0)), str(b.get("answer", "")))})
             if u.path == "/api/update/check":
                 return self._send(200, updater.check(config.load(), install=bool(b.get("install"))))
             if u.path in ("/api/habits", "/api/setup"):
