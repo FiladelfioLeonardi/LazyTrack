@@ -142,7 +142,7 @@ def _win_branding(window) -> None:
         log.debug("windows icon failed", exc_info=True)
 
 
-MAC_STUB = '#!/bin/bash\nexec "$HOME/Library/Application Support/LazyTrack/mac/launcher.sh" "$@"\n'
+MAC_STUB = '#!/bin/bash\nexec /bin/bash "$HOME/Library/Application Support/LazyTrack/mac/launcher.sh" "$@"\n'
 
 
 def fix_mac_app() -> None:
@@ -154,7 +154,7 @@ def fix_mac_app() -> None:
     app = Path.home() / "Applications" / "LazyTrack.app"
     exe = app / "Contents" / "MacOS" / "LazyTrack"
     try:
-        if exe.exists() and "mac/launcher.sh" not in exe.read_text():
+        if exe.exists() and exe.read_text() != MAC_STUB:   # old stubs: the browser one, or one that needs launcher.sh to be executable
             exe.write_text(MAC_STUB)
             exe.chmod(0o755)
             subprocess.run(["codesign", "--force", "--deep", "-s", "-", str(app)], capture_output=True, timeout=60)

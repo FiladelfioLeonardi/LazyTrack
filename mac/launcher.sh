@@ -24,7 +24,7 @@ PL
   U="gui/$(id -u)"
   launchctl bootstrap "$U" "$PLIST" 2>/dev/null || launchctl kickstart "$U/com.lazytrack.tracker" 2>/dev/null || {
     # launchd said no: start it the old way, so LazyTrack still runs
-    LAZYTRACK_RESTARTED=1 nohup "$APP_DIR/mac/run.sh" >/dev/null 2>&1 & disown
+    LAZYTRACK_RESTARTED=1 nohup /bin/bash "$APP_DIR/mac/run.sh" >/dev/null 2>&1 & disown
   }
 fi
 [ "$1" = "--background" ] && exit 0

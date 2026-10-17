@@ -109,7 +109,7 @@ func makeShortcuts(dir string) error {
 	}
 	os.WriteFile(filepath.Join(app, "Contents", "Info.plist"), []byte(infoPlist), 0o644)
 	// a tiny stub that runs mac/launcher.sh from the app folder, so updates to the launcher reach this app too
-	stub := "#!/bin/bash\nexec \"$HOME/Library/Application Support/LazyTrack/mac/launcher.sh\" \"$@\"\n"
+	stub := "#!/bin/bash\nexec /bin/bash \"$HOME/Library/Application Support/LazyTrack/mac/launcher.sh\" \"$@\"\n"
 	if err := os.WriteFile(filepath.Join(app, "Contents", "MacOS", "LazyTrack"), []byte(stub), 0o755); err != nil {
 		return err
 	}

@@ -109,10 +109,12 @@ def apply(repo: str, branch: str, info: dict) -> None:
                 tmpdest = dest.with_name(dest.name + ".new")
                 shutil.copy2(item, tmpdest)
                 os.replace(tmpdest, dest)     # swap in one step, so a file is never half-written
-        for sh in ("install.sh", "start.command", "lt"):    # keep the Mac launchers clickable
-            p = APP_DIR / sh
-            if p.exists() and sys.platform != "win32":
-                p.chmod(0o755)
+        # the download doesn't keep "can be run" on files: put it back on every script (the Mac app's
+        # launcher.sh too, or the app can't start at all)
+        if sys.platform != "win32":
+            for p in [APP_DIR / "lt", *APP_DIR.glob("*.sh"), *APP_DIR.glob("*.command"), *APP_DIR.glob("mac/*.sh"), *APP_DIR.glob("mac/*.command")]:
+                if p.exists():
+                    p.chmod(0o755)
     if _hash(APP_DIR / _req_file()) != req_before:
         log.info("updater: new packages needed, installing...")
         py = Path(sys.executable)
