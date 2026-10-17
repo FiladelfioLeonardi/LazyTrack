@@ -3406,14 +3406,15 @@ function buildCard() {
  */
 const spriteCache = {key: "", val: null};
 function deviceSprite(look, mood, tier) {
+  mood = ["meh", "smoky", "sleepy"].includes(mood) ? mood : "happy";   // the egg shows the high/drunk/cough faces itself
   const key = JSON.stringify([look, mood, tier]);
   if (spriteCache.key === key) return spriteCache.val;
   const box = document.createElement("div");
   box.style.cssText = "position:absolute;left:-9999px;top:0";
   box.className = "pet";
   document.body.appendChild(box);
-  const pal = [], frame = blink => {
-    box.innerHTML = mochiCells(look, mood, tier, blink);
+  const pal = [], frame = (blink, fx = {}) => {
+    box.innerHTML = mochiCells(look, mood, tier, blink, fx);
     return [...box.children].map(i => {
       const c = getComputedStyle(i).backgroundColor;
       let rgb = null, m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/);
@@ -3430,7 +3431,12 @@ function deviceSprite(look, mood, tier) {
     }).join("");
   };
   let val = null;
-  try { const n = frame(false), b = frame(true); val = n.length === 256 ? {w: 16, p: pal, n, b} : null; } catch (_) {}
+  // n normal, b blinking, h high, d1-d3 tipsy/drunk/wasted, c coughing: the egg picks the one that fits right now
+  try {
+    const n = frame(false), b = frame(true);
+    val = n.length === 256 ? {w: 16, p: pal, n, b, h: frame(false, {high: 2}), d1: frame(false, {drunk: 1}), d2: frame(false, {drunk: 2}),
+                              d3: frame(false, {drunk: 3}), c: frame(false, {cough: true})} : null;
+  } catch (_) {}
   box.remove();
   spriteCache.key = key; spriteCache.val = val;
   return val;

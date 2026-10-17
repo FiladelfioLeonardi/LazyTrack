@@ -192,10 +192,40 @@ def _doing() -> dict:
     return {"what": NOW["what"], "since": NOW["since"]}
 
 
+def pet_fx(now: Optional[float] = None) -> dict:
+    """How Mochi is doing right now: high (weed), drunk (alcohol), coughy (cigarettes), 0-3 each.
+    The same rules as the app (petState in dashboard.html), worked out here from the logs, so friends
+    and the egg see it live even while LazyTrack's window is closed. They wear off with time."""
+    import datetime as _dt
+    now = now or time.time()
+    midnight = _dt.datetime.fromtimestamp(now).replace(hour=0, minute=0, second=0, microsecond=0).timestamp()
+    c = db.conn()
+    def count(k):
+        return c.execute("SELECT COUNT(*) FROM events WHERE kind=? AND ts>=? AND ts<=?", (k, midnight, now)).fetchone()[0]
+    def hours_since(k):
+        row = c.execute("SELECT MAX(ts) FROM events WHERE kind=? AND ts<=?", (k, now)).fetchone()
+        return (now - row[0]) / 3600 if row and row[0] else None
+    joints, drinks, cigs = count("joint"), count("alcohol"), count("cigarette")
+    high = min(3, joints)
+    drunk = 3 if drinks >= 5 else 2 if drinks >= 3 else 1 if drinks else 0
+    hj, hd, hc = hours_since("joint"), hours_since("alcohol"), hours_since("cigarette")
+    if high:
+        high = (1 if joints >= 3 else 0) if hj is None else high if hj < 1 + joints else max(1, high - 1) if hj < 2 + joints else 0
+    if drunk:
+        drunk = max(0, drunk - 1) if hd is None else drunk if hd < 5 else drunk - 1 if hd < 8 else 0
+    coughy = 0 if not cigs else 3 if cigs >= 10 else 2 if cigs >= 6 else 1 if (hc is not None and hc < 0.25) else 1 if cigs >= 4 else 0
+    return {"high": high, "drunk": drunk, "coughy": coughy}
+
+
 def _with_now(card: dict) -> dict:
     card = {k: v for k, v in card.items() if k not in ("now", "offline")}
     if card.get("share_now", True):
         card["now"] = _doing()
+    try:   # always fresh, even when the card itself was made a while ago
+        card["fx"] = pet_fx()
+        card["built"] = int(time.time())
+    except Exception as e:
+        log.debug("pet fx failed: %s", e)
     return card
 
 
@@ -209,7 +239,7 @@ def push_card(card: dict) -> bool:
     uid = state()["uid"]
     _http("POST", "/rest/v1/cards", {"user_id": uid, "card": card, "updated_at": _now()}, token=_token(),
           prefer="resolution=merge-duplicates,return=minimal")
-    _last_card.update(t=time.time(), body=body, what=(card.get("now") or {}).get("what"))
+    _last_card.update(t=time.time(), body=body, what=(card.get("now") or {}).get("what"), fx=card.get("fx"))
     return True
 
 
@@ -221,7 +251,12 @@ def heartbeat() -> None:
     see you as online. The card's own "built" time tells them how fresh Mochi's mood is."""
     if not state()["connected"]:
         return
-    changed = _doing().get("what") != _last_card.get("what")   # started doing something else: tell friends now
+    try:
+        fx = pet_fx()
+    except Exception:
+        fx = None
+    # started doing something else, or Mochi got drunk/high/sober: tell friends (and the egg) now
+    changed = _doing().get("what") != _last_card.get("what") or (fx is not None and fx != _last_card.get("fx"))
     if time.time() - _last_card["t"] < (45 if changed else 120):
         return
     body = db.kv_get("cloud_last_card")
@@ -231,7 +266,7 @@ def heartbeat() -> None:
         card = _with_now(json.loads(body))
         _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": card, "updated_at": _now()},
               token=_token(), prefer="resolution=merge-duplicates,return=minimal")
-        _last_card.update(t=time.time(), body=json.dumps(card, sort_keys=True), what=(card.get("now") or {}).get("what"))
+        _last_card.update(t=time.time(), body=json.dumps(card, sort_keys=True), what=(card.get("now") or {}).get("what"), fx=card.get("fx"))
     except (CloudError, ValueError) as e:
         log.debug("heartbeat failed: %s", e)
 

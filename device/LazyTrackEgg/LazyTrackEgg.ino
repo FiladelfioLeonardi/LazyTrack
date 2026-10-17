@@ -68,6 +68,8 @@ struct Card {
   bool sprite = false;
   uint16_t pal[36];
   char fn[257], fb[257];  // normal frame, blinking frame
+  char fh[257], fd[3][257], fc[257];   // high, tipsy/drunk/wasted, coughing (same look, those faces)
+  bool fxFrames = false;
   int sceneN = 0;         // Mochi's place, the same picture as in the app (sceneN x sceneN pixels)
   uint16_t scenePal[64];
   char scene[56 * 56 + 1];
@@ -190,6 +192,9 @@ bool parseCard(const String &body) {
     for (JsonVariant p : sp["p"].as<JsonArray>()) { if (i < 36) card.pal[i++] = hexColor(p.as<const char *>()); }
     strncpy(card.fn, n, 256); card.fn[256] = 0;
     strncpy(card.fb, (b && strlen(b) == 256) ? b : n, 256); card.fb[256] = 0;
+    auto take = [&](const char *key, char *dst) { const char *v = sp[key]; strncpy(dst, (v && strlen(v) == 256) ? v : n, 256); dst[256] = 0; return v != nullptr; };
+    card.fxFrames = take("h", card.fh);
+    take("d1", card.fd[0]); take("d2", card.fd[1]); take("d3", card.fd[2]); take("c", card.fc);
     card.sprite = true;
   }
   JsonObject sc = c["scene"];
@@ -233,9 +238,10 @@ void sync() {
 // The whole screen is Mochi's place (like Home in the app), Mochi stands on the ground in the middle,
 // with your name on top and HP at the bottom. Only the part around Mochi is redrawn when it moves.
 static const int FEET = 232;                            // where Mochi's feet touch the ground (screen y)
-static const int SCALE = 10;                            // 16 px sprite -> 160 px
-static const int PX = 40, PY = FEET + 4 - 16 * SCALE;   // Mochi's top-left when standing still
-static const int SX = PX - 8, SY = PY - 4, SW = 16 * SCALE + 16, SH = 16 * SCALE + 6;   // the part redrawn
+static const int SCALE = 7;                             // 16 px sprite -> 112 px: the same size next to its place as in the app
+static const int PX = (240 - 16 * SCALE) / 2, PY = FEET + 2 - 16 * SCALE;   // Mochi's top-left when standing still
+static const int SX = PX - 10, SY = PY - 2, SW = 16 * SCALE + 20, SH = 16 * SCALE + 4;   // the part redrawn
+static const int SCENE_Y = FEET - 240 * 84 / 100;       // the scene is 240x240 (full width, like the app), ground at FEET
 uint16_t *stage;                                        // drawn here, then sent in one go (no flicker)
 
 uint16_t tierBg() {
@@ -252,14 +258,12 @@ int sceneIndex(char ch) {
   return ch == '-' ? 62 : ch == '_' ? 63 : 0;
 }
 
-// the background at a screen pixel: the scene scaled up to cover the screen, its ground lined up with FEET
+// the background at a screen pixel: the whole scene across the full width, exactly what the app shows;
+// above it the sky goes on, below it the ground
 uint16_t bgAt(int x, int y) {
   int n = card.sceneN;
   if (!n) return y > FEET ? rgb(0x7cc97f) : tierBg();
-  int s = (320 + n - 1) / n;                        // 56 -> 6, 42 -> 8: covers the whole screen
-  int offX = (n * s - 240) / 2, offY = (n * 84 / 100) * s - FEET;
-  int sx = (x + offX) / s, sy = (y + offY) / s;
-  if (sx < 0) sx = 0; if (sx >= n) sx = n - 1;
+  int sx = x * n / 240, sy = (y - SCENE_Y) * n / 240;
   if (sy < 0) sy = 0; if (sy >= n) sy = n - 1;
   return card.scenePal[sceneIndex(card.scene[sy * n + sx])];
 }
@@ -282,11 +286,20 @@ uint16_t cellColor(char ch, bool fromCard) {
   return i >= 0 && i < 36 ? card.pal[i] : 0;
 }
 
-// Mochi standing on the ground. dx: drunk wobble / coughing shake, sideways only (it never floats)
-void drawStage(int dx, bool blink) {
+// Mochi standing on the ground, with the face that fits right now (high, drunk, coughing) like in the app.
+// dx: drunk wobble / coughing shake, sideways only (it never floats)
+void drawStage(int dx, bool blink, bool coughing = false) {
   if (view != 0) return;
   for (int y = 0; y < SH; y++) for (int x = 0; x < SW; x++) stage[y * SW + x] = bgAt(SX + x, SY + y);
-  const char *px = card.sprite ? (blink ? card.fb : card.fn) : DEFAULT_N;
+  const char *px = DEFAULT_N;
+  if (card.sprite) {
+    px = blink ? card.fb : card.fn;
+    if (card.fxFrames) {
+      if (coughing) px = card.fc;
+      else if (card.drunk) px = card.fd[constrain(card.drunk, 1, 3) - 1];
+      else if (card.high) px = card.fh;
+    }
+  }
   int ox = PX - SX + dx, oy = PY - SY;
   for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) {
     char ch = px[cy * 16 + cx];
@@ -350,8 +363,15 @@ void drawFrame() {  // the background and everything on it; Mochi itself comes f
     gfx->fillRoundRect(18, 276, bw, 14, 4, YELLOW);
     gfx->drawRoundRect(18, 276, bw, 14, 4, INK);
     text(23, 280, card.tierName, 1, INK);
-    String fx = card.drunk ? "DRUNK" : card.high ? "HIGH" : card.coughy ? "COUGHING" : "";
-    if (fx.length()) text(26 + bw, 280, fx, 1, RED);
+    // how Mochi is right now, always shown: sober, tipsy/drunk/wasted, buzzed/high, coughing
+    static const char *DR[] = {"TIPSY", "DRUNK", "WASTED"}, *HI[] = {"BUZZED", "HIGH", "SO HIGH"};
+    String fx = card.drunk ? DR[constrain(card.drunk, 1, 3) - 1] : card.high ? HI[constrain(card.high, 1, 3) - 1] : card.coughy ? "COUGHING" : "SOBER";
+    if (card.drunk && card.high) fx += String(" + ") + HI[constrain(card.high, 1, 3) - 1];
+    int fw = 10 + fx.length() * 6;
+    uint16_t fcol = fx == "SOBER" ? rgb(0xc9f2d4) : card.drunk ? rgb(0xffd28a) : card.high ? rgb(0x9be8a9) : rgb(0xd9d2e9);
+    gfx->fillRoundRect(26 + bw, 276, fw, 14, 4, fcol);
+    gfx->drawRoundRect(26 + bw, 276, fw, 14, 4, INK);
+    text(31 + bw, 280, fx, 1, INK);
     text(18, 297, (doing().length() ? doing() : status).substring(0, 33), 1, GREY);
     drawStage(0, false);
   } else if (view == 1) {
@@ -443,7 +463,11 @@ void loop() {
   else if (b == 0) { tuneClick(); view = (view + 1) % 3; drawFrame(); }
   else if (b == 1) { tuneClick(); status = "Syncing..."; drawFrame(); sync(); tuneClick(); drawFrame(); }
 
-  if (millis() - lastTry > 60000) { int before = card.hp; String tb = card.tierName; sync(); if (card.hp != before || card.tierName != tb || view == 2) drawFrame(); }
+  if (millis() - lastTry > 30000) {   // every 30 s: LazyTrack sends changes (drunk, high, sober...) within a minute
+    int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat;
+    sync();
+    if (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat != what || view == 2) drawFrame();
+  }
   if (WiFi.status() != WL_CONNECTED && millis() - lastTry > 15000) { lastTry = millis(); if (wifi.run(3000) == WL_CONNECTED) sync(); }
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
@@ -458,6 +482,8 @@ void loop() {
     else if (card.high) dx = (int)(sin(t / 1100.0) * 3);
     if (card.coughy && (t / 300) % (14 - card.coughy * 3) == 0) dx = ((t / 60) % 2) ? 3 : -3;
     bool blink = t < blinkEnd;
-    if (dx != lastDx || blink != lastBlink) { drawStage(dx, blink); lastDx = dx; lastBlink = blink; }
+    bool cough = card.coughy && (t / 300) % (14 - card.coughy * 3) == 0;
+    static bool lastCough = false;
+    if (dx != lastDx || blink != lastBlink || cough != lastCough) { drawStage(dx, blink, cough); lastDx = dx; lastBlink = blink; lastCough = cough; }
   }
 }
