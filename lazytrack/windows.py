@@ -84,6 +84,23 @@ def _window_title(hwnd) -> str:
 
 
 def _exe_of(hwnd) -> str:
+    return os.path.basename(_exe_path_of(hwnd))
+
+
+GAME_DIRS = ("\\steamapps\\common\\", "\\riot games\\", "\\epic games\\", "\\xboxgames\\", "\\gog galaxy\\games\\",
+             "\\ea games\\", "\\ubisoft game launcher\\games\\")
+
+
+def frontmost_is_game() -> bool:
+    """Is the app in front installed from a game store (Steam, Riot, Epic, Xbox...)?"""
+    if not user32:
+        return False
+    hwnd = user32.GetForegroundWindow()
+    path = _exe_path_of(hwnd).lower() if hwnd else ""
+    return any(d in path for d in GAME_DIRS)
+
+
+def _exe_path_of(hwnd) -> str:
     pid = wintypes.DWORD()
     user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
     h = kernel32.OpenProcess(0x1000, False, pid.value)   # PROCESS_QUERY_LIMITED_INFORMATION
@@ -93,7 +110,7 @@ def _exe_of(hwnd) -> str:
         size = wintypes.DWORD(1024)
         buf = ctypes.create_unicode_buffer(size.value)
         if kernel32.QueryFullProcessImageNameW(h, 0, buf, ctypes.byref(size)):
-            return os.path.basename(buf.value)
+            return buf.value
         return ""
     finally:
         kernel32.CloseHandle(h)

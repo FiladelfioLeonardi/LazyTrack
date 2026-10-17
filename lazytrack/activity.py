@@ -49,13 +49,80 @@ def categorize(app: str, title: str, url: str, rules: List[dict]) -> str:
     return "browsing" if app in system.BROWSERS else "other"
 
 
-# what you're doing right now, for friends ("Coding for 25 min"). Only the category, never titles or sites.
-NOW = {"what": "", "since": 0.0, "t": 0.0}
+# what you're doing right now, for friends and the egg ("playing LoL", "coding in VS Code").
+# The label only ever comes from the list below (or a game's own name), never from window titles,
+# chats or other sites: an unknown app just shows its category.
+NOW = {"what": "", "label": "", "since": 0.0, "t": 0.0}
+
+_GAMES = {   # app / exe name (lower case) -> short name
+    "league of legends": "LoL", "leagueclient": "LoL", "leagueclientux": "LoL", "league of legends (tm) client": "LoL",
+    "valorant": "Valorant", "valorant-win64-shipping": "Valorant", "fortnite": "Fortnite",
+    "fortniteclient-win64-shipping": "Fortnite", "counter-strike 2": "CS2", "cs2": "CS2", "minecraft": "Minecraft",
+    "minecraft launcher": "Minecraft", "roblox": "Roblox", "robloxplayerbeta": "Roblox", "rocket league": "Rocket League",
+    "rocketleague": "Rocket League", "overwatch": "Overwatch", "apex legends": "Apex", "r5apex": "Apex", "dota 2": "Dota 2",
+    "dota2": "Dota 2", "gta5": "GTA V", "grand theft auto v": "GTA V", "elden ring": "Elden Ring", "eldenring": "Elden Ring",
+    "the sims 4": "The Sims", "ts4_x64": "The Sims", "hearthstone": "Hearthstone", "world of warcraft": "WoW", "wow": "WoW",
+    "stardew valley": "Stardew Valley", "among us": "Among Us", "genshin impact": "Genshin", "genshinimpact": "Genshin",
+    "hollow knight": "Hollow Knight", "terraria": "Terraria", "rust": "Rust", "tslgame": "PUBG", "pubg": "PUBG",
+    "call of duty": "CoD", "cod": "CoD", "fc25": "EA FC", "fc26": "EA FC", "ea sports fc 25": "EA FC", "ea sports fc 26": "EA FC",
+    "marvel rivals": "Marvel Rivals", "deadlock": "Deadlock", "balatro": "Balatro", "fall guys": "Fall Guys",
+    "rainbow six siege": "R6", "rainbowsix": "R6", "destiny 2": "Destiny 2", "destiny2": "Destiny 2", "palworld": "Palworld",
+    "lethal company": "Lethal Company", "phasmophobia": "Phasmophobia", "cyberpunk2077": "Cyberpunk", "cyberpunk 2077": "Cyberpunk",
+}
+_APPS = {    # app name (lower case) -> (what it says, category)
+    "steam": ("on Steam", "gaming"), "riot client": ("opening a Riot game", "gaming"),
+    "epic games launcher": ("on Epic Games", "gaming"), "battle.net": ("on Battle.net", "gaming"),
+    "code": ("coding in VS Code", "coding"), "visual studio code": ("coding in VS Code", "coding"),
+    "cursor": ("coding in Cursor", "coding"), "xcode": ("coding in Xcode", "coding"), "visual studio": ("coding in Visual Studio", "coding"),
+    "clion": ("coding in CLion", "coding"), "pycharm": ("coding in PyCharm", "coding"), "intellij idea": ("coding in IntelliJ", "coding"),
+    "terminal": ("in the terminal", "coding"), "iterm2": ("in the terminal", "coding"), "warp": ("in the terminal", "coding"),
+    "windowsterminal": ("in the terminal", "coding"), "unrealeditor": ("in Unreal Engine", "coding"),
+    "arduino ide": ("tinkering in Arduino", "coding"), "blender": ("in Blender", "other"), "figma": ("in Figma", "other"),
+    "discord": ("on Discord", "social"), "whatsapp": ("on WhatsApp", "social"), "telegram": ("on Telegram", "social"),
+    "messages": ("texting", "social"), "slack": ("on Slack", "social"), "netflix": ("watching Netflix", "streaming"),
+    "spotify": ("on Spotify", "other"), "music": ("listening to music", "other"), "twitch": ("watching Twitch", "streaming"),
+    "vlc": ("watching something", "streaming"), "zoom.us": ("in a call", "other"), "zoom": ("in a call", "other"),
+    "facetime": ("in a call", "other"), "microsoft teams": ("in a call", "other"), "notion": ("in Notion", "other"),
+    "obsidian": ("taking notes", "other"), "microsoft word": ("writing in Word", "other"), "pages": ("writing", "other"),
+    "microsoft excel": ("in Excel", "other"), "microsoft powerpoint": ("making slides", "other"), "keynote": ("making slides", "other"),
+    "photoshop": ("in Photoshop", "other"), "adobe photoshop": ("in Photoshop", "other"), "elegooslicer": ("slicing a 3D print", "other"),
+    "claude": ("talking to Claude", "other"), "chatgpt": ("on ChatGPT", "other"),
+}
+_SITES = [   # website -> (what it says, category); matched like the category rules
+    ("youtube.com", "watching YouTube", "youtube"), ("youtu.be", "watching YouTube", "youtube"),
+    ("netflix.com", "watching Netflix", "streaming"), ("twitch.tv", "watching Twitch", "streaming"),
+    ("primevideo.com", "watching Prime Video", "streaming"), ("disneyplus.com", "watching Disney+", "streaming"),
+    ("crunchyroll.com", "watching anime", "streaming"), ("instagram.com", "on Instagram", "social"),
+    ("tiktok.com", "on TikTok", "social"), ("x.com", "on X", "social"), ("twitter.com", "on X", "social"),
+    ("reddit.com", "on Reddit", "social"), ("facebook.com", "on Facebook", "social"), ("web.whatsapp.com", "on WhatsApp", "social"),
+    ("github.com", "on GitHub", "coding"), ("stackoverflow.com", "on Stack Overflow", "coding"),
+    ("intra.42.fr", "on the 42 intra", "coding"), ("chatgpt.com", "on ChatGPT", "other"), ("claude.ai", "talking to Claude", "other"),
+    ("op.gg", "checking op.gg", "gaming"), ("u.gg", "checking LoL builds", "gaming"), ("amazon.de", "shopping on Amazon", "other"),
+    ("amazon.com", "shopping on Amazon", "other"), ("open.spotify.com", "on Spotify", "other"),
+]
 
 
-def _now(what: str, t: float) -> None:
-    if NOW["what"] != what:
-        NOW.update(what=what, since=t)
+def label(app: str, url: str, category: str):
+    """("playing LoL", "gaming") for the app / site in front, or ("", category) when it isn't a known one."""
+    al = (app or "").strip().lower()
+    if al in _GAMES:
+        return "playing " + _GAMES[al], "gaming"
+    if al in _APPS:
+        return _APPS[al]
+    if url:
+        ul = url.lower()
+        host = urlparse(ul).hostname or ""
+        for site, text, cat in _SITES:
+            if _url_match(site, host, ul):
+                return text, cat
+    if category == "gaming" and app:             # a game we don't know yet: its own name is fine to show
+        return "playing " + app.strip()[:24], "gaming"
+    return "", category
+
+
+def _now(what: str, t: float, lab: str = "") -> None:
+    if NOW["what"] != what or NOW["label"] != lab:
+        NOW.update(what=what, label=lab, since=t)
     NOW["t"] = t
 
 
@@ -85,7 +152,14 @@ class ActivityTracker:
         if self.is_away(now, category):
             _now("away", now)
             return None
-        _now(category, now)
+        if category in ("other", "browsing") and not url:
+            try:
+                if system.frontmost_is_game():       # anything from Steam / Riot / Epic counts as a game
+                    category = "gaming"
+            except Exception:
+                pass
+        lab, what = label(app, url, category)
+        _now(what, now, lab)
         self.record(app, category, title, url, now)
         return {"app": app, "category": category, "title": title, "url": url}
 

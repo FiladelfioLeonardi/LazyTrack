@@ -189,7 +189,10 @@ def _doing() -> dict:
         return {}
     if not NOW["what"] or time.time() - NOW["t"] > 90:
         return {"what": "away", "since": NOW["since"] or time.time()}
-    return {"what": NOW["what"], "since": NOW["since"]}
+    out = {"what": NOW["what"], "since": NOW["since"]}
+    if NOW.get("label") and NOW["what"] != "away":
+        out["label"] = NOW["label"]
+    return out
 
 
 def pet_fx(now: Optional[float] = None) -> dict:
@@ -222,6 +225,8 @@ def _with_now(card: dict) -> dict:
     card = {k: v for k, v in card.items() if k not in ("now", "offline")}
     if card.get("share_now", True):
         card["now"] = _doing()
+        if not card.get("share_detail", True):      # only the kind of thing (gaming), not which game
+            card["now"].pop("label", None)
     try:   # always fresh, even when the card itself was made a while ago
         card["fx"] = pet_fx()
         card["built"] = int(time.time())
@@ -240,7 +245,8 @@ def push_card(card: dict) -> bool:
     uid = state()["uid"]
     _http("POST", "/rest/v1/cards", {"user_id": uid, "card": card, "updated_at": _now()}, token=_token(),
           prefer="resolution=merge-duplicates,return=minimal")
-    _last_card.update(t=time.time(), body=body, what=(card.get("now") or {}).get("what"), fx=card.get("fx"))
+    d = _doing()
+    _last_card.update(t=time.time(), body=body, what=d.get("what"), label=d.get("label"), fx=card.get("fx"))
     return True
 
 
@@ -257,7 +263,8 @@ def heartbeat() -> None:
     except Exception:
         fx = None
     # started doing something else, or Mochi got drunk/high/sober: tell friends (and the egg) now
-    changed = _doing().get("what") != _last_card.get("what") or (fx is not None and fx != _last_card.get("fx"))
+    d = _doing()
+    changed = (d.get("what"), d.get("label")) != (_last_card.get("what"), _last_card.get("label")) or (fx is not None and fx != _last_card.get("fx"))
     if time.time() - _last_card["t"] < (45 if changed else 120):
         return
     body = db.kv_get("cloud_last_card")
@@ -267,7 +274,8 @@ def heartbeat() -> None:
         card = _with_now(json.loads(body))
         _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": card, "updated_at": _now()},
               token=_token(), prefer="resolution=merge-duplicates,return=minimal")
-        _last_card.update(t=time.time(), body=json.dumps(card, sort_keys=True), what=(card.get("now") or {}).get("what"), fx=card.get("fx"))
+        _last_card.update(t=time.time(), body=json.dumps(card, sort_keys=True), what=d.get("what"),
+                          label=d.get("label"), fx=card.get("fx"))
     except (CloudError, ValueError) as e:
         log.debug("heartbeat failed: %s", e)
 

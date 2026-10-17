@@ -318,6 +318,7 @@
   .sharechips button { border: 2px solid var(--line); border-radius: 10px; background: var(--card); padding: 6px 10px; cursor: pointer; font-weight: 700; }
   .sharechips button[aria-pressed="true"] { background: var(--green); color: #1d1b20; }
   .sharechips button[aria-pressed="false"] { opacity: .65; text-decoration: line-through; }
+  .sharechips button:disabled { opacity: .35; cursor: default; }
   .chatcard { display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); height: min(560px, calc(100dvh - 240px)); min-height: 340px; padding: 0; overflow: hidden; }
   .chatlog { min-width: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
   .msg { max-width: 78%; padding: 8px 12px; border: 2px solid var(--line); border-radius: 14px 14px 14px 4px; background: var(--soft); align-self: flex-start;
@@ -3394,9 +3395,9 @@ function buildCard() {
           // how Mochi is doing right now (drunk, high, coughing) so friends see it too; "built" = when
           mood: (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy",
           fx: (({high, drunk, coughy}) => ({high, drunk, coughy}))(petState(O)), built: Math.round(Date.now() / 1000),
-          share_now: !shareKeys().includes("!now"),
+          share_now: !shareKeys().includes("!now"), share_detail: !shareKeys().includes("!detail"),
           sprite: deviceSprite(PET_LOOK, (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy", O.health.tier),
-          scene: deviceScene(PET_LOOK, O.health.tier),   // LazyTrack adds what you're doing right now (only the category)
+          scene: deviceScene(PET_LOOK, O.health.tier),   // LazyTrack adds what you're doing right now ("playing LoL")
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
           stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
 }
@@ -3484,7 +3485,9 @@ function presence(p) {
   const c = p.card || {};
   const on = !c.offline && (p.online ?? (Date.now() - new Date(p.updated_at) < 300000));
   if (!on) return `<span class="pres"><i></i> Last seen ${ago(p.updated_at)}</span>`;
-  const now = c.now || {}, what = DOING[now.what] || (now.what ? "🖥️ On the computer" : "");
+  const now = c.now || {}, emo = (DOING[now.what] || "🖥️").split(" ")[0];
+  const what = now.label && now.what !== "away" ? `${emo} ${now.label[0].toUpperCase()}${now.label.slice(1)}`
+             : DOING[now.what] || (now.what ? "🖥️ On the computer" : "");
   const mins = now.since ? Math.floor((Date.now() / 1000 - now.since) / 60) : 0;
   const long = mins >= 60 ? `${Math.floor(mins / 60)} h${mins % 60 ? ` ${mins % 60} min` : ""}` : mins >= 1 ? `${mins} min` : "";
   return `<span class="pres on"><i></i> Online</span>${what ? `<span class="doing">${what}${long && now.what !== "away" ? ` · for ${long}` : ""}</span>` : ""}`;
@@ -3568,8 +3571,8 @@ async function renderFriends() {
   const keys = shareKeys();
   const opts = [...HABITS.map(h => [h.k, `${h.e} ${h.n}`]), ...SHOW_SCREEN.map(k => [k, `${(INFO[k] || {}).e || ""} ${(INFO[k] || {}).n || k}`])];
   $("fShare").innerHTML = `<div class="label">WHAT FRIENDS SEE</div><p class="note" style="margin-bottom:10px">Mochi, HP and your level always show. Green = shared.</p>
-    <div class="sharechips"><button type="button" data-sharenow aria-pressed="${!keys.includes("!now")}">👀 What I'm doing now</button>${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>
-    <p class="note" style="margin-top:8px">"What I'm doing now" shows only the kind of thing (coding, YouTube, gaming…), never which site, window or chat.</p>`;
+    <div class="sharechips"><button type="button" data-sharenow aria-pressed="${!keys.includes("!now")}">👀 What I'm doing now</button><button type="button" data-sharenow="detail" aria-pressed="${!keys.includes("!now") && !keys.includes("!detail")}"${keys.includes("!now") ? " disabled" : ""}>🎮 Which game or app</button>${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>
+    <p class="note" style="margin-top:8px">"What I'm doing now" shows what you're up to, like "Playing LoL" or "Coding in VS Code" (only well-known games, apps and sites). Turn off "Which game or app" to show just the kind of thing (gaming, coding…). Window titles, chats and other sites are never shared.</p>`;
   $("fReq").innerHTML = (F.incoming.length ? `<h2 class="sec">Wants to be your friend</h2><div class="card">${F.incoming.map(x =>
       `<div class="reqrow"><b>${esc(x.display_name)} <span class="note">@${esc(x.username)}</span></b>
         <button type="button" class="btn primary" data-accept="${x.id}">Accept</button><button type="button" class="btn" data-decline="${x.id}">No thanks</button></div>`).join("")}</div>` : "")
@@ -3614,8 +3617,11 @@ document.addEventListener("click", async e => {
   }
   const sn = e.target.closest("[data-sharenow]");
   if (sn) {
-    const keys = shareKeys(), off = keys.includes("!now"), next = off ? keys.filter(x => x !== "!now") : [...keys, "!now"];
+    const key = sn.dataset.sharenow === "detail" ? "!detail" : "!now";
+    const keys = shareKeys(), off = keys.includes(key), next = off ? keys.filter(x => x !== key) : [...keys, key];
     sn.setAttribute("aria-pressed", off);
+    const det = document.querySelector('[data-sharenow="detail"]');
+    if (key === "!now" && det) { det.disabled = !off; det.setAttribute("aria-pressed", off && !next.includes("!detail")); }
     SHARE = next;
     await post("/api/habits", {share: next});
     pushCard(true);

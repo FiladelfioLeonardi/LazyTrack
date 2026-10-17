@@ -62,8 +62,9 @@ static uint16_t BG, CARD, SOFT, YELLOW, GREEN, RED, GREY;
 struct Card {
   bool ok = false;
   int hp = 100, gen = 1, age = 0, best = 0, deaths = 0;
-  String tier = "okay", tierName = "OKAY", name = "Mochi", nowWhat = "";
-  uint32_t nowSince = 0;
+  String tier = "okay", tierName = "OKAY", name = "Mochi", nowWhat = "", nowLabel = "";
+  uint32_t nowSince = 0, built = 0;
+  bool offline = false;
   int drunk = 0, high = 0, coughy = 0;
   bool sprite = false;
   uint16_t pal[36];
@@ -162,7 +163,7 @@ uint16_t hexColor(const char *s) { return (s && s[0] == '#') ? rgb(strtoul(s + 1
 bool parseCard(const String &body) {
   JsonDocument filter;
   JsonObject f = filter[0]["card"].to<JsonObject>();
-  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline"}) f[k] = true;
+  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built"}) f[k] = true;
   f["stats"][0]["s"] = true;
   f["stats"][0]["v"] = true;
   f["stats"][0]["unit"] = true;
@@ -185,6 +186,9 @@ bool parseCard(const String &body) {
   card.coughy = c["fx"]["coughy"] | 0;
   card.nowWhat = c["now"]["what"] | "";
   card.nowSince = c["now"]["since"] | 0;
+  card.nowLabel = c["now"]["label"] | "";
+  card.offline = c["offline"] | false;
+  card.built = c["built"] | 0;
   JsonObject sp = c["sprite"];
   const char *n = sp["n"], *b = sp["b"];
   if (n && strlen(n) == 256) {
@@ -318,13 +322,32 @@ void drawStage(int dx, bool blink, bool coughing = false) {
   gfx->draw16bitRGBBitmap(SX, SY, stage, SW, SH);
 }
 
-String doing() {
+// what Mochi says in his speech bubble: "playing lol rn", "coding in vs code rn"
+bool stale() {   // LazyTrack closed or the computer asleep: what it last said isn't true anymore
+  time_t t = time(nullptr);
+  return card.offline || (t > 1700000000 && card.built && t - (time_t)card.built > 600);
+}
+
+String saying() {
+  if (stale()) return "";
   const String &w = card.nowWhat;
-  String s = w == "coding" ? "Coding" : w == "youtube" ? "On YouTube" : w == "social" ? "On socials" : w == "streaming" ? "Watching"
-           : w == "gaming" ? "Gaming" : w == "browsing" ? "Browsing" : w == "away" ? "Away" : w.length() ? "On the computer" : "";
-  if (s.length() && w != "away" && card.nowSince) {
+  String s = card.nowLabel;
+  if (!s.length())
+    s = w == "coding" ? "coding" : w == "youtube" ? "watching youtube" : w == "social" ? "on socials" : w == "streaming" ? "watching something"
+      : w == "gaming" ? "gaming" : w == "browsing" ? "browsing" : w == "other" ? "on the computer" : "";
+  if (!s.length()) return "";
+  s.toLowerCase();
+  return s + " rn";
+}
+
+String doing() {   // bottom line: for how long
+  const String &w = card.nowWhat;
+  if (stale() || !w.length() || w == "away") return w == "away" ? "Away from the computer" : "";
+  String s = "Doing that";
+  if (card.nowSince) {
     long mins = (long)(time(nullptr) - (time_t)card.nowSince) / 60;
-    if (mins > 0 && mins < 1440) s += mins >= 60 ? " " + String(mins / 60) + "h" + String(mins % 60) + "m" : " " + String(mins) + "m";
+    if (mins <= 0 || mins >= 1440) return "";
+    s += mins >= 60 ? " for " + String(mins / 60) + "h " + String(mins % 60) + "m" : " for " + String(mins) + " min";
   }
   return s;
 }
@@ -350,6 +373,21 @@ void drawFrame() {  // the background and everything on it; Mochi itself comes f
     panel(8, 8, max(150, (int)name.length() * 12 + 22), 46);
     text(18, 16, name, 2, INK);
     text(18, 38, "MOCHI #" + String(card.gen) + " - " + (card.age ? String(card.age) + "D OLD" : String("BORN TODAY")), 1, GREY);
+    String say = saying();
+    if (say.length()) {   // speech bubble above Mochi's head, tail pointing at him
+      uint8_t sz = say.length() <= 16 ? 2 : 1;
+      if (say.length() > 34) say = say.substring(0, 33) + ".";
+      int tw = say.length() * 6 * sz, bw = tw + 24, bh = sz == 2 ? 30 : 24, bx = (240 - bw) / 2, by = 72;
+      gfx->fillRoundRect(bx + 3, by + 3, bw, bh, 12, INK);
+      gfx->fillRoundRect(bx, by, bw, bh, 12, CARD);
+      gfx->drawRoundRect(bx, by, bw, bh, 12, INK);
+      gfx->drawRoundRect(bx + 1, by + 1, bw - 2, bh - 2, 11, INK);
+      gfx->fillTriangle(110, by + bh - 2, 124, by + bh - 2, 116, by + bh + 10, CARD);
+      gfx->drawLine(110, by + bh - 1, 116, by + bh + 10, INK);
+      gfx->drawLine(124, by + bh - 1, 116, by + bh + 10, INK);
+      gfx->drawLine(111, by + bh - 1, 117, by + bh + 9, INK);
+      text(bx + 12, by + (bh - 8 * sz) / 2 + 1, say, sz, INK);
+    }
     panel(8, 246, 221, 66);
     text(18, 256, "HP", 2, INK);
     int on = (card.hp + 5) / 10;
@@ -464,9 +502,9 @@ void loop() {
   else if (b == 1) { tuneClick(); status = "Syncing..."; drawFrame(); sync(); tuneClick(); drawFrame(); }
 
   if (millis() - lastTry > 30000) {   // every 30 s: LazyTrack sends changes (drunk, high, sober...) within a minute
-    int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat;
+    int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat + card.nowLabel;
     sync();
-    if (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat != what || view == 2) drawFrame();
+    if (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat + card.nowLabel != what || view == 2) drawFrame();
   }
   if (WiFi.status() != WL_CONNECTED && millis() - lastTry > 15000) { lastTry = millis(); if (wifi.run(3000) == WL_CONNECTED) sync(); }
 

@@ -6,6 +6,7 @@ Both files offer the same functions (like a header with two .c files behind it):
   idle_seconds()       time since the last input          video_playing() -> True/False/None
   screen_locked()      is the screen locked               pump_runloop(seconds)
   notify(title, msg)   a notification                     ask(msg, buttons, default) -> button or None
+  frontmost_is_game()  app in front comes from Steam / Riot / Epic...
   BROWSERS, BROWSER_SCRIPTS   which apps are browsers
 """
 import sys

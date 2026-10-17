@@ -41,6 +41,21 @@ def frontmost_app() -> str:
     return str(app.localizedName()) if app else ""
 
 
+GAME_DIRS = ("/steamapps/common/", "/riot games/", "/epic games/", "/gog galaxy/games/", "/battle.net/")
+
+
+def frontmost_is_game() -> bool:
+    """Is the app in front installed from a game store (Steam, Riot, Epic...)?"""
+    try:
+        from AppKit import NSWorkspace  # type: ignore
+        app = NSWorkspace.sharedWorkspace().frontmostApplication()
+        url = app.bundleURL() or app.executableURL() if app else None
+        path = str(url.path()).lower() + "/" if url else ""
+    except Exception:
+        return False
+    return any(d in path for d in GAME_DIRS)
+
+
 def browser_tab(app: str):
     """Returns (url, title) of the active tab, or ("", "")."""
     script = BROWSER_SCRIPTS.get(app)
