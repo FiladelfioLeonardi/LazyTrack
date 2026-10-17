@@ -32,6 +32,7 @@ log = logging.getLogger(__name__)
 APP_DIR = Path(__file__).resolve().parent.parent      # the folder with install.sh / install.bat
 VERSION_FILE = APP_DIR / "VERSION"
 KEEP = {".venv", ".git", "__pycache__", "VERSION"}      # never overwritten or removed
+KEEP_IF_THERE = {"ios/project.yml"}   # filled in with your own Apple settings by ios/setup.sh
 _lock = threading.Lock()
 
 
@@ -89,6 +90,8 @@ def apply(repo: str, branch: str, info: dict) -> None:
             if rel.parts[0] in KEEP or "__pycache__" in rel.parts:
                 continue
             dest = APP_DIR / rel
+            if rel.as_posix() in KEEP_IF_THERE and dest.exists():
+                continue
             if item.is_dir():
                 dest.mkdir(parents=True, exist_ok=True)
             else:
