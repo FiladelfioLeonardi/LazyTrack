@@ -21,7 +21,8 @@ Keep the black start.bat window open (minimize it); closing it stops LazyTrack.
 
 - **Windows may warn** "Windows protected your PC" the first time you open a .bat file:
   click **More info → Run anyway**. That's because the file isn't from a big company, not because it's dangerous.
-- **Camera:** the smoking detector uses the webcam. If Windows asks, allow it. You can turn the
+- **Camera:** the smoking detector uses the webcam. If Windows asks, allow it. If it can't open the camera,
+  turn on Settings → Privacy & security → Camera → "Let desktop apps access your camera". You can turn the
   detector off in Settings → Smoking detector.
 - **Friends:** open the Friends tab and add your friend's username.
 - **Websites:** Windows doesn't let apps read the address of a browser tab, so LazyTrack reads the tab
@@ -30,7 +31,10 @@ Keep the black start.bat window open (minimize it); closing it stops LazyTrack.
   then run `lt phone` in the LazyTrack folder (click the address bar of the folder, type `cmd`, Enter,
   then type `lt phone`). Scan the QR code with the iPhone camera and add the page to the home screen.
 
-## Something not working?
+## Test it
 
-Run `lt check` the same way as `lt phone` above: it shows which app it sees, the camera and a test
-notification. Send a screenshot of that window.
+- **`camtest.bat`**: opens the camera with the live smoking score. Hold a pen like a cigarette:
+  the score should go up. Press **Q** in the camera window to close it.
+- **`check.bat`**: shows which app LazyTrack sees, idle time, the camera and a test notification.
+
+If anything looks wrong, send a screenshot of the black window.
