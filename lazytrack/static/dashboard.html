@@ -591,6 +591,20 @@
   .labctl label { font-weight: 800; } .labctl select { padding: 6px 8px; border: 2px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: 700 14px var(--body); }
   .labbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .labflag { margin-top: 16px; padding: 8px 12px; border: 3px dashed var(--line); border-radius: 12px; font-weight: 700; display: flex; gap: 10px; align-items: center; }
+  /* edit a list right in its tab (Bad habits / Good habits / Monitoring) */
+  .tabedit { margin: 0 0 14px; }
+  .tecard { display: grid; gap: 10px; }
+  .tehead { display: flex; align-items: center; justify-content: space-between; gap: 10px; } .tehead b { font: 800 18px var(--body); }
+  .tchips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .tchip { display: inline-flex; align-items: center; gap: 6px; border: 2px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink);
+           font: 700 14px var(--body); padding: 7px 11px; cursor: pointer; }
+  .tchip.on { background: var(--yellow); color: var(--on-fill); } .tchip .x { opacity: .6; font-weight: 800; }
+  .tchip.add { border-style: dashed; } .tchip:hover { transform: translate(-1px, -1px); }
+  .tcustom { display: grid; gap: 8px; padding: 10px; border: 2px dashed var(--line); border-radius: 12px; } .tcustom[hidden] { display: none; }
+  .tcustom .crow { display: flex; gap: 8px; } .tcustom input { padding: 8px 10px; border: 2px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 600 15px var(--body); }
+  .tcustom .cn { flex: 1; min-width: 0; } .tcustom .ce { width: 64px; text-align: center; }
+  .tcustom .emos { display: flex; flex-wrap: wrap; gap: 4px; } .tcustom .emos button { border: 0; background: none; font-size: 22px; cursor: pointer; padding: 2px 4px; }
+  .tcustom .cbtm { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
   .view { display: none; }
   /* Bad habits / Good habits share one page: each shows only its own half */
   #habits.only .grid2 { grid-template-columns: 1fr; }
@@ -987,6 +1001,7 @@ applyTheme();
   <main id="habits" class="view">
     <h2 class="sec" style="margin-top:22px">Today</h2>
     <p class="sub" id="habitsSub">Compared with yesterday at this time. Tap one for its timeline.</p>
+    <div class="tabedit" id="hTabEdit"></div>
     <div class="grid2">
       <div class="card rows" id="hBad"></div>
       <div class="stack goodside">
@@ -1013,6 +1028,7 @@ applyTheme();
   <main id="screen" class="view">
     <h2 class="sec" style="margin-top:22px">Screen time today</h2>
     <p class="sub">Tracked by itself, nothing to log. Compared with yesterday at this time. Tap one to see when you used it.</p>
+    <div class="tabedit" id="mTabEdit"></div>
     <div class="grid2">
       <div class="card rows" id="sToday"></div>
       <div class="card"><div class="label" style="margin:14px 16px 4px">TOP APPS THIS WEEK</div><ul class="plain" id="apps"></ul></div>
@@ -1372,7 +1388,8 @@ applyTheme();
 
       <section class="card pad" data-cat="habits">
         <h2>Habits</h2>
-        <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.</p>
+        <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.
+          Quicker: <a href="#tab=bad">Bad habits</a>, <a href="#tab=good">Good habits</a> and <a href="#tab=monitor">Monitoring</a> each have ✏️ to edit their own list.</p>
         <div class="hlist" id="hList"></div>
         <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
       </section>
@@ -1569,6 +1586,8 @@ const OTHER = {commits: {e: "✅", n: "Commits", bad: false}, sleep: {e: "😴",
                github: {e: "🐙", n: "GitHub contributions", one: "contribution", bad: false}};
 const INFO = Object.fromEntries([...HABITS.map(h => [h.k, h]), ...SCREEN.map(s => [s.k, s]), ...Object.entries(OTHER).map(([k, v]) => [k, {k, ...v}])]);
 /** takes {habits, screen, modules, catalog, screen_catalog} from the server and rebuilds everything that lists habits */
+const CAM_KINDS = ["cigarette", "joint"];   // what the webcam can see: only these turn the camera on
+const camKinds = () => HABITS.filter(h => CAM_KINDS.includes(h.k)).map(h => h.k);
 function applyHabits(cfg) {
   for (const h of HABITS) if (!SCREEN.some(x => x.k === h.k) && !OTHER[h.k]) delete INFO[h.k];
   CATALOG = cfg.catalog || CATALOG; SCREEN_CATALOG = cfg.screen_catalog || SCREEN_CATALOG;
@@ -2578,6 +2597,7 @@ function renderHome() {
 
 // ---------------------------------------------------------------- HABITS
 function renderHabits(mode = "bad") {
+  tabEdit.draw(mode);
   const t = O.today, ref = O.ref, val = O.val, against = O.against, isToday = O.is_today;
   const bad = mode === "bad", mine = h => !!h.bad === bad;
   $("habits").dataset.mode = mode; $("habits").classList.add("only");
@@ -2610,6 +2630,94 @@ function renderHabits(mode = "bad") {
   if (!bad && w.sleep_nights) rows.push(rowHTML("sleep", hm(w.sleep_avg), compare("sleep", w.sleep_avg, lw.sleep_avg, "last week"), "Sleep per night"));
   $("hWeek").innerHTML = rows.join("") || `<p class="empty">Nothing logged this week yet.</p>`;
 }
+
+// ---------------------------------------------------------------- edit the list right in its tab
+// Bad habits / Good habits: remove, add from the list, or make your own. Monitoring: which screen stats
+// show on Home (and to friends), and the 42 / GitHub extras. Every change saves right away.
+const habitOut = x => x.custom ? {k: x.k, n: x.n, e: x.e, bad: x.bad, one: x.one, s: x.s, fill: x.fill,
+  size: Math.abs(x.hp) >= 10 ? "big" : Math.abs(x.hp) <= 3 ? "small" : "medium"} : x.k;
+const tabEdit = {
+  open: {},
+  draw(mode) {
+    const box = $(mode === "monitor" ? "mTabEdit" : "hTabEdit");
+    if (!this.open[mode]) {
+      box.innerHTML = `<button type="button" class="btn" data-tedit="${mode}">✏️ ${mode === "monitor" ? "Choose what's shown" : "Edit list"}</button>`;
+      return;
+    }
+    if (mode === "monitor") {
+      const mods = [["school", "🎓", "42 deadlines", MODULES.school && !(O && O.ft && O.ft.connected)], ["github", "🐙", "GitHub streak", MODULES.github && !(O && O.github && O.github.configured)]];
+      box.innerHTML = `<div class="card pad tecard">
+        <div class="tehead"><b>What's shown</b><button type="button" class="btn" data-tedit="monitor">Done</button></div>
+        <div class="label" style="margin:0">ON HOME AND ON YOUR FRIEND CARD</div>
+        <div class="tchips">${SCREEN_CATALOG.map(x => { const on = SHOW_SCREEN.includes(x.k);
+          return `<button type="button" class="tchip ${on ? "on" : ""}" aria-pressed="${on}" data-tscr="${esc(x.k)}">${esc((INFO[x.k] || {}).e || "📊")} ${esc(x.n)}</button>`; }).join("")}</div>
+        <div class="label" style="margin:6px 0 0">EXTRAS</div>
+        <div class="tchips">${mods.map(([k, e, n]) => `<button type="button" class="tchip ${MODULES[k] ? "on" : ""}" aria-pressed="${!!MODULES[k]}" data-tmod="${k}">${e} ${n}</button>`).join("")}</div>
+        ${mods.some(m => m[3]) ? `<p class="note">Connect ${mods.filter(m => m[3]).map(m => m[2].split(" ")[0]).join(" and ")} in <a href="#tab=settings&sc=tracking">Settings → Tracking</a> to fill it in.</p>` : ""}
+        <p class="note">Screen time is always tracked; this only picks what shows.</p></div>`;
+      return;
+    }
+    const bad = mode === "bad", mine = HABITS.filter(h => !!h.bad === bad), taken = new Set(HABITS.map(h => h.k));
+    const more = CATALOG.filter(c => !!c.bad === bad && !taken.has(c.k));
+    box.innerHTML = `<div class="card pad tecard">
+      <div class="tehead"><b>Your ${bad ? "bad" : "good"} habits</b><button type="button" class="btn" data-tedit="${mode}">Done</button></div>
+      <div class="tchips">${mine.map(h => `<button type="button" class="tchip on" data-trm="${esc(h.k)}" title="Remove ${esc(h.n)}">${esc(h.e)} ${esc(h.n)} <span class="x" aria-hidden="true">✕</span></button>`).join("")
+        || `<span class="note">None yet. Add one below.</span>`}</div>
+      <div class="label" style="margin:6px 0 0">ADD</div>
+      <div class="tchips">${more.map(c => `<button type="button" class="tchip add" data-tadd="${esc(c.k)}">+ ${esc(c.e)} ${esc(c.n)} <span class="x">${c.hp > 0 ? "+" : ""}${c.hp}</span></button>`).join("")}
+        <button type="button" class="tchip add" data-tcustom="${mode}">+ ✨ Make your own</button></div>
+      <div class="tcustom" id="tCustom" hidden></div>
+      <p class="note">Removing one keeps its history, so adding it back brings it all back. ${bad ? "They take" : "They give"} HP every time you log one.</p></div>`;
+  },
+  async save(body, msg) {
+    try {
+      const r = await post("/api/habits", body);
+      if (!r.ok) throw new Error();
+      applyHabits(await r.json());
+      if (msg) toast(msg, null);
+      render();
+    } catch (_) { toast("Couldn't save that. Is LazyTrack running?", null); }
+  },
+  custom(mode) {
+    const f = $("tCustom"), bad = mode === "bad";
+    if (!f.hidden) { f.hidden = true; return; }
+    const emos = bad ? EMOJI_BAD : EMOJI_GOOD;
+    f.innerHTML = `<div class="crow"><input class="cn" maxlength="30" placeholder="${bad ? "e.g. Nail biting" : "e.g. Cold showers"}" aria-label="Name">
+        <input class="ce" maxlength="4" value="${emos[0]}" aria-label="Emoji"></div>
+      <div class="emos">${emos.map(x => `<button type="button" data-temo="${x}" aria-label="Use ${x}">${x}</button>`).join("")}</div>
+      <div class="cbtm"><div class="seg" role="radiogroup" aria-label="How big is it">
+          ${["small", "medium", "big"].map(z => `<label><input type="radio" name="tsize" value="${z}" ${z === "medium" ? "checked" : ""}> ${z[0].toUpperCase() + z.slice(1)} ${bad ? "−" : "+"}${SIZE_HP[z]}</label>`).join("")}</div>
+        <button type="button" class="btn primary" data-tcadd="${mode}">Add it</button></div>`;
+    f.hidden = false;
+    setTimeout(() => f.querySelector(".cn").focus({preventScroll: true}), 50);
+  },
+};
+document.addEventListener("click", e => {
+  const ed = e.target.closest("[data-tedit]");
+  if (ed) { const m = ed.dataset.tedit; tabEdit.open[m] = !tabEdit.open[m]; tabEdit.draw(m); return; }
+  const rm = e.target.closest("[data-trm]");
+  if (rm) { const h = HABITS.find(x => x.k === rm.dataset.trm);
+    tabEdit.save({habits: HABITS.filter(x => x.k !== rm.dataset.trm).map(habitOut)}, `Removed ${h ? h.n : "it"}. Its history is kept.`); return; }
+  const ad = e.target.closest("[data-tadd]");
+  if (ad) { const c = CATALOG.find(x => x.k === ad.dataset.tadd);
+    tabEdit.save({habits: [...HABITS.map(habitOut), ad.dataset.tadd]}, `Added ${c ? c.e + " " + c.n : "it"}${CAM_KINDS.includes(ad.dataset.tadd) ? ". Want the webcam to notice it? Home will ask." : ""}`); return; }
+  const cu = e.target.closest("[data-tcustom]"); if (cu) { tabEdit.custom(cu.dataset.tcustom); return; }
+  const em = e.target.closest("[data-temo]"); if (em) { $("tCustom").querySelector(".ce").value = em.dataset.temo; return; }
+  const ca = e.target.closest("[data-tcadd]");
+  if (ca) {
+    const f = $("tCustom"), name = f.querySelector(".cn").value.trim(), bad = ca.dataset.tcadd === "bad";
+    if (!name) { f.querySelector(".cn").focus(); return; }
+    const c = {n: name, e: f.querySelector(".ce").value.trim() || (bad ? "❌" : "⭐"), bad, size: (f.querySelector("input[name=tsize]:checked") || {}).value || "medium"};
+    tabEdit.save({habits: [...HABITS.map(habitOut), c]}, `Added ${c.e} ${c.n}`); return;
+  }
+  const sc = e.target.closest("[data-tscr]");
+  if (sc) { const k = sc.dataset.tscr, on = SHOW_SCREEN.includes(k);
+    tabEdit.save({screen: on ? SHOW_SCREEN.filter(x => x !== k) : [...SHOW_SCREEN, k]}); return; }
+  const md = e.target.closest("[data-tmod]");
+  if (md) { const k = md.dataset.tmod;
+    tabEdit.save({modules: {...MODULES, [k]: !MODULES[k]}}, MODULES[k] ? null : `${k === "school" ? "42" : "GitHub"} is on. Connect it in Settings → Tracking.`); }
+});
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest && e.target.closest("#tCustom .cn")) { e.preventDefault(); document.querySelector("[data-tcadd]").click(); } });
 
 // ---------------------------------------------------------------- SCREEN
 function renderScreen() {
@@ -2957,16 +3065,16 @@ const question = {
     if (this.shown === q.id) return;
     this.shown = q.id;
     $("qPet").innerHTML = mochiCells(PET_LOOK, "smoky", "okay");
-    $("qSub").textContent = "Is that a cigarette or a joint?";
+    $("qSub").textContent = (q.text || "").split("\n")[1] || "Is that a cigarette or a joint?";
     const last = q.last || {}, since = ts => {
       const m = Math.floor((Date.now() / 1000 - ts) / 60), d = new Date(ts * 1000), t = d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
       const days = Math.round((new Date(new Date().toDateString()) - new Date(d.toDateString())) / 864e5);
       return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 720 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""} ago`
         : days === 0 ? `today at ${t}` : days === 1 ? `yesterday at ${t}` : `${days} days ago`;
     };
-    const parts = [["cigarette", "Last cigarette"], ["joint", "Last joint"]].filter(([k]) => last[k]).map(([k, n]) => `${n}: ${since(last[k])}`);
+    const parts = [["cigarette", "Last cigarette"], ["joint", "Last joint"]].filter(([k]) => last[k] && (!camKinds().length || camKinds().includes(k))).map(([k, n]) => `${n}: ${since(last[k])}`);
     $("qLast").hidden = !parts.length; $("qLast").textContent = parts.join("\n");
-    $("qBtns").innerHTML = q.buttons.map(b => `<button type="button" class="btn ${b === "Cigarette" ? "primary" : ""}" data-qa="${esc(b)}" data-qid="${q.id}">${esc(Q_LABEL[b] || b)}</button>`).join("");
+    $("qBtns").innerHTML = q.buttons.map(b => `<button type="button" class="btn ${b === q.buttons[0] ? "primary" : ""}" data-qa="${esc(b)}" data-qid="${q.id}">${esc(Q_LABEL[b] || b)}</button>`).join("");
     $("qModal").hidden = false;
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
     try { if (window.pywebview && window.pywebview.api && window.pywebview.api.front) window.pywebview.api.front(); } catch (_) {}   // the app window comes to the front
@@ -3009,7 +3117,7 @@ document.addEventListener("click", e => {
 // on Home: only speak up when something's wrong
 // the camera's state, always visible on Home (when a smoking habit is tracked): is it watching right now?
 async function camWarn() {
-  const c = await camStatus(), w = $("camWarn"), smokes = HABITS.some(h => h.smoke);
+  const c = await camStatus(), w = $("camWarn"), smokes = camKinds().length > 0;
   // never decided about the camera? ask once, nicely (it's off until you say yes)
   if ($("camAsk").dataset.test !== "1") $("camAsk").hidden = !(c && smokes && !c.enabled && !c.asked && $("camAsk").dataset.done !== "1");
   const show = c && c.enabled && c.status !== "off" && smokes;
@@ -3429,7 +3537,7 @@ document.addEventListener("click", e => {
 
 // Settings only shows what you use: 42 and GitHub when picked in the setup, the camera when you track smoking
 function settingsFor() {
-  const on = {school: !!MODULES.school, github: !!MODULES.github, smoke: HABITS.some(h => h.smoke)};
+  const on = {school: !!MODULES.school, github: !!MODULES.github, smoke: camKinds().length > 0};
   document.querySelectorAll("#settings [data-mod]").forEach(s => { s.hidden = !on[s.dataset.mod]; });
 }
 
@@ -3748,7 +3856,9 @@ const admin = {
     const L = (O && O.life) || {};
     if (a === "rip") { rip.preview = true; rip.show({died: "lab" + Date.now(), gen: L.gen || 1, days: L.age || 12, cause: {e: "🚬", n: "Cigarettes"}}, {gen: (L.gen || 1) + 1, best: L.best || {days: 12}, deaths: (L.deaths || 0) + 1}); }
     if (a === "smoke") { const ev = k => ((O && O.recent_events) || []).filter(e => e.kind === k).map(e => e.ts).sort((x, y) => y - x)[0];
-      question.show({id: -Date.now(), buttons: ["Cigarette", "Joint", "Already registered", "Neither"], last: {cigarette: ev("cigarette"), joint: ev("joint")}}); }
+      const ks = camKinds().length ? camKinds() : CAM_KINDS, b = [...(ks.includes("cigarette") ? ["Cigarette"] : []), ...(ks.includes("joint") ? ["Joint"] : [])];
+      const what = b.length === 2 ? "a cigarette or a joint" : b[0] === "Cigarette" ? "a cigarette" : "a joint";
+      question.show({id: -Date.now(), buttons: [...b, "Already registered", "Neither"], text: `Caught you 👀\nIs that ${what}?`, last: {cigarette: ev("cigarette"), joint: ev("joint")}}); }
     if (a === "tour") tour.start();
     if (a === "camask") { go({tab: "home"}); setTimeout(() => { $("camAsk").dataset.test = "1"; $("camAsk").hidden = false; $("camAsk").scrollIntoView({block: "center"}); }, 700); }
     if (a === "syspopup") (async () => {
@@ -4069,7 +4179,7 @@ async function render() {
     else {
       await loadOverview();
       ({home: renderHome, bad: () => renderHabits("bad"), good: () => renderHabits("good"),
-        monitor: () => { renderScreen(); renderSchool(); }, friends: renderFriends})[view]();
+        monitor: () => { tabEdit.draw("monitor"); renderScreen(); renderSchool(); }, friends: renderFriends})[view]();
       if (view === "home") { camWarn(); news.draw(); }
     }
     $("offline").style.display = "none";
@@ -4472,7 +4582,7 @@ const setup = {
     $("dTitle").textContent = this.mode === "edit" ? "Saved your picks." : `All set${name ? ", " + name : ""}.`;
     $("dLine").textContent = `Mochi will help you with ${less} thing${less === 1 ? "" : "s"} to cut down, ${more} to do more of, and ${this.sel.screen.length} screen stat${this.sel.screen.length === 1 ? "" : "s"}.`
       + (this.mode === "edit" ? " Anything you removed keeps its history, in case you add it back." : "")
-      + (hs.some(h => h.smoke) ? " Want the webcam to notice cigarettes for you? Home will ask (it's optional and private)." : "");
+      + (hs.some(h => CAM_KINDS.includes(h.k)) ? " Want the webcam to notice cigarettes for you? Home will ask (it's optional and private)." : "");
     $("dGo").firstChild.textContent = this.mode === "edit" ? "Back to the app " : "Meet Mochi ";
     $("dPet").innerHTML = mochiCells(PET_LOOK, "proud", "legend");
   },

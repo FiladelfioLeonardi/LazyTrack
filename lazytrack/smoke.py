@@ -27,14 +27,30 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional, Tuple
 
-from . import config, db, system
+from . import config, db, habits, system
 
 log = logging.getLogger(__name__)
 
 ANSWERS = {"Cigarette": "cigarette", "Joint": "joint"}
 ALREADY = "Already registered"   # you logged it yourself already: camera off, nothing logged twice
-BUTTONS = ["Cigarette", "Joint", ALREADY, "Neither"]
+BUTTONS = ["Cigarette", "Joint", ALREADY, "Neither"]   # every possible answer
 QUESTION_TEXT = "Caught you 👀\nIs that a cigarette or a joint?"
+
+
+def buttons() -> list:
+    """Only asks about what you track: no "Joint" button if you don't track joints, and the other way round."""
+    kinds = habits.camera_kinds() or list(habits.CAMERA_KINDS)
+    return [b for b in ("Cigarette", "Joint") if ANSWERS[b] in kinds] + [ALREADY, "Neither"]
+
+
+def question_text() -> str:
+    b = buttons()
+    what = "a cigarette or a joint" if "Cigarette" in b and "Joint" in b else "a cigarette" if "Cigarette" in b else "a joint"
+    return f"Caught you 👀\nIs that {what}?"
+
+
+def ask_default() -> str:
+    return buttons()[0]
 
 # Shared between the computer's camera and a phone watching: one cigarette is one cigarette.
 SHARED = {"cooldown_until": 0.0,   # after a cigarette/joint: cameras off
@@ -126,8 +142,8 @@ def ago(ts: Optional[float], now: Optional[float] = None) -> str:
 
 def last_line() -> str:
     """For the popup: 'Last cigarette: 2 h ago · last joint: 3 days ago' (only what you've logged before)."""
-    last = last_smokes()
-    parts = [f"{n}: {ago(last[k])}" for k, n in (("cigarette", "Last cigarette"), ("joint", "Last joint")) if last.get(k)]
+    last, kinds = last_smokes(), habits.camera_kinds()
+    parts = [f"{n}: {ago(last[k])}" for k, n in (("cigarette", "Last cigarette"), ("joint", "Last joint")) if last.get(k) and k in kinds]
     return " · ".join(parts)
 
 
@@ -157,7 +173,7 @@ def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
             if _answered.is_set() or left < 5:
                 return
             line = last_line()
-            ans = system.ask(QUESTION_TEXT + (f"\n\n{line}" if line else ""), BUTTONS, "Cigarette", timeout=int(left), cancel=_answered.is_set)
+            ans = system.ask(question_text() + (f"\n\n{line}" if line else ""), buttons(), ask_default(), timeout=int(left), cancel=_answered.is_set)
             if ans:
                 answer_question(QUESTION["id"], ans)
         threading.Thread(target=popup, name="ask", daemon=True).start()
@@ -536,6 +552,8 @@ LIVE = {"status": "off", "detail": "", "light": "", "ember": "", "score": 0.0, "
 
 
 def _set(status: str, detail: str = "", **kw) -> None:
+    kw.setdefault("no_habit", False)
+    kw.setdefault("by_you", False)
     LIVE.update(status=status, detail=detail, **kw)
 
 
@@ -563,7 +581,7 @@ class SmokeDetector(threading.Thread):
         self.status = "starting"
 
     def _paused(self) -> bool:
-        if paused_until():
+        if paused_until() or not habits.camera_kinds():
             return True
         if system.screen_locked():
             return True
@@ -571,6 +589,13 @@ class SmokeDetector(threading.Thread):
         return system.idle_seconds() > self.scfg["pause_when_idle_seconds"] and not system.video_playing()
 
     def run(self) -> None:
+        # no cigarettes or joints in your list: don't load the camera AI or touch the camera at all
+        # (so no camera permission is asked). Starts by itself once you add one.
+        while not habits.camera_kinds() and not self.stop_ev.is_set():
+            _set("off", "You don't track cigarettes or joints, so the camera stays off.", no_habit=True)
+            self.stop_ev.wait(10)
+        if self.stop_ev.is_set():
+            return
         _set("loading", "Loading the camera AI. The first time it downloads it (about 400 MB).")
         try:
             import cv2
@@ -612,6 +637,8 @@ class SmokeDetector(threading.Thread):
                 self.status = "cooldown" if t0 < cooldown_until else "paused"
                 if t0 < cooldown_until:
                     _set("cooldown", "Camera off for a while after a cigarette, so it isn't counted twice.", until=cooldown_until)
+                elif not habits.camera_kinds():
+                    _set("off", "You don't track cigarettes or joints, so the camera stays off.", no_habit=True)
                 elif paused_until():
                     _set("paused", "Paused by you.", until=paused_until(), by_you=True)
                 else:

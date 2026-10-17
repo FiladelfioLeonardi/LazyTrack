@@ -108,6 +108,14 @@ def keys() -> List[str]:
     return [h["k"] for h in get()["habits"]]
 
 
+CAMERA_KINDS = ("cigarette", "joint")   # what the webcam can see
+
+
+def camera_kinds() -> List[str]:
+    """The tracked habits the camera can notice. Empty = the camera never turns on (no permission asked)."""
+    return [k for k in keys() if k in CAMERA_KINDS]
+
+
 def allowed_kinds() -> set:
     """What /api/event accepts: the chosen habits, plus every built-in one, so the webcam
     and the phone app can still log things even if they're hidden right now."""

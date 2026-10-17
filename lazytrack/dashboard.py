@@ -120,7 +120,7 @@ def make_handler(cfg: dict):
                     smoke.APP_SEEN["t"] = time.time()   # the app is on screen here: it asks, not the system popup
                 q = smoke.QUESTION
                 return self._send(200, {"open": q["open"], "id": q["id"], "source": q["source"], "asked_at": q["asked_at"],
-                                        "text": smoke.QUESTION_TEXT, "buttons": smoke.BUTTONS,
+                                        "text": smoke.question_text(), "buttons": smoke.buttons(),
                                         "last": smoke.last_smokes() if q["open"] else {}})
             if u.path == "/api/camera/frame.jpg":
                 # the live view: only on the computer itself, camera pictures never go over the network
@@ -200,7 +200,7 @@ def make_handler(cfg: dict):
                     return self._send(403, {"error": "Only on the computer itself."})
                 from . import smoke
                 line = smoke.last_line()
-                ans = system.ask(smoke.QUESTION_TEXT + (f"\n\n{line}" if line else ""), smoke.BUTTONS, "Cigarette", timeout=60)
+                ans = system.ask(smoke.question_text() + (f"\n\n{line}" if line else ""), smoke.buttons(), smoke.ask_default(), timeout=60)
                 return self._send(200, {"answer": ans})
             if u.path == "/api/camera/pause":
                 from . import smoke

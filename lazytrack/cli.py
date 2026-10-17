@@ -79,7 +79,9 @@ def cmd_run(cfg: dict, args) -> None:
     from .updater import UpdateWorker
     UpdateWorker(cfg, stop).start()
     if cfg["smoke"]["enabled"] and not args.no_camera:
-        _camera_permission(cfg)
+        from . import habits
+        if habits.camera_kinds():   # no cigarettes or joints tracked: never touch the camera (no permission asked)
+            _camera_permission(cfg)
         from .smoke import SmokeDetector
         SmokeDetector(cfg, stop).start()
 
