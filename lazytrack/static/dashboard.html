@@ -898,7 +898,8 @@ applyTheme();
         <h2>Updates</h2>
         <p class="sub">LazyTrack updates itself: it checks for new versions a minute after starting and every few hours.</p>
         <p class="note" id="uStatus"></p>
-        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="uCheck">Check for updates</button></div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="uCheck">Check for updates</button>
+          <button type="button" class="btn primary" id="uInstall" hidden>Update now</button></div>
       </section>
 
       <section class="card pad">
@@ -2670,18 +2671,32 @@ function drawUpdates() {
   $("uStatus").innerHTML = !u.repo ? "Not connected to GitHub yet, so no automatic updates."
     : u.dev ? "This copy is a git checkout: update it with git pull."
     : `Version <b>${esc(u.version || "unknown")}</b>${u.updated_at ? `, updated ${esc(when(u.updated_at))}` : ""}. Last check: ${esc(when(u.last_check))}.`
-      + (u.message ? `<br>Latest change: ${esc(u.message)}` : "");
+      + (u.message ? `<br>Latest change: ${esc(u.message)}` : "")
+      + (u.available ? `<br><b>A new version is ready${u.available.message ? `: ${esc(u.available.message)}` : ""}.</b>` : "");
   $("uCheck").hidden = !u.repo || u.dev;
+  updateFound(!!(u.repo && !u.dev && u.available));
+}
+// once a check finds a new version, "Check for updates" stays off until you install it
+function updateFound(yes) {
+  $("uCheck").disabled = yes;
+  $("uCheck").title = yes ? "Install the new version first" : "";
+  $("uInstall").hidden = !yes;
 }
 document.addEventListener("click", async e => {
-  const b = e.target.closest("#uCheck"); if (!b) return;
-  b.disabled = true; $("uStatus").textContent = "Checking…";
+  const check = e.target.closest("#uCheck"), inst = e.target.closest("#uInstall");
+  if (!check && !inst) return;
+  if (check && check.disabled) return;
+  $("uCheck").disabled = $("uInstall").disabled = true;
+  $("uStatus").textContent = inst ? "Downloading the new version…" : "Checking…";
+  let found = false;
   try {
-    const r = await post("/api/update/check", {install: true}), j = await r.json();
-    $("uStatus").textContent = j.state === "updated" ? `Updated: ${j.text} Restarting…` : j.text;
-    if (j.state === "updated") setTimeout(() => location.reload(), 7000);
-  } catch (_) { $("uStatus").textContent = "Couldn't check right now."; }
-  b.disabled = false;
+    const r = await post("/api/update/check", {install: !!inst}), j = await r.json();
+    if (j.state === "available") { found = true; $("uStatus").innerHTML = `<b>A new version is ready:</b> ${esc(j.text)}`; }
+    else $("uStatus").textContent = j.state === "updated" ? `Updated: ${j.text} Restarting…` : j.text;
+    if (j.state === "updated") { setTimeout(() => location.reload(), 7000); return; }   // stays off until the app is back
+  } catch (_) { $("uStatus").textContent = inst ? "Couldn't update right now. Try again in a bit." : "Couldn't check right now."; found = !!inst; }
+  $("uInstall").disabled = false;
+  updateFound(found);
 });
 
 function drawAccount() {

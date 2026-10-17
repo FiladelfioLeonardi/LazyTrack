@@ -61,7 +61,17 @@ def status(cfg: dict) -> dict:
     u = cfg.get("update", {})
     return {"repo": u.get("repo", ""), "auto": bool(u.get("auto", True)), "version": installed()[:7],
             "dev": (APP_DIR / ".git").exists(), "last_check": float(db.kv_get("update_checked") or 0),
-            "updated_at": float(db.kv_get("update_done_at") or 0), "message": db.kv_get("update_message") or ""}
+            "updated_at": float(db.kv_get("update_done_at") or 0), "message": db.kv_get("update_message") or "",
+            "available": pending()}
+
+
+def pending() -> dict | None:
+    """A newer version a check found but that isn't installed yet ({"sha", "message"}), or None."""
+    try:
+        p = json.loads(db.kv_get("update_available") or "null")
+    except ValueError:
+        return None
+    return p if p and p.get("sha") and p["sha"] != installed() else None
 
 
 def _req_file() -> str:
@@ -108,6 +118,7 @@ def apply(repo: str, branch: str, info: dict) -> None:
         py = Path(sys.executable)
         subprocess.run([str(py), "-m", "pip", "install", "-q", "-r", str(APP_DIR / _req_file())], cwd=APP_DIR, timeout=1800)
     VERSION_FILE.write_text(info["sha"] + "\n")
+    db.kv_set("update_available", "")
     db.kv_set("update_done_at", time.time())
     db.kv_set("update_message", info.get("message", ""))
 
@@ -127,8 +138,11 @@ def check(cfg: dict, install: bool = True) -> dict:
         except Exception as e:
             return {"state": "error", "text": f"Couldn't reach GitHub ({e.__class__.__name__})."}
         if info["sha"] == installed():
+            db.kv_set("update_available", "")
             return {"state": "current", "text": "You have the newest version."}
         if not install:
+            # remembered, so the app keeps showing "Update now" (and no second check) until it's installed
+            db.kv_set("update_available", json.dumps({"sha": info["sha"], "message": info["message"]}))
             return {"state": "available", "text": info["message"] or "A new version is ready."}
         log.info("updater: updating %s -> %s (%s)", installed()[:7] or "?", info["sha"][:7], info["message"])
         apply(repo, branch, info)
