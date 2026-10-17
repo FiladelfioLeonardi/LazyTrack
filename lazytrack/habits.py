@@ -62,7 +62,7 @@ SCREEN_KEYS = {s["k"] for s in SCREEN_STATS}
 LEGACY = ["cigarette", "joint", "junk_food", "alcohol", "energy_drink", "gym", "walk", "water"]
 LEGACY_MAIN = {"cigarette", "joint", "junk_food", "gym"}
 LEGACY_SCREEN = ["coding", "commits", "youtube", "social", "screen_pc", "screen_phone", "screen"]
-MODULES = {"school": True, "github": True}   # 42 deadlines / GitHub streak
+MODULES = {"school": False, "github": False}   # 42 deadlines / GitHub streak: off until you pick them
 
 FILLS = ["--pink", "--green", "--yellow", "--blue", "--lilac", "--orange", "--lime"]
 SIZES = {"small": 3, "medium": 6, "big": 10}
@@ -86,12 +86,22 @@ def get() -> dict:
     return {
         "habits": hs,
         "screen": _load("screen_stats", LEGACY_SCREEN),
-        "modules": {**MODULES, **_load("modules", {})},
+        "modules": {**_default_modules(), **_load("modules", {})},
         "share": _load("share", None),   # None = the default: good stuff shared, bad habits private
         "pet": _load("pet", {}),         # what Mochi wears: {"body": "cat", "hat": "beanie", ...}
         "catalog": CATALOG,
         "screen_catalog": SCREEN_STATS,
     }
+
+
+def _default_modules() -> dict:
+    """Before anyone picked: on only where it's already set up (older installs keep what they had)."""
+    from . import config
+    try:
+        cfg = config.load()
+    except Exception:
+        return dict(MODULES)
+    return {"school": bool((cfg.get("fortytwo") or {}).get("login")), "github": bool((cfg.get("github") or {}).get("username"))}
 
 
 def keys() -> List[str]:
@@ -175,5 +185,5 @@ def save(body: dict) -> dict:
     if "share" in body and isinstance(body["share"], list):
         db.kv_set("share", json.dumps([str(k)[:40] for k in body["share"]][:60]))
     if "modules" in body:
-        db.kv_set("modules", json.dumps({k: bool(body["modules"].get(k, v)) for k, v in MODULES.items()}))
+        db.kv_set("modules", json.dumps({k: bool(body["modules"].get(k, False)) for k in MODULES}))
     return get()

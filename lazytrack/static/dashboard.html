@@ -1229,7 +1229,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad" id="sSmoke">
+      <section class="card pad" id="sSmoke" data-mod="smoke">
         <h2>Smoking detector</h2>
         <p class="sub">Watches through the webcam and asks you when it thinks you're smoking.</p>
         <div class="form">
@@ -1265,7 +1265,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" data-mod="school">
         <h2>42 deadlines</h2>
         <p class="sub">Shown as countdowns in the School tab and on Home.</p>
         <div class="form">
@@ -1279,7 +1279,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" data-mod="school">
         <h2>42 intra</h2>
         <p class="sub">For logtime, projects and the blackhole date. Create an app at
           <a href="https://profile.intra.42.fr/oauth/applications/new" target="_blank" rel="noopener">profile.intra.42.fr</a>
@@ -1291,7 +1291,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" data-mod="github">
         <h2>GitHub</h2>
         <p class="sub">For contributions, streaks and repos. The username alone shows public activity.
           Add a token to count your private repos too: create one at
@@ -2259,7 +2259,8 @@ function renderHome() {
   // the "main" bad habit (the first one in the list) leads the headline and the mood
   const lead = HABITS.find(h => h.bad);
   const cig = lead ? val(t, lead.k) : 0, cigRef = lead ? val(ref, lead.k) : 0;
-  const coding = val(t, "coding"), yt = val(t, "youtube"), commits = val(t, "commits");
+  const picked = k => SHOW_SCREEN.includes(k);   // only what you chose in the setup shows up here
+  const coding = picked("coding") ? val(t, "coding") : 0, yt = picked("youtube") ? val(t, "youtube") : 0, commits = picked("commits") ? val(t, "commits") : 0;
   const hour = new Date().getHours();
 
   // what the pet says: the day in one sentence
@@ -2277,6 +2278,7 @@ function renderHome() {
   if (coding) bits.push(`${hm(coding)} of coding`);
   if (yt) bits.push(`${hm(yt)} of YouTube`);
   if (commits) bits.push(plural(commits, "commit"));
+  for (const h of HABITS.filter(h => !h.bad && val(t, h.k)).slice(0, 2)) bits.push(plural(val(t, h.k), h.one));
   const rest = bits.length ? bits.join(", ").replace(/, ([^,]*)$/, " and $1") + "." : "";
   $("headline").textContent = (s1 + (s1 && rest ? " " : "") + (s1 ? rest : rest.replace(/^./, c => c.toUpperCase()))) || (isToday ? "A fresh day. Let's go." : "A quiet day.");
 
@@ -2343,10 +2345,25 @@ function renderHome() {
       <span class="hint">${esc(hint)}</span></button>`;
   const smokes = HABITS.filter(h => h.smoke), puffs = smokes.reduce((n, h) => n + val(t, h.k), 0);
   const lungs = Math.max(0.05, 1 - puffs * 0.08);
+  // every habit / screen stat you picked, against your own target (less of) or goal (more of)
+  const fmtU = (p, v) => p.unit === "min" ? hm(v * 60) : String(Math.round(v * 10) / 10);
+  const tracked = ((O.life || {}).today || {parts: []}).parts;   // everything you picked (even if it doesn't count for HP)
+  const bars = tracked.map(p => {
+    const label = `${p.e} ${p.n.toUpperCase()}`, v = p.unit === "min" ? val(t, p.k) / 60 : val(t, p.k);
+    const fill = (INFO[p.k] || {}).fill || (p.bad ? "--orange" : "--blue");
+    if (p.bad) {
+      if (p.target == null) return bar(p.k, label, fmtU(p, v), v ? .5 : 0, fill, "Learning your normal (counts after a week)");
+      const over = v > p.target, frac = p.target ? v / p.target : v ? 1 : 0;
+      return bar(p.k, label, `${fmtU(p, v)} / ${fmtU(p, p.target)}`, frac, over ? "--red" : fill,
+        over ? `Over your target of ${fmtU(p, p.target)} today` : p.target === 0 ? (v ? "Your target is none" : "None today, nice") : `${fmtU(p, Math.max(0, p.target - v))} left before your target`);
+    }
+    const week = p.per === "week", goal = p.goal || 1, done = week ? (isToday ? p.week : v) : v;
+    return bar(p.k, label, `${fmtU(p, done)} / ${fmtU(p, goal)}${week ? " this week" : ""}`, done / goal, fill,
+      done >= goal ? "Goal reached 🎉" : `${fmtU(p, goal - done)} to go${week ? " this week" : " today"}`);
+  });
   $("statbars").innerHTML =
-    (smokes.length ? bar(smokes[0].k, "LUNGS", `${Math.round(lungs * 100)}%`, lungs, "--pink", puffs ? `${plural(puffs, smokes.length > 1 ? "smoke" : smokes[0].one)} today, each one takes a bit` : "Full health today") : "")
-    + bar("coding", "CODING XP", hm(coding), coding / (4 * 3600), "--blue", `${compare("coding", coding, val(ref, "coding"), against).text}. Goal: 4h`)
-    + bar("youtube", "YOUTUBE BRAIN ROT", hm(yt), yt / (3 * 3600), "--yellow", compare("youtube", yt, val(ref, "youtube"), against).text);
+    (smokes.length ? bar(smokes[0].k, "🫁 LUNGS", `${Math.round(lungs * 100)}%`, lungs, "--pink", puffs ? `${plural(puffs, smokes.length > 1 ? "smoke" : smokes[0].one)} today, each one takes a bit` : "Full health today") : "")
+    + bars.join("") || `<p class="note">Nothing tracked yet. Pick some habits in Settings.</p>`;
 
   // coming up: the two deadlines and the commit streak
   const ft = O.ft, gh = O.github || {};
@@ -3145,6 +3162,12 @@ document.addEventListener("click", async e => {
   } catch (_) { $("tNote").textContent = "Couldn't save."; }
 });
 
+// Settings only shows what you use: 42 and GitHub when picked in the setup, the camera when you track smoking
+function settingsFor() {
+  const on = {school: !!MODULES.school, github: !!MODULES.github, smoke: HABITS.some(h => h.smoke)};
+  document.querySelectorAll("#settings [data-mod]").forEach(s => { s.hidden = !on[s.dataset.mod]; });
+}
+
 // ---------------------------------------------------------------- your phone (Settings): Tailscale + a QR code
 const phoneSetup = {
   async load() {
@@ -3488,7 +3511,7 @@ async function render() {
   updateBadge();
   try {
     if (view === "detail") await loadDetail(r.k);
-    else if (view === "settings") { drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
+    else if (view === "settings") { settingsFor(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
@@ -3817,7 +3840,7 @@ const setup = {
     const defaults = {habits: ["gym", "water"], screen: ["coding", "youtube", "social", "screen"], modules: {school: false, github: false}};
     this.sel = fromNow
       ? {habits: HABITS.map(h => h.custom ? {k: h.k, n: h.n, e: h.e, bad: h.bad, one: h.one, s: h.s, size: Math.abs(h.hp) >= 10 ? "big" : Math.abs(h.hp) <= 3 ? "small" : "medium"} : h.k),
-         screen: [...SHOW_SCREEN], modules: {...MODULES}}
+         screen: [...SHOW_SCREEN], modules: mode === "new" ? {school: false, github: false} : {...MODULES}}
       : {habits: defaults.habits, screen: defaults.screen, modules: defaults.modules};
     this.customs = this.sel.habits.filter(x => typeof x === "object");
     this.draw();
