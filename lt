@@ -1,0 +1,4 @@
+#!/bin/bash
+# Shortcut: ./lt <command>   e.g. ./lt run, ./lt log gym, ./lt summary
+cd "$(dirname "$0")"
+exec .venv/bin/python -m lazytrack "$@"

@@ -1,0 +1,2456 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="LazyTrack">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="/icon.png">
+<title>LazyTrack</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  /* ------------------------------------------------------------ tokens */
+  :root {
+    --bg: #efeaff; --card: #ffffff; --soft: #f4f1ff; --ink: #1d1b20; --ink-2: #4e4858; --ink-3: #7a7387;
+    --line: #1d1b20; --on-fill: #1d1b20;
+    --pink: #ff8fb1; --green: #9be8a9; --yellow: #ffe45e; --blue: #7ad3ff; --lilac: #c9b8ff; --orange: #ffd28a; --lime: #d6f5a3; --red: #ff9b9b;
+    --good: #157a3f; --bad: #c2410c;
+    --today: #d6336c; --prev: #2a78d6; --avg: #6a6475;
+    --gh0: #ece8f7; --gh1: #b7e4c7; --gh2: #74c69d; --gh3: #2d9d62; --gh4: #157a3f;
+    --pixel: "Silkscreen", ui-monospace, monospace; --body: "Rubik", -apple-system, BlinkMacSystemFont, sans-serif;
+    --shadow: 4px 4px 0 var(--line); --r: 18px; --pet: #b9a7ff;
+    --aura-legend: color-mix(in srgb, var(--bg) 82%, #ffe27a); --aura-tired: color-mix(in srgb, var(--bg) 86%, #9a948c); --aura-sick: color-mix(in srgb, var(--bg) 82%, #a3b07a);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #17141f; --card: #241f30; --soft: #2e2840; --ink: #f3eefc; --ink-2: #c6bfd6; --ink-3: #958ca8; --line: #000000;
+      --good: #5fe08f; --bad: #ff8a6b; --today: #d94a7c; --prev: #3987e5; --avg: #958ca8;
+      --gh0: #2e2840; --gh1: #1f4d33; --gh2: #2a7a4b; --gh3: #3fae69; --gh4: #5fe08f;
+      --aura-legend: color-mix(in srgb, var(--bg) 95%, #c9961a); --aura-tired: color-mix(in srgb, var(--bg) 93%, #5a5650); --aura-sick: color-mix(in srgb, var(--bg) 90%, #4f5a2c);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #17141f; --card: #241f30; --soft: #2e2840; --ink: #f3eefc; --ink-2: #c6bfd6; --ink-3: #958ca8; --line: #000000;
+    --good: #5fe08f; --bad: #ff8a6b; --today: #d94a7c; --prev: #3987e5; --avg: #958ca8;
+    --gh0: #2e2840; --gh1: #1f4d33; --gh2: #2a7a4b; --gh3: #3fae69; --gh4: #5fe08f;
+    --aura-legend: color-mix(in srgb, var(--bg) 95%, #c9961a); --aura-tired: color-mix(in srgb, var(--bg) 93%, #5a5650); --aura-sick: color-mix(in srgb, var(--bg) 90%, #4f5a2c);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.45 var(--body); }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: inherit; }
+  :focus-visible { outline: 3px solid var(--prev); outline-offset: 2px; border-radius: 8px; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 18px 16px 120px; }
+
+  /* ------------------------------------------------------------ building blocks */
+  .card { background: var(--card); border: 3px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
+  .card.pad { padding: 16px; }
+  .px { font-family: var(--pixel); font-weight: 400; letter-spacing: .02em; }
+  .label { font-family: var(--pixel); font-size: 13px; color: var(--ink-2); margin: 0 0 10px; }
+  h2.sec { font-family: var(--pixel); font-size: 16px; font-weight: 700; margin: 30px 0 4px; }
+  .sub { color: var(--ink-2); margin: 0 0 12px; font-size: 15px; }
+  .grid2 { display: grid; gap: 18px; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+  @media (max-width: 820px) { .grid2 { grid-template-columns: 1fr; } }
+  .stack { display: grid; gap: 18px; align-content: start; min-width: 0; }
+  .better { color: var(--good); } .worse { color: var(--bad); }
+  .note { color: var(--ink-2); margin: 0; }
+  .btn { height: 46px; padding: 0 18px; border: 3px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 3px 3px 0 var(--line);
+         font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: var(--ink); transition: transform .08s, box-shadow .08s; }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
+  .btn.primary { background: var(--yellow); color: var(--on-fill); }
+
+  /* ------------------------------------------------------------ header + tabs */
+  .top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { font-family: var(--pixel); font-weight: 700; font-size: 22px; text-decoration: none; color: var(--ink); margin-right: auto; display: flex; align-items: center; gap: 10px; }
+  .brand .mini { width: 34px; height: 34px; display: grid; place-items: center; background: var(--lilac); border: 3px solid var(--line); border-radius: 10px; }
+  .daynav { display: flex; align-items: center; gap: 2px; background: var(--card); border: 3px solid var(--line); border-radius: 14px; box-shadow: 3px 3px 0 var(--line); padding: 3px; }
+  .daynav button { border: 0; background: none; width: 36px; height: 36px; border-radius: 10px; cursor: pointer; font: 700 20px var(--body); color: var(--ink); }
+  .daynav button:hover:not(:disabled) { background: var(--soft); }
+  .daynav button:disabled { opacity: .3; cursor: default; }
+  .daynav .lbl { min-width: 128px; text-align: center; font-weight: 800; }
+
+  .tabs { display: flex; gap: 10px; margin: 18px 0 6px; flex-wrap: wrap; }
+  .tab { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 16px; border: 3px solid var(--line); border-radius: 14px;
+         background: var(--card); color: var(--ink); text-decoration: none; font-weight: 800; box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s, background-color .2s; }
+  .tab svg { width: 20px; height: 20px; flex: none; }
+  .tab[aria-current="page"] { background: var(--yellow); color: var(--on-fill); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+  @media (max-width: 820px) {
+    .tabs { position: fixed; z-index: 8; left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); margin: 0; gap: 4px; flex-wrap: nowrap;
+            background: var(--card); border: 3px solid var(--line); border-radius: 20px; box-shadow: 4px 4px 0 var(--line); padding: 6px; }
+    .tab { flex: 1 1 0; flex-direction: column; justify-content: center; gap: 2px; height: 58px; padding: 0 2px; border: 0; box-shadow: none; font-size: 12px; border-radius: 14px; }
+    .tab[aria-current="page"] { transform: none; box-shadow: none; outline: 3px solid var(--line); outline-offset: -3px; }
+  }
+
+  /* ------------------------------------------------------------ home: the pet */
+  .petcard { display: flex; flex-direction: column; gap: 16px; padding: 18px; background: var(--lilac); color: var(--on-fill); margin-top: 18px; }
+  .pettop { display: flex; gap: 18px; align-items: center; }
+
+  /* game-style stat sheet next to the pet: 🚬 CIG = 4 ▼ */
+  .statsheet { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 22px; align-content: center; }
+  @media (min-width: 900px) { .statsheet { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  .stat { display: flex; align-items: center; gap: 7px; min-width: 0; padding: 5px 6px; border: 0; background: none; border-radius: 10px; cursor: pointer; color: var(--on-fill); text-align: left; }
+  .stat:hover { background: rgba(255,255,255,.45); }
+  .stat .se { font-size: 18px; flex: none; }
+  .stat .sl { font-family: var(--pixel); font-size: 14px; font-weight: 700; flex: none; }
+  .stat .sq { font-family: var(--pixel); font-size: 13px; opacity: .7; flex: none; }
+  .stat .sv { font: 800 18px/1 var(--body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .stat .sa { margin-left: 2px; flex: none; width: 24px; height: 24px; display: grid; place-items: center; background: #ffffff; border: 2px solid #1d1b20; border-radius: 7px; font: 700 12px/1 var(--body); }
+  .stat .sa.good { color: #0f6b34; } .stat .sa.bad { color: #b3261e; } .stat .sa.same { color: #6a6475; }
+  .petcard[data-mood="smoky"] { background: #d9d2e9; } .petcard[data-mood="proud"] { background: var(--green); }
+  .petcard[data-mood="sleepy"] { background: #b9c7f5; } .petcard[data-mood="meh"] { background: var(--orange); }
+  .petbox { flex: none; width: 132px; height: 132px; background: #ffffff; border: 3px solid var(--line); border-radius: 16px; display: grid; place-items: center; }
+  .pet { display: grid; grid-template-columns: repeat(10, 10px); grid-auto-rows: 10px; }
+  .pet i { display: block; }
+  .pet.bob { animation: bob 3.2s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(-4px); } }
+  .speech .who { font-family: var(--pixel); font-size: 13px; }
+  .speech h1 { font: 800 clamp(20px, 3.2vw, 28px)/1.2 var(--body); margin: 4px 0 6px; letter-spacing: -0.01em; text-wrap: balance; }
+  .speech .mood { margin: 0; font-weight: 500; }
+  @media (max-width: 560px) {
+    .pettop { gap: 12px; align-items: flex-start; }
+    .petbox { width: 96px; height: 96px; } .pet { grid-template-columns: repeat(10, 7px); grid-auto-rows: 7px; }
+    .statsheet { grid-template-columns: 1fr; gap: 0; }
+    .stat { padding: 3px 4px; } .stat .sv { font-size: 16px; }
+  }
+
+  /* HP + tiers: the pet card follows how Mochi is doing */
+  .petcard { --hpc: #7ad3ff; }
+  .petcard[data-tier="legend"] { --hpc: #f2b705; background: #ffeeb0; }
+  .petcard[data-tier="shiny"]  { --hpc: #3fbf6f; }
+  .petcard[data-tier="tired"]  { --hpc: #e8a23c; background: #d9d3e6; }
+  .petcard[data-tier="sick"]   { --hpc: #e0735a; background: #d3dbc4; }
+  .petbox { position: relative; overflow: hidden; }
+  .petcard[data-tier="legend"] .petbox { border-color: #b88a00; box-shadow: 0 0 0 3px #ffe07a; }
+  .petcard[data-tier="legend"] .petbox::after { content: ""; position: absolute; inset: -40%; pointer-events: none;
+    background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.85) 50%, transparent 58%); animation: shine 4.5s ease-in-out infinite; }
+  @keyframes shine { 0%, 55% { transform: translateX(-70%); } 100% { transform: translateX(70%); } }
+  .hp { display: grid; gap: 10px; }
+  .hprow { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
+  .hpl { font: 700 14px var(--pixel); }
+  .hpbar { display: flex; gap: 3px; }
+  .hpbar i { width: 14px; height: 14px; border: 2px solid #1d1b20; border-radius: 3px; background: rgba(255,255,255,.7); }
+  .hpbar i.on { background: var(--hpc); }
+  .hpn { font: 800 18px/1 var(--body); font-variant-numeric: tabular-nums; }
+  .tierb { font: 700 12px var(--pixel); background: #ffffff; border: 2px solid #1d1b20; border-radius: 7px; padding: 2px 7px; }
+  .petcard[data-tier="legend"] .tierb { background: #f2b705; }
+  .hpnext { font: 400 12px var(--pixel); opacity: .75; }
+  .quests { display: grid; gap: 6px; }
+  .quests .ql { font: 700 12px var(--pixel); opacity: .8; }
+  .q { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; background: rgba(255,255,255,.6); border: 2px solid #1d1b20; border-radius: 10px; padding: 7px 11px; }
+  .q .qa { font-weight: 800; } .q .qb { font-size: 14px; opacity: .8; }
+  @media (min-width: 821px) { .quests { grid-template-columns: repeat(3, minmax(0, 1fr)); } .quests .ql { grid-column: 1 / -1; } }
+
+  /* friends */
+  .tab { position: relative; }
+  .tbadge { position: absolute; top: -8px; right: -8px; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 11px; background: var(--today); color: #fff;
+            border: 2px solid var(--line); font: 800 12px/18px var(--body); text-align: center; animation: pop .4s cubic-bezier(.3, 1.6, .5, 1); }
+  @media (max-width: 820px) { .tbadge { top: 2px; right: 6px; } }
+  #fConnect:empty, #fMain[hidden], #fProfile:empty { display: none; }
+  .fcard { --pet: #b9a7ff; display: grid; gap: 12px; padding: 16px; border: 3px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow);
+           background: var(--fbg, var(--lilac)); color: #1d1b20; text-align: left; cursor: pointer; width: 100%; position: relative; font: inherit; }
+  .fcard.me { cursor: default; }
+  button.fcard:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--line); }
+  .fcard .ftop { display: flex; gap: 12px; align-items: center; }
+  .fcard .fpet { flex: none; width: 76px; height: 76px; background: #fff; border: 3px solid #1d1b20; border-radius: 14px; display: grid; place-items: center; }
+  .fcard .fpet .pet { grid-template-columns: repeat(10, 6px); grid-auto-rows: 6px; }
+  .fcard .fname b { font-size: 19px; display: block; line-height: 1.15; } .fcard .fname span { font: 400 12px var(--pixel); opacity: .75; }
+  .fcard .hpbar i { width: 11px; height: 11px; } .fcard .hprow { gap: 6px 8px; }
+  .fstats { display: flex; flex-wrap: wrap; gap: 6px; }
+  .fstats span { background: rgba(255,255,255,.65); border: 2px solid #1d1b20; border-radius: 8px; padding: 3px 8px; font: 700 13px var(--body); }
+  .fstats span i { font: 400 11px var(--pixel); font-style: normal; margin-right: 4px; }
+  .fcard .fmeta { font-size: 13px; opacity: .7; }
+  .fcard .fnew { position: absolute; top: -10px; right: 12px; background: var(--today); color: #fff; border: 2px solid #1d1b20; border-radius: 10px; padding: 2px 9px; font: 800 12px var(--body); }
+  .fgrid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .addf { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .addf .at { font: 700 20px var(--pixel); }
+  .addf input { flex: 1; min-width: 140px; height: 46px; border: 3px solid var(--line); border-radius: 12px; padding: 0 12px; background: var(--soft); font-size: 16px; }
+  .addf .note { flex-basis: 100%; min-height: 1.2em; }
+  .reqrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; flex-wrap: wrap; }
+  .reqrow + .reqrow { border-top: 2px dashed var(--soft); }
+  .reqrow b { flex: 1; }
+  .sharechips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sharechips button { border: 2px solid var(--line); border-radius: 10px; background: var(--card); padding: 6px 10px; cursor: pointer; font-weight: 700; }
+  .sharechips button[aria-pressed="true"] { background: var(--green); color: #1d1b20; }
+  .sharechips button[aria-pressed="false"] { opacity: .65; text-decoration: line-through; }
+  .chatcard { display: grid; grid-template-rows: minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); height: min(560px, calc(100dvh - 240px)); min-height: 340px; padding: 0; overflow: hidden; }
+  .chatlog { min-width: 0; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+  .msg { max-width: 78%; padding: 8px 12px; border: 2px solid var(--line); border-radius: 14px 14px 14px 4px; background: var(--soft); align-self: flex-start;
+         white-space: pre-wrap; overflow-wrap: anywhere; animation: slideUp .3s cubic-bezier(.2, .8, .2, 1); }
+  .msg.mine { align-self: flex-end; background: var(--yellow); color: var(--on-fill); border-radius: 14px 14px 4px 14px; }
+  .msg time { display: block; font: 400 10px var(--pixel); opacity: .6; margin-top: 2px; }
+  .chatin { display: flex; gap: 8px; padding: 10px; border-top: 3px solid var(--line); background: var(--card); }
+  .chatin input { flex: 1; min-width: 0; height: 46px; border: 3px solid var(--line); border-radius: 12px; padding: 0 12px; background: var(--soft); font-size: 16px; }
+  .chatempty { margin: auto; text-align: center; color: var(--ink-2); }
+  .connect { display: grid; gap: 14px; justify-items: center; text-align: center; margin: 26px auto 0; max-width: 460px; }
+
+  /* the background aura: pixel sparkles when Mochi is doing great, dust when not. Behind the cards, never on top. */
+  #aura { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+  .wrap { position: relative; z-index: 1; }
+  body { transition: background-color 1.2s ease; }
+  body[data-aura="legend"] { background: var(--aura-legend); }
+  body[data-aura="tired"]  { background: var(--aura-tired); }
+  body[data-aura="sick"]   { background: var(--aura-sick); }
+
+  .logbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+  @media (max-width: 620px) { .logbar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .logbtn { height: 64px; border: 3px solid var(--line); border-radius: 16px; box-shadow: 4px 4px 0 var(--line); font: 800 16px var(--body); color: var(--on-fill);
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .08s, box-shadow .08s; }
+  .logbtn:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--line); }
+  .logbtn .e { font-size: 22px; }
+  .logbtn[hidden] { display: none; }
+  .logmore { margin-top: 12px; }
+
+  .bars { display: grid; gap: 4px; }
+  .barrow { display: grid; gap: 4px; padding: 10px 6px; border: 0; background: none; text-align: left; cursor: pointer; border-radius: 12px; }
+  .barrow:hover { background: var(--soft); }
+  .barrow .top2 { display: flex; justify-content: space-between; font-weight: 800; font-size: 15px; gap: 10px; }
+  .barrow .top2 span:first-child { font-family: var(--pixel); font-weight: 400; font-size: 13px; }
+  .meter { height: 18px; border: 3px solid var(--line); border-radius: 7px; background: var(--soft); overflow: hidden; }
+  .meter i { display: block; height: 100%; transform-origin: left; }
+  .barrow .hint { font-size: 14px; color: var(--ink-2); }
+
+  .chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 620px) { .chips { grid-template-columns: 1fr 1fr; } .chips > :last-child { grid-column: 1 / -1; } }
+  .chip { display: grid; gap: 2px; padding: 12px 14px; text-decoration: none; color: var(--on-fill); background: var(--lvl, var(--card)); border: 3px solid var(--line); border-radius: 16px; box-shadow: 4px 4px 0 var(--line); }
+  .chip .k { font-family: var(--pixel); font-size: 12px; }
+  .chip .v { font: 800 30px/1.1 var(--body); font-variant-numeric: tabular-nums; }
+  .chip .v small { font: 500 14px var(--body); }
+  .chip .s { font-size: 14px; font-weight: 700; }
+  .chip.plain { background: var(--card); color: var(--ink); }
+
+  /* ------------------------------------------------------------ rows */
+  .rows { padding: 4px 0; }
+  .rows > .label { margin: 12px 16px 4px; }
+  .row { display: grid; grid-template-columns: 30px 1fr auto 14px; align-items: center; gap: 2px 10px; width: 100%; padding: 11px 16px;
+         background: none; border: 0; border-top: 2px dashed var(--soft); text-align: left; cursor: pointer; }
+  .rows > .label + .row, .rows > .row:first-child { border-top: 0; }
+  .row:hover { background: var(--soft); }
+  .row .e { font-size: 20px; text-align: center; }
+  .row .name { font-weight: 700; }
+  .row .val { font: 800 19px/1 var(--body); font-variant-numeric: tabular-nums; text-align: right; }
+  .row .cmp { grid-column: 2 / 4; font-size: 14px; color: var(--ink-2); }
+  .row .chev { color: var(--ink-3); font-weight: 800; }
+  .row.static { cursor: default; } .row.static:hover { background: none; }
+
+  ul.plain { list-style: none; margin: 0; padding: 0; }
+  ul.plain li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 11px 16px; border-top: 2px dashed var(--soft); }
+  ul.plain li:first-child { border-top: 0; }
+  .when { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .meta { color: var(--ink-2); font-size: 14px; }
+  .del { border: 2px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; padding: 5px 10px; border-radius: 9px; font-size: 13px; font-weight: 700; text-decoration: none; }
+  .del:hover { background: var(--red); color: var(--on-fill); }
+  .empty { color: var(--ink-2); padding: 14px 16px; margin: 0; }
+  .appbar { height: 10px; border: 2px solid var(--line); border-radius: 4px; background: var(--blue); margin-top: 6px; }
+
+  .chartbox { position: relative; height: 230px; }
+  .chartbox.tall { height: 270px; }
+
+  /* ------------------------------------------------------------ school: deadlines + github */
+  .deadlines { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 460px) { .deadlines { grid-template-columns: 1fr; } }
+  .dl-box { background: var(--lvl, var(--soft)); color: var(--on-fill); border: 3px solid var(--line); border-radius: 16px; padding: 14px; }
+  .dl-box .k { font-family: var(--pixel); font-size: 13px; }
+  .dl-box .days { font: 800 44px/1.05 var(--body); letter-spacing: -0.02em; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .dl-box .days small { font: 500 15px var(--body); letter-spacing: 0; }
+  .dl-box .when { font-size: 14px; margin-top: 2px; }
+  .dl-box .meter { margin: 12px 0 8px; background: rgba(255,255,255,.6); }
+  .dl-box .meter i { background: var(--line); }
+  .dl-box .state { font-family: var(--pixel); font-size: 13px; }
+  .dl-box.empty-box { display: grid; align-content: center; gap: 10px; background: var(--soft); color: var(--ink); }
+  .gh-top { display: flex; gap: 18px; flex-wrap: wrap; margin: 2px 0 14px; }
+  .gh-top b { display: block; font: 800 24px/1.1 var(--body); font-variant-numeric: tabular-nums; }
+  .gh-top span { color: var(--ink-2); font-size: 13px; }
+  .heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 13px); grid-auto-columns: 13px; gap: 3px; max-width: 100%; overflow: hidden; }
+  .heat i { border-radius: 3px; background: var(--gh0); }
+  .heat i[data-l="1"] { background: var(--gh1); } .heat i[data-l="2"] { background: var(--gh2); }
+  .heat i[data-l="3"] { background: var(--gh3); } .heat i[data-l="4"] { background: var(--gh4); }
+  .heat-legend { display: flex; align-items: center; gap: 3px; font-size: 12px; color: var(--ink-2); margin-top: 8px; }
+  .heat-legend i { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+  .clickcard { cursor: pointer; } .clickcard:hover { background: var(--soft); }
+
+  /* ------------------------------------------------------------ detail */
+  .back { margin-top: 18px; }
+  .dhero { margin-top: 18px; padding: 18px; background: var(--yellow); color: var(--on-fill); }
+  .dhero .what { font-family: var(--pixel); font-size: 14px; margin: 0; }
+  .dhero .big { font: 800 64px/1 var(--body); letter-spacing: -0.03em; margin: 6px 0; font-variant-numeric: tabular-nums; }
+  .dhero .say { font-size: 17px; max-width: 62ch; margin: 0; font-weight: 500; }
+  .facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 12px; margin-top: 18px; }
+  .fact { padding: 12px 14px; }
+  .fact .v { font: 800 20px/1.2 var(--body); font-variant-numeric: tabular-nums; }
+  .fact .k { color: var(--ink-2); font-size: 14px; }
+
+  /* timeline */
+  .tl .lane { display: grid; grid-template-columns: 150px 1fr 72px; grid-template-areas: "name track count"; align-items: center; gap: 12px; padding: 8px 0; }
+  .tl .lname { grid-area: name; font-weight: 800; line-height: 1.25; }
+  .tl .lname small { display: block; font-weight: 400; color: var(--ink-2); font-size: 13px; white-space: nowrap; }
+  .tl .track { grid-area: track; position: relative; height: 32px; border: 3px solid var(--line); border-radius: 10px; background: var(--soft); }
+  .tl .count { grid-area: count; font: 800 18px/1 var(--body); text-align: right; white-space: nowrap; }
+  .tl .grid { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ink-3); opacity: .35; }
+  .tl .now { position: absolute; top: -8px; bottom: -8px; width: 3px; background: var(--ink); }
+  .tl .now::after { content: "now"; position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font: 11px var(--pixel); color: var(--ink-2); }
+  .tl .dot { position: absolute; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 5px; border: 2px solid var(--line); padding: 0; cursor: pointer; z-index: 1; }
+  .tl .dot:hover, .tl .dot:focus-visible { transform: scale(1.25); z-index: 3; }
+  .tl .block { position: absolute; top: 4px; bottom: 4px; border-radius: 5px; min-width: 3px; cursor: pointer; z-index: 1; border: 0; padding: 0; }
+  .tl .today { background: var(--today); } .tl .prev { background: var(--prev); }
+  .tl [data-tip]:hover::after, .tl [data-tip]:focus::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--bg); padding: 6px 10px; border-radius: 8px; font: 700 13px/1.3 var(--body); white-space: nowrap; pointer-events: none; z-index: 5; }
+  .tl [data-tip].edge-l:hover::after, .tl [data-tip].edge-l:focus::after { left: 0; transform: none; }
+  .tl [data-tip].edge-r:hover::after, .tl [data-tip].edge-r:focus::after { left: auto; right: 0; transform: none; }
+  .tl .ticks { position: relative; height: 22px; margin-left: 162px; margin-right: 84px; color: var(--ink-2); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .tl .ticks span { position: absolute; transform: translateX(-50%); top: 4px; white-space: nowrap; }
+  @media (max-width: 640px) {
+    .tl .lane { grid-template-columns: 1fr auto; grid-template-areas: "name count" "track track"; gap: 6px 10px; padding: 6px 0 10px; }
+    .tl .lname small { display: inline; margin-left: 6px; }
+    .tl .ticks { margin-left: 0; margin-right: 0; }
+  }
+
+  /* ------------------------------------------------------------ settings */
+  .form { display: grid; gap: 16px; }
+  .field label { display: block; font-weight: 800; margin-bottom: 4px; }
+  .field .hint { color: var(--ink-2); font-size: 14px; margin: 2px 0 6px; }
+  .field input[type=text], .field input[type=password], .field input[type=number], .field input[type=date], .field select {
+    width: 100%; height: 46px; padding: 0 12px; border-radius: 12px; border: 3px solid var(--line); background: var(--card); }
+  .toggle { display: flex; align-items: center; gap: 10px; font-weight: 800; cursor: pointer; }
+  .toggle input { width: 22px; height: 22px; accent-color: var(--today); }
+  .themes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+  .th { display: grid; gap: 8px; padding: 9px; text-align: left; cursor: pointer; background: var(--card); border: 3px solid var(--line); border-radius: 14px;
+        box-shadow: 3px 3px 0 var(--line); font-weight: 800; transition: transform .08s, box-shadow .08s; }
+  .th:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--line); }
+  .th[aria-checked="true"] { background: var(--yellow); color: var(--on-fill); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+  .th .pv { height: 58px; border: 2px solid var(--line); border-radius: 9px; display: flex; align-items: center; gap: 6px; padding: 0 9px; }
+  .th .pv i { width: 18px; height: 18px; border: 2px solid #1d1b20; border-radius: 5px; }
+  .th .pv i.pet { width: 26px; height: 26px; border-radius: 8px; margin-left: auto; }
+  .th .nm { display: flex; justify-content: space-between; align-items: center; }
+  .hlist { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .hitem { display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--soft); }
+  .hitem .he { font-size: 20px; } .hitem .hn { font-weight: 800; flex: 1; min-width: 0; }
+  .hitem .tag { font: 400 11px var(--pixel); color: var(--ink-3); }
+  .hitem button { width: 34px; height: 34px; border: 2px solid var(--line); border-radius: 9px; background: var(--card); cursor: pointer; font: 800 16px var(--body); flex: none; }
+  .hitem button:hover { background: var(--red); color: #1d1b20; }
+  .acct { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .acct .apet { width: 64px; height: 64px; border-radius: 14px; } .acct .apet .pet { grid-template-columns: repeat(10, 5px); grid-auto-rows: 5px; }
+  .acct .who { flex: 1; min-width: 160px; } .acct .who b { font-size: 18px; display: block; }
+  .fxs { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+  .fxb { display: grid; gap: 2px; align-content: start; text-align: left; padding: 10px 12px; cursor: pointer; background: var(--card); border: 3px solid var(--line); border-radius: 12px;
+         box-shadow: 3px 3px 0 var(--line); transition: transform .08s, box-shadow .08s; }
+  .fxb:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--line); }
+  .fxb[aria-checked="true"] { background: var(--yellow); color: var(--on-fill); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+  .fxb .fxn { font: 700 13px var(--pixel); } .fxb .fxd { font-size: 13px; opacity: .75; line-height: 1.3; }
+  .seg { display: inline-flex; border: 3px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .seg label { padding: 9px 16px; cursor: pointer; border-left: 3px solid var(--line); font-weight: 700; margin: 0; }
+  .seg label:first-child { border-left: 0; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label:has(input:checked) { background: var(--yellow); color: var(--on-fill); }
+  .seg label:has(input:focus-visible) { outline: 3px solid var(--prev); outline-offset: -3px; }
+  .inline { display: flex; gap: 12px; flex-wrap: wrap; }
+  .inline > * { flex: 1 1 160px; }
+  .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  #settings .card { margin-top: 18px; }
+  #settings h2 { font-family: var(--pixel); font-size: 15px; margin: 0 0 4px; }
+
+  /* ------------------------------------------------------------ toast + offline */
+  .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
+           background: var(--ink); color: var(--bg); border: 3px solid var(--line); border-radius: 14px; padding: 10px 10px 10px 16px; display: flex; align-items: center; gap: 14px;
+           transition: opacity .18s, transform .18s; z-index: 10; max-width: calc(100vw - 32px); font-weight: 700; }
+  @media (min-width: 821px) { .toast { bottom: 24px; } }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  .toast button { background: var(--yellow); color: var(--on-fill); border: 2px solid var(--line); border-radius: 9px; padding: 6px 12px; cursor: pointer; font-weight: 800; }
+  .offline { background: var(--red); color: var(--on-fill); border: 3px solid var(--line); border-radius: 14px; padding: 12px 16px; margin-top: 16px; display: none; font-weight: 700; }
+
+  /* ------------------------------------------------------------ views */
+  .view { display: none; }
+  body[data-view="friends"] #friends,
+  body[data-view="home"] #home, body[data-view="habits"] #habits, body[data-view="screen"] #screen,
+  body[data-view="school"] #school, body[data-view="detail"] #detail, body[data-view="settings"] #settings { display: block; }
+
+  /* ------------------------------------------------------------ calm motion (only when a page opens) */
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+  @keyframes wordIn { from { opacity: 0; transform: translateY(.3em); filter: blur(3px); } }
+  @keyframes pop { from { transform: scale(0); opacity: 0; } }
+  @keyframes grow { from { transform: scaleX(0); } }
+  .anim-in { animation: rise .55s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: var(--d, 0ms); }
+  .w { display: inline-block; animation: wordIn .5s cubic-bezier(.2, .7, .2, 1) backwards; animation-delay: var(--d, 0ms); }
+  .tl.anim .dot { animation: pop .4s cubic-bezier(.3, 1.4, .5, 1) backwards; animation-delay: var(--d, 0ms); }
+  .tl.anim .block, .meter.anim i { animation: grow .7s cubic-bezier(.2, .7, .2, 1) backwards; transform-origin: left center; animation-delay: var(--d, 250ms); }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+
+  /* ------------------------------------------------------------ welcome screen (every time the app opens) */
+  html { overflow-x: hidden; }
+  .welcome { position: fixed; inset: 0; z-index: 20; background: inherit; display: grid; place-items: center; overflow: hidden;
+             padding: 24px 16px calc(24px + env(safe-area-inset-bottom)); }
+  body:not(.welcoming) .welcome { display: none; }
+  body.welcoming { overflow: hidden; }
+  body.welcoming .wrap { height: 100vh; height: 100dvh; overflow: hidden; transform: translateX(100%); }
+  body.welcoming.leaving .welcome { transform: translateX(-100%); transition: transform .8s cubic-bezier(.7, 0, .2, 1); }
+  body.welcoming.leaving .wrap { transform: translateX(0); transition: transform .8s cubic-bezier(.7, 0, .2, 1); }
+
+  .wbox { display: grid; justify-items: center; text-align: center; gap: 18px; max-width: 560px; position: relative; z-index: 1; }
+  .wpet { width: 188px; height: 188px; background: #ffffff; border: 3px solid var(--line); border-radius: 26px; box-shadow: 6px 6px 0 var(--line);
+          display: grid; place-items: center; animation: slideL .9s cubic-bezier(.2, .8, .2, 1) .15s backwards; }
+  .wpet .pet { grid-template-columns: repeat(10, 14px); grid-auto-rows: 14px; }
+  .wpet .pet.bob { animation: bob 3.2s ease-in-out 1.2s infinite; }
+  .wtag { font-family: var(--pixel); font-size: 14px; color: var(--ink-2); letter-spacing: .12em; background: var(--lilac); color: var(--on-fill);
+          border: 3px solid var(--line); border-radius: 10px; padding: 4px 10px; box-shadow: 3px 3px 0 var(--line);
+          animation: slideR .8s cubic-bezier(.2, .8, .2, 1) .45s backwards; }
+  .wtitle { font: 800 clamp(34px, 7vw, 54px)/1.05 var(--body); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+  .wtitle .wl { display: inline-block; animation: slideUp .7s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: var(--d, 0ms); }
+  .wline { margin: 0; font-size: clamp(16px, 2.4vw, 19px); color: var(--ink-2); font-weight: 500; max-width: 42ch; text-wrap: balance;
+           animation: fadeIn 1.2s ease 1.7s backwards; }
+  .wline b { color: var(--ink); font-weight: 800; }
+  .wgo { height: 58px; padding: 0 28px; font-size: 18px; border-radius: 16px; box-shadow: 4px 4px 0 var(--line); margin-top: 6px;
+         animation: slideUp .7s cubic-bezier(.2, .8, .2, 1) 2.5s backwards; }
+  .wgo:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--line); }
+  .wgo:active { transform: translate(4px, 4px); box-shadow: 0 0 0 var(--line); }
+  .wgo .arr { display: inline-block; animation: nudge 1.6s ease-in-out 3.4s infinite; }
+  .whint { font-family: var(--pixel); font-size: 11px; color: var(--ink-3); animation: fadeIn 1s ease 3.4s backwards; }
+  @media (hover: none) { .whint { display: none; } }
+
+  /* the welcome screen holds a row of panels: hello, log in, setup steps. They slide sideways. */
+  .panels { position: absolute; inset: 0; z-index: 1; overflow: hidden; overflow: clip; }
+  .welcome { overflow: clip; }
+  .panel { position: absolute; inset: 0; display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain;
+           padding: 24px 16px calc(28px + env(safe-area-inset-bottom)); transform: translateX(100%); visibility: hidden;
+           transition: transform .7s cubic-bezier(.7, 0, .2, 1), visibility 0s .7s; }
+  .panel.left { transform: translateX(-100%); }
+  .panel.on { transform: none; visibility: visible; transition: transform .7s cubic-bezier(.7, 0, .2, 1), visibility 0s; }
+  .panel > .wbox, .panel > .pbox { margin: auto; }
+  .pbox { width: min(560px, 100%); display: grid; gap: 16px; justify-items: center; text-align: center; }
+  .pbox.wide { width: min(760px, 100%); }
+  .panel.on .si { animation: slideUp .6s cubic-bezier(.2, .8, .2, 1) backwards; animation-delay: calc(220ms + var(--i, 0) * 60ms); }
+  .ptitle { font: 800 clamp(26px, 5vw, 40px)/1.1 var(--body); letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+  .ptitle u { text-decoration: none; background: linear-gradient(transparent 60%, var(--yellow) 60%); }
+  .psub { margin: 0; color: var(--ink-2); max-width: 46ch; text-wrap: balance; }
+  .steps { display: flex; gap: 8px; }
+  .steps i { width: 26px; height: 10px; border: 2px solid var(--line); border-radius: 4px; background: var(--card); }
+  .steps i.on { background: var(--yellow); } .steps i.done { background: var(--lilac); }
+
+  .acard { width: min(420px, 100%); background: var(--card); border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line);
+           padding: 22px 20px; display: grid; gap: 14px; justify-items: center; text-align: center; }
+  .apet { width: 96px; height: 96px; background: #ffffff; border: 3px solid var(--line); border-radius: 18px; display: grid; place-items: center; }
+  .apet .pet { grid-template-columns: repeat(10, 7px); grid-auto-rows: 7px; }
+  .aform { display: grid; gap: 12px; width: 100%; text-align: left; }
+  .aform label { font-weight: 800; font-size: 14px; display: block; margin-bottom: 5px; }
+  .aform input { width: 100%; height: 48px; border: 3px solid var(--line); border-radius: 12px; padding: 0 14px; background: var(--soft); font-size: 16px; }
+  .aform input:focus { outline: none; background: var(--card); box-shadow: 3px 3px 0 var(--line); }
+  .aform .wgo { width: 100%; justify-content: center; margin-top: 4px; animation: none; }
+  .aerr { margin: 0; min-height: 1.2em; color: var(--bad); font-weight: 700; font-size: 14px; }
+  .aswitch { border: 0; background: none; cursor: pointer; font-weight: 700; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; padding: 4px; }
+  .aswitch:hover { color: var(--ink); }
+  .anote { margin: 0; font-size: 14px; color: var(--ink-2); background: var(--soft); border: 2px dashed var(--line); border-radius: 12px; padding: 8px 12px; }
+
+  .hgrid { display: grid; gap: 10px; width: 100%; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .hchip { position: relative; display: grid; grid-template-columns: auto 1fr; grid-template-rows: auto auto; column-gap: 10px; align-items: center; text-align: left;
+           padding: 10px 12px; border: 3px solid var(--line); border-radius: 14px; background: var(--card); box-shadow: 3px 3px 0 var(--line); cursor: pointer;
+           transition: transform .12s, box-shadow .12s, background-color .2s; }
+  .hchip:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--line); }
+  .hchip .he { grid-row: span 2; font-size: 24px; }
+  .hchip .hn { font-weight: 800; line-height: 1.15; }
+  .hchip .hh { font: 400 11px var(--pixel); color: var(--ink-3); }
+  .hchip .hx { position: absolute; top: -9px; right: -9px; width: 24px; height: 24px; border: 2px solid var(--line); border-radius: 50%; background: var(--green);
+               color: #1d1b20; display: grid; place-items: center; font: 800 13px/1 var(--body); transform: scale(0); transition: transform .25s cubic-bezier(.3, 1.6, .5, 1); }
+  .hchip.on { background: var(--yellow); color: var(--on-fill); transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--line); }
+  .hchip.on .hh { color: var(--on-fill); opacity: .7; }
+  .hchip.on .hx { transform: scale(1); }
+  .hchip.add { border-style: dashed; box-shadow: none; background: transparent; }
+  .hchip.add .he { font: 800 22px var(--body); }
+  .cform { width: 100%; display: grid; gap: 10px; text-align: left; background: var(--card); border: 3px solid var(--line); border-radius: 16px; padding: 14px; box-shadow: 4px 4px 0 var(--line);
+           animation: slideUp .4s cubic-bezier(.2, .8, .2, 1); }
+  .cform[hidden] { display: none; }
+  .cform .crow { display: flex; gap: 8px; }
+  .cform input { height: 46px; border: 3px solid var(--line); border-radius: 12px; padding: 0 12px; background: var(--soft); font-size: 16px; min-width: 0; }
+  .cform input.cn { flex: 1; } .cform input.ce { width: 64px; text-align: center; font-size: 22px; }
+  .cform .emos { display: flex; flex-wrap: wrap; gap: 6px; }
+  .cform .emos button { width: 38px; height: 38px; border: 2px solid var(--line); border-radius: 10px; background: var(--soft); font-size: 19px; cursor: pointer; }
+  .cform .cbtm { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+  .pnav { display: flex; gap: 12px; justify-content: center; margin-top: 8px; }
+  .pnav .btn { height: 52px; padding: 0 22px; }
+  .glabel { width: 100%; text-align: left; font: 700 13px var(--pixel); color: var(--ink-2); margin: 6px 0 -4px; }
+
+  /* coming back from Settings: the welcome screen slides in over the page */
+  @keyframes inR { from { transform: translateX(100%); } }
+  .welcome.slidein { animation: inR .7s cubic-bezier(.7, 0, .2, 1); }
+  body.welcoming.returning .wrap { transform: translateX(-100%); transition: transform .7s cubic-bezier(.7, 0, .2, 1); }
+  body.welcoming.returning.leaving .welcome { transform: translateX(100%); }
+  body.welcoming.returning.leaving .wrap { transform: none; }
+
+  /* little pixel things drifting around the edges */
+  .wdeco { position: absolute; inset: 0; pointer-events: none; }
+  .wdeco i { position: absolute; width: var(--s); height: var(--s); background: var(--c); border: 3px solid var(--line); border-radius: 4px;
+             animation: slideIn 1s cubic-bezier(.2, .8, .2, 1) var(--d) backwards, drift 7s ease-in-out calc(var(--d) + 1s) infinite alternate; }
+  @keyframes slideL  { from { opacity: 0; transform: translateX(-60px) rotate(-6deg); } }
+  @keyframes slideR  { from { opacity: 0; transform: translateX(60px); } }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(26px); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(var(--from, 80px)) rotate(25deg); } }
+  @keyframes fadeIn  { from { opacity: 0; } }
+  @keyframes drift   { to { transform: translateY(-14px) rotate(8deg); } }
+  @keyframes nudge   { 50% { transform: translateX(4px); } }
+  @media (max-width: 560px) {
+    .wpet { width: 150px; height: 150px; } .wpet .pet { grid-template-columns: repeat(10, 11px); grid-auto-rows: 11px; }
+  }
+</style>
+<script>
+// Color themes. Each one overrides a few tokens, separately for light and dark.
+// Lavender is the original look (no overrides). Saved per device in localStorage.
+const THEMES = {
+  lavender: {name: "Lavender", light: {}, dark: {}},
+  mint: {name: "Mint", light: {"--bg": "#e3f6ec", "--soft": "#eefaf3", "--lilac": "#9ee6c0", "--pet": "#9be3bf", "--yellow": "#ffe45e"},
+         dark: {"--bg": "#111a16", "--card": "#1c2a23", "--soft": "#26382f", "--lilac": "#9ee6c0", "--pet": "#9be3bf"}},
+  peach: {name: "Sunset", light: {"--bg": "#ffede3", "--soft": "#fff5ef", "--lilac": "#ffb59a", "--pet": "#ffb3a1", "--yellow": "#ffd36e"},
+          dark: {"--bg": "#1d1411", "--card": "#2c1f1a", "--soft": "#3a2a24", "--lilac": "#ffb59a", "--pet": "#ffb3a1", "--yellow": "#ffd36e"}},
+  ocean: {name: "Ocean", light: {"--bg": "#e3efff", "--soft": "#eef5ff", "--lilac": "#9cc8ff", "--pet": "#93c4ff", "--yellow": "#ffe45e"},
+          dark: {"--bg": "#0f1624", "--card": "#1a2336", "--soft": "#253049", "--lilac": "#9cc8ff", "--pet": "#93c4ff"}},
+  bubblegum: {name: "Bubblegum", light: {"--bg": "#ffe7f2", "--soft": "#fff1f8", "--lilac": "#ffadd2", "--pet": "#ffa6cf", "--yellow": "#c8f27a"},
+              dark: {"--bg": "#1d1118", "--card": "#2c1b25", "--soft": "#3b2532", "--lilac": "#ffadd2", "--pet": "#ffa6cf", "--yellow": "#c8f27a"}},
+  gameboy: {name: "Game Boy", light: {"--bg": "#c5d199", "--card": "#e3eac3", "--soft": "#d3ddac", "--ink": "#1f2b12", "--ink-2": "#3c4a2a", "--ink-3": "#5a6a44",
+              "--line": "#1f2b12", "--on-fill": "#1f2b12", "--lilac": "#9bbc0f", "--pet": "#8bac0f", "--yellow": "#c6e05a", "--prev": "#306230", "--today": "#0f380f", "--avg": "#5a6a44"},
+            dark: {"--bg": "#0f2a0f", "--card": "#1b401b", "--soft": "#295629", "--ink": "#e0f0b0", "--ink-2": "#b9d08a", "--ink-3": "#8fa86a",
+              "--line": "#000000", "--lilac": "#9bbc0f", "--pet": "#8bac0f", "--yellow": "#c6e05a", "--prev": "#9bbc0f", "--today": "#c6e05a", "--avg": "#8fa86a"}},
+};
+const themePrefs = () => { try { return JSON.parse(localStorage.getItem("lt-theme")) || {}; } catch (_) { return {}; } };
+function applyTheme(p = themePrefs()) {
+  const root = document.documentElement, mode = p.mode || "auto";
+  const dark = mode === "dark" || (mode === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+  if (mode === "auto") root.removeAttribute("data-theme"); else root.dataset.theme = mode;
+  const all = new Set(Object.values(THEMES).flatMap(t => [...Object.keys(t.light), ...Object.keys(t.dark)]));
+  all.forEach(k => root.style.removeProperty(k));
+  const t = THEMES[p.palette] || THEMES.lavender;
+  for (const [k, v] of Object.entries(dark ? t.dark : t.light)) root.style.setProperty(k, v);
+  root.dataset.palette = THEMES[p.palette] ? p.palette : "lavender";
+}
+applyTheme();
+</script>
+</head>
+<body data-view="home" class="welcoming">
+<section class="welcome" id="welcome" aria-label="Welcome">
+  <div class="wdeco" aria-hidden="true">
+    <i style="--s:22px;--c:var(--yellow);left:9%;top:14%;--d:.3s;--from:-80px"></i>
+    <i style="--s:14px;--c:var(--pink);left:18%;top:72%;--d:.55s;--from:-80px"></i>
+    <i style="--s:30px;--c:var(--green);right:10%;top:20%;--d:.4s"></i>
+    <i style="--s:16px;--c:var(--blue);right:20%;bottom:16%;--d:.7s"></i>
+    <i style="--s:12px;--c:var(--lilac);left:30%;top:8%;--d:.85s;--from:-80px"></i>
+    <i style="--s:18px;--c:var(--orange);right:30%;top:6%;--d:1s"></i>
+  </div>
+  <div class="panels">
+  <div class="panel on" id="pHello"><div class="wbox">
+    <div class="wpet"><div class="pet" id="wPet" role="img" aria-label="Mochi waving hello"></div></div>
+    <div class="wtag">LAZYTRACK</div>
+    <h1 class="wtitle" id="wTitle">Hey, welcome back.</h1>
+    <p class="wline" id="wLine">Mochi kept an eye on things while you were away.</p>
+    <button class="btn primary wgo" id="wGo">Let's go <span class="arr" aria-hidden="true">→</span></button>
+    <div class="whint">or press Enter</div>
+  </div></div>
+
+  <!-- log in, or make the account (one per LazyTrack) -->
+  <div class="panel" id="pAuth" inert><div class="pbox">
+    <div class="acard si" style="--i:0">
+      <div class="apet"><div class="pet" id="aPet" aria-hidden="true"></div></div>
+      <div class="wtag" style="animation:none">LAZYTRACK</div>
+      <h1 class="ptitle" id="aTitle" style="font-size:30px">Make your account</h1>
+      <p class="psub" id="aSub"></p>
+      <form class="aform" id="aForm" novalidate>
+        <div id="aNameF"><label for="aName">What should Mochi call you?</label><input id="aName" autocomplete="nickname" maxlength="30" placeholder="Your name"></div>
+        <div><label for="aUser" id="aUserL">Username</label><input id="aUser" autocomplete="username" maxlength="60" autocapitalize="none" spellcheck="false" placeholder="3 to 20 letters or numbers"></div>
+        <div id="aMailF"><label for="aMail">Email</label><input id="aMail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+        <div><label for="aPass">Password</label><input id="aPass" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+        <p class="anote" id="aData" hidden>You already have data here. It stays and becomes part of this account.</p>
+        <p class="aerr" id="aErr" role="alert"></p>
+        <button class="btn primary wgo" id="aGo" type="submit">Create account <span class="arr" aria-hidden="true">→</span></button>
+      </form>
+      <button type="button" class="aswitch" id="aSwitch"></button>
+    </div>
+  </div></div>
+
+  <!-- setup, step 1: less of -->
+  <div class="panel" id="pS1" inert><div class="pbox wide">
+    <div class="steps si" style="--i:0" aria-label="Step 1 of 3"><i class="on"></i><i></i><i></i></div>
+    <h1 class="ptitle si" style="--i:1">What do you want to do <u>less</u>?</h1>
+    <p class="psub si" style="--i:2">Tap everything Mochi should keep an eye on. Nothing here is required, and you can change it any time in Settings.</p>
+    <div class="hgrid" id="gBad"></div>
+    <div class="cform" id="fBad" hidden></div>
+    <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-next>Next <span aria-hidden="true">→</span></button></div>
+  </div></div>
+
+  <!-- step 2: more of -->
+  <div class="panel" id="pS2" inert><div class="pbox wide">
+    <div class="steps si" style="--i:0" aria-label="Step 2 of 3"><i class="done"></i><i class="on"></i><i></i></div>
+    <h1 class="ptitle si" style="--i:1">And what do you want <u>more</u> of?</h1>
+    <p class="psub si" style="--i:2">These give Mochi HP. Log them with one tap on Home.</p>
+    <div class="hgrid" id="gGood"></div>
+    <div class="cform" id="fGood" hidden></div>
+    <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-next>Next <span aria-hidden="true">→</span></button></div>
+  </div></div>
+
+  <!-- step 3: screen stats + extras -->
+  <div class="panel" id="pS3" inert><div class="pbox wide">
+    <div class="steps si" style="--i:0" aria-label="Step 3 of 3"><i class="done"></i><i class="done"></i><i class="on"></i></div>
+    <h1 class="ptitle si" style="--i:1">What should Mochi show from your <u>screen</u>?</h1>
+    <p class="psub si" style="--i:2">Screen time is tracked by itself. Pick what goes next to Mochi.</p>
+    <div class="hgrid" id="gScreen"></div>
+    <div class="glabel si" style="--i:12">EXTRAS</div>
+    <div class="hgrid" id="gMods"></div>
+    <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-next>Next <span aria-hidden="true">→</span></button></div>
+  </div></div>
+
+  <!-- done -->
+  <div class="panel" id="pS4" inert><div class="pbox">
+    <div class="wpet si" style="--i:0;animation-name:slideUp"><div class="pet" id="dPet" aria-hidden="true"></div></div>
+    <h1 class="ptitle si" style="--i:1" id="dTitle">All set.</h1>
+    <p class="psub si" style="--i:2" id="dLine"></p>
+    <div class="pnav si" style="--i:3"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary wgo" id="dGo" style="animation:none">Meet Mochi <span class="arr" aria-hidden="true">→</span></button></div>
+  </div></div>
+  </div>
+</section>
+<canvas id="aura" aria-hidden="true"></canvas>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#"><span class="mini" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 10 10" shape-rendering="crispEdges"><path fill="#1d1b20" d="M2 2h6v1H2zM1 3h1v5H1zM8 3h1v5H8zM3 4h1v1H3zM6 4h1v1H6zM2 8h2v1H2zM6 8h2v1H6zM4 6h2v1H4z"/></svg></span>LAZYTRACK</a>
+    <div class="daynav" role="group" aria-label="Choose day">
+      <button id="prevDay" aria-label="Previous day">‹</button>
+      <div class="lbl" id="dayLabel">Today</div>
+      <button id="nextDay" aria-label="Next day">›</button>
+    </div>
+  </header>
+
+  <nav class="tabs" aria-label="Sections">
+    <a class="tab" data-tab="home" href="#tab=home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"/><path d="M9 20v-6h6v6"/></svg>Home</a>
+    <a class="tab" data-tab="habits" href="#tab=habits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h3M4 12h3M4 18h3M10 6h10M10 12h10M10 18h10"/></svg>Habits</a>
+    <a class="tab" data-tab="screen" href="#tab=screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Screen</a>
+    <a class="tab" data-tab="school" href="#tab=school"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/></svg>School</a>
+    <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.8 3.2-6 6.5-6s5.9 2.2 6.5 6"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14c2.7.2 4.6 2.2 5 5.5"/></svg>Friends<span class="tbadge" id="fBadge" hidden></span></a>
+    <a class="tab" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</a>
+  </nav>
+  <div class="offline" id="offline">Can't reach LazyTrack. Is its window still open?</div>
+
+  <!-- ================================================== HOME: the pet + the essentials -->
+  <main id="home" class="view">
+    <section class="card petcard" id="petcard">
+      <div class="pettop">
+        <div class="petbox"><div class="pet" id="pet" role="img" aria-label="Your pet"></div></div>
+        <div class="statsheet" id="statsheet" aria-label="Today's stats"></div>
+      </div>
+      <div class="speech">
+        <div class="who" id="petWho">MOCHI SAYS</div>
+        <h1 id="headline">Loading your day…</h1>
+        <p class="mood" id="petMood"></p>
+      </div>
+      <div class="hp" id="hp"></div>
+    </section>
+
+    <div class="logbar" id="logbar" aria-label="Log something"></div>
+    <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
+
+    <h2 class="sec">How you're doing</h2>
+    <p class="sub">Tap a bar for the details.</p>
+    <div class="card pad"><div class="bars" id="statbars"></div></div>
+
+    <h2 class="sec">Coming up</h2>
+    <div class="chips" id="chips"></div>
+  </main>
+
+  <!-- ================================================== HABITS -->
+  <main id="habits" class="view">
+    <h2 class="sec" style="margin-top:22px">Today</h2>
+    <p class="sub" id="habitsSub">Compared with yesterday at this time. Tap one for its timeline.</p>
+    <div class="grid2">
+      <div class="card rows" id="hBad"></div>
+      <div class="stack">
+        <div class="card rows" id="hGood"></div>
+        <div class="card rows" id="hBody"></div>
+      </div>
+    </div>
+
+    <h2 class="sec">Recent logs</h2>
+    <p class="sub">Logged something by mistake? Remove it here.</p>
+    <div class="card"><ul class="plain" id="recent"></ul></div>
+    <div style="margin-top:12px"><button class="btn" id="moreRecent">Show more</button></div>
+
+    <h2 class="sec">Last two weeks</h2>
+    <p class="sub">Tap a bar to open that day.</p>
+    <div class="card pad"><div class="chartbox"><canvas id="cHabits"></canvas></div></div>
+
+    <h2 class="sec">This week</h2>
+    <p class="sub">So far, compared with last week up to the same point.</p>
+    <div class="card rows" id="hWeek"></div>
+  </main>
+
+  <!-- ================================================== SCREEN -->
+  <main id="screen" class="view">
+    <h2 class="sec" style="margin-top:22px">Today</h2>
+    <p class="sub">Compared with yesterday at this time. Tap one to see when you used it.</p>
+    <div class="grid2">
+      <div class="card rows" id="sToday"></div>
+      <div class="card"><div class="label" style="margin:14px 16px 4px">TOP APPS THIS WEEK</div><ul class="plain" id="apps"></ul></div>
+    </div>
+
+    <h2 class="sec">Last two weeks</h2>
+    <p class="sub">Hours per day. Tap a bar to open that day.</p>
+    <div class="card pad"><div class="chartbox tall"><canvas id="cScreen"></canvas></div></div>
+
+    <h2 class="sec">This week</h2>
+    <p class="sub">So far, compared with last week up to the same point.</p>
+    <div class="card rows" id="sWeek"></div>
+  </main>
+
+  <!-- ================================================== SCHOOL: 42 + code -->
+  <main id="school" class="view">
+    <h2 class="sec" style="margin-top:22px">42 deadlines</h2>
+    <p class="sub">Green while there's plenty of time, red for the last two weeks.</p>
+    <div class="card pad" id="pFt"></div>
+
+    <div class="grid2" style="margin-top:18px">
+      <div class="card pad clickcard" id="pGh" tabindex="0"></div>
+      <div class="card rows" id="codeRows"></div>
+    </div>
+
+    <h2 class="sec">Coding, last two weeks</h2>
+    <p class="sub">Hours per day. Tap a bar to open that day.</p>
+    <div class="card pad"><div class="chartbox"><canvas id="cCoding"></canvas></div></div>
+  </main>
+
+  <!-- ================================================== DETAIL (opens inside a tab) -->
+  <main id="detail" class="view">
+    <div class="back"><a class="btn" id="backLink" href="#">‹ <span id="backName">Back</span></a></div>
+    <section class="card dhero">
+      <p class="what" id="dWhat"></p>
+      <div class="big" id="dBig"></div>
+      <p class="say" id="dSay"></p>
+      <div class="actions" id="dActions" style="margin-top:14px"></div>
+    </section>
+    <div class="facts" id="dFacts"></div>
+
+    <section id="dHours">
+      <h2 class="sec">Through the day</h2>
+      <p class="sub" id="dHoursSub"></p>
+      <div class="card pad"><div class="tl" id="timeline"></div></div>
+    </section>
+
+    <section>
+      <h2 class="sec">Last 30 days</h2>
+      <p class="sub" id="dHistSub"></p>
+      <div class="card pad"><div class="chartbox tall"><canvas id="cHist"></canvas></div></div>
+    </section>
+
+    <section id="dListSec">
+      <h2 class="sec" id="dListTitle"></h2>
+      <div class="card"><ul class="plain" id="dList"></ul></div>
+    </section>
+  </main>
+
+  <!-- ================================================== FRIENDS -->
+  <main id="friends" class="view">
+    <div id="fConnect"></div>
+    <div id="fMain">
+      <h2 class="sec" style="margin-top:22px">Your card</h2>
+      <p class="sub">This is what your friends see. Tap a stat to share it or keep it private.</p>
+      <div class="grid2"><div id="fMe"></div><div class="card pad" id="fShare"></div></div>
+
+      <h2 class="sec">Add a friend</h2>
+      <p class="sub">Type their LazyTrack username. They get a request and can accept it.</p>
+      <form class="card pad addf" id="fAdd"><span class="at" aria-hidden="true">@</span><input id="fName" placeholder="username" autocapitalize="none" spellcheck="false" maxlength="20" aria-label="Their username">
+        <button class="btn primary" type="submit">Send request</button><p class="note" id="fAddNote"></p></form>
+      <div id="fReq"></div>
+
+      <h2 class="sec">Friends</h2>
+      <div class="fgrid" id="fList"></div>
+    </div>
+    <div id="fProfile"></div>
+  </main>
+
+  <!-- ================================================== SETTINGS -->
+  <main id="settings" class="view">
+    <form id="sForm" autocomplete="off">
+      <section class="card pad" id="sAccount"></section>
+
+      <section class="card pad">
+        <h2>Habits</h2>
+        <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.</p>
+        <div class="hlist" id="hList"></div>
+        <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
+      </section>
+
+      <section class="card pad">
+        <h2>Updates</h2>
+        <p class="sub">LazyTrack updates itself: it checks for new versions a minute after starting and every few hours.</p>
+        <p class="note" id="uStatus"></p>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="uCheck">Check for updates</button></div>
+      </section>
+
+      <section class="card pad">
+        <h2>Look</h2>
+        <p class="sub">Changes right away on this device, no saving needed.</p>
+        <div class="form">
+          <div class="field"><label>Color theme</label>
+            <div class="themes" id="themes" role="radiogroup" aria-label="Color theme"></div></div>
+          <div class="field"><label>Background effect</label>
+            <p class="hint">Every effect still follows Mochi: brighter and busier when you're doing great, fewer and greyer when not.</p>
+            <div class="fxs" id="fxs" role="radiogroup" aria-label="Background effect"></div></div>
+          <div class="field"><label>Light or dark</label>
+            <div class="seg" role="radiogroup">
+              <label><input type="radio" name="ui_mode" value="auto"> Auto</label>
+              <label><input type="radio" name="ui_mode" value="light"> Light</label>
+              <label><input type="radio" name="ui_mode" value="dark"> Dark</label>
+            </div></div>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <h2>Smoking detector</h2>
+        <p class="sub">Watches through the webcam and asks you when it thinks you're smoking.</p>
+        <div class="form">
+          <label class="toggle"><input type="checkbox" name="smoke_enabled"> Use the webcam detector</label>
+          <div class="field">
+            <label>How quickly should it ask?</label>
+            <p class="hint">Asks too often by mistake? Choose “Careful”. Misses cigarettes? Choose “Quick”.</p>
+            <div class="seg" role="radiogroup">
+              <label><input type="radio" name="smoke_sensitivity" value="low"> Careful</label>
+              <label><input type="radio" name="smoke_sensitivity" value="normal"> Normal</label>
+              <label><input type="radio" name="smoke_sensitivity" value="high"> Quick</label>
+            </div>
+          </div>
+          <div class="field">
+            <label for="cool">Wait after each cigarette (minutes)</label>
+            <p class="hint">The camera switches off for this long, so one cigarette isn't counted twice.</p>
+            <input id="cool" type="number" name="smoke_cooldown_minutes" min="1" max="120" style="max-width:140px">
+          </div>
+          <label class="toggle"><input type="checkbox" name="save_training_photos"> Keep the photo it asked about, to train it on you</label>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <h2>42 deadlines</h2>
+        <p class="sub">Shown as countdowns in the School tab and on Home.</p>
+        <div class="form">
+          <div class="field"><label for="fbh">Blackhole date</label>
+            <p class="hint">Filled in automatically once 42 is connected. Set it here if it isn't, or to correct it.</p>
+            <input id="fbh" type="date" name="ft_manual_blackhole" style="max-width:220px"></div>
+          <div class="inline">
+            <div class="field"><label for="fmn">Next milestone</label><input id="fmn" type="text" name="ft_milestone_name" placeholder="e.g. Milestone 4"></div>
+            <div class="field"><label for="fmd">Milestone deadline</label><input id="fmd" type="date" name="ft_milestone_date"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <h2>42 intra</h2>
+        <p class="sub">For logtime, projects and the blackhole date. Create an app at
+          <a href="https://profile.intra.42.fr/oauth/applications/new" target="_blank" rel="noopener">profile.intra.42.fr</a>
+          (redirect URI: http://localhost, scope: public) and paste its UID and secret here.</p>
+        <div class="form">
+          <div class="field"><label for="fl">Your login</label><input id="fl" type="text" name="ft_login" placeholder="e.g. fefo"></div>
+          <div class="field"><label for="fu">UID</label><input id="fu" type="text" name="ft_client_id" placeholder="u-s4t2ud-…"></div>
+          <div class="field"><label for="fs">Secret</label><input id="fs" type="password" name="ft_client_secret" placeholder="s-s4t2ud-…"></div>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <h2>GitHub</h2>
+        <p class="sub">For contributions, streaks and repos. The username alone shows public activity.
+          Add a token to count your private repos too: create one at
+          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a>
+          (the default read-only access is enough) and turn on “Include private contributions on my profile” in your GitHub profile settings.</p>
+        <div class="form">
+          <div class="field"><label for="ghu">GitHub username</label><input id="ghu" type="text" name="github_username" placeholder="e.g. fefo42"></div>
+          <div class="field"><label for="ght">Token (optional)</label><input id="ght" type="password" name="github_token" placeholder="github_pat_…"></div>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <h2>Weekly summary</h2>
+        <p class="sub">A notification with your week, once a week.</p>
+        <div class="inline">
+          <div class="field"><label for="wd">Day</label>
+            <select id="wd" name="summary_weekday">
+              <option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option>
+              <option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+            </select></div>
+          <div class="field"><label for="hr">Time</label><select id="hr" name="summary_hour"></select></div>
+        </div>
+      </section>
+
+      <section class="card pad">
+        <h2>General</h2>
+        <div class="form">
+          <div class="field"><label for="idl">Count me as away after (minutes)</label>
+            <p class="hint">With no key press, click, scroll or mouse move for this long, screen time stops counting, and those minutes are taken off again. While a video or a call is playing you still count as here.</p>
+            <input id="idl" type="number" name="idle_minutes" min="1" max="60" style="max-width:140px"></div>
+          <label class="toggle"><input type="checkbox" name="open_dashboard_on_start"> Open this page when LazyTrack starts</label>
+          <div class="field"><label for="dn">Name of this computer</label><p class="hint">Shown next to things logged from here.</p>
+            <input id="dn" type="text" name="device_name" style="max-width:260px"></div>
+        </div>
+      </section>
+
+      <div class="actions" style="margin-top:22px">
+        <button type="submit" class="btn primary">Save and restart</button>
+        <span class="note" id="sNote"></span>
+      </div>
+    </form>
+  </main>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastUndo">Undo</button></div>
+
+<script>
+const TOKEN = new URLSearchParams(location.search).get("token") || "";
+const H = TOKEN ? {"X-Token": TOKEN} : {};
+
+// ---------------------------------------------------------------- vocabulary
+// The habits come from the server (/api/habits): each person picks their own in the setup.
+// These are only the defaults until that answer arrives.
+let HABITS = [
+  {k: "cigarette", e: "🚬", n: "Cigarettes", one: "cigarette", s: "CIG", bad: true, main: true, fill: "--pink", hp: -8, smoke: true},
+  {k: "joint", e: "🌿", n: "Joints", one: "joint", s: "WEED", bad: true, main: true, fill: "--green", hp: -10, smoke: true},
+  {k: "junk_food", e: "🍔", n: "Junk food", one: "junk food", s: "JUNK", bad: true, main: true, fill: "--yellow", hp: -6},
+  {k: "alcohol", e: "🍺", n: "Alcohol", one: "drink", s: "BOOZE", bad: true, fill: "--orange", hp: -6},
+  {k: "energy_drink", e: "⚡", n: "Energy drinks", one: "energy drink", s: "NRG", bad: true, fill: "--lilac", hp: -4},
+  {k: "gym", e: "🏋️", n: "Gym", one: "gym session", s: "GYM", bad: false, main: true, fill: "--blue", hp: 15, cap: 15},
+  {k: "walk", e: "🚶", n: "Walks", one: "walk", s: "WALK", bad: false, fill: "--lime", hp: 5, cap: 10},
+  {k: "water", e: "💧", n: "Water", one: "glass of water", s: "H2O", bad: false, fill: "--blue", hp: 1, cap: 4},
+];
+let SHOW_SCREEN = ["coding", "commits", "youtube", "social", "screen_pc", "screen_phone", "screen"];   // screen stats in the stat sheet
+let MODULES = {school: true, github: true};
+let CATALOG = [], SCREEN_CATALOG = [];
+let SHARE = null;   // which stats friends see (null = good habits, coding and screen time; bad habits stay private)
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const SCREEN_LABEL = {coding: "CODE", commits: "GIT", youtube: "YT", social: "SOCIAL", streaming: "TV", gaming: "GAME", browsing: "WEB",
+                      screen_pc: IS_MAC ? "MAC" : "PC", screen_phone: "PHONE", screen: "SCREEN"};
+const SCREEN = [
+  {k: "screen", e: "⏱️", n: "Total screen time", bad: true},
+  {k: "screen_pc", e: "🖥️", n: IS_MAC ? "Screen time on the Mac" : "Screen time on the computer", bad: true},
+  {k: "screen_phone", e: "📱", n: "Screen time on the phone", bad: true},
+  {k: "coding", e: "💻", n: "Coding", bad: false},
+  {k: "youtube", e: "▶️", n: "YouTube", bad: true},
+  {k: "social", e: "💬", n: "Social and chat", bad: true},
+  {k: "streaming", e: "🎬", n: "Streaming", bad: true},
+  {k: "gaming", e: "🎮", n: "Gaming", bad: true},
+  {k: "browsing", e: "🌐", n: "Other websites", bad: true},
+  {k: "other", e: "📦", n: "Other apps", bad: true},
+];
+const OTHER = {commits: {e: "✅", n: "Commits", bad: false}, sleep: {e: "😴", n: "Sleep", bad: false}, steps: {e: "👟", n: "Steps", bad: false},
+               github: {e: "🐙", n: "GitHub contributions", one: "contribution", bad: false}};
+const INFO = Object.fromEntries([...HABITS.map(h => [h.k, h]), ...SCREEN.map(s => [s.k, s]), ...Object.entries(OTHER).map(([k, v]) => [k, {k, ...v}])]);
+/** takes {habits, screen, modules, catalog, screen_catalog} from the server and rebuilds everything that lists habits */
+function applyHabits(cfg) {
+  for (const h of HABITS) if (!SCREEN.some(x => x.k === h.k) && !OTHER[h.k]) delete INFO[h.k];
+  CATALOG = cfg.catalog || CATALOG; SCREEN_CATALOG = cfg.screen_catalog || SCREEN_CATALOG;
+  for (const c of CATALOG) INFO[c.k] = {...c};          // hidden built-ins keep their names, for old logs
+  HABITS = (cfg.habits || []).map(h => ({...h}));
+  for (const h of HABITS) INFO[h.k] = h;
+  SHOW_SCREEN = cfg.screen || SHOW_SCREEN;
+  if ("share" in cfg) SHARE = cfg.share;
+  MODULES = {...MODULES, ...(cfg.modules || {})};
+  drawLogbar();
+  const st = document.querySelector('.tab[data-tab="school"]');
+  if (st) st.lastChild.textContent = MODULES.school ? "School" : "Coding";
+  if (O) O.health = health(O);
+}
+async function loadHabits() {
+  try { const r = await api("/api/habits"); if (r.ok) applyHabits(await r.json()); } catch (_) {}
+}
+const SOURCE = {camera: "noticed by the webcam", manual: "logged by you", phone: "from your phone", dashboard: "logged by you",
+                shortcut: "via Siri or a shortcut", geofence: "logged automatically at the gym", food_photo: "from a food photo"};
+const TABS = {home: "Home", habits: "Habits", screen: "Screen", school: "School", friends: "Friends", settings: "Settings"};
+// which tab a detail page belongs to
+const tabOf = k => SCREEN.some(s => s.k === k) && k !== "coding" ? "screen" : ["coding", "commits", "github"].includes(k) ? "school" : "habits";
+
+// ---------------------------------------------------------------- helpers
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+function hm(s) { s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60);
+  return h ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`; }
+const unitOf = k => (INFO[k] && SCREEN.includes(INFO[k])) || k === "sleep" ? "seconds" : "count";
+const fmt = (unit, v) => unit === "seconds" ? hm(v) : Math.round(v || 0).toLocaleString();
+const clock = ts => new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
+const api = (path, opts = {}) => fetch(path, {credentials: "same-origin", ...opts, headers: {...H, ...(opts.headers || {})}});
+const post = (path, body) => api(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
+const plural = (n, word) => `${n} ${word}${n === 1 || /s$|food$|biting$|ing$/.test(word) ? "" : "s"}`;
+const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+/** "2 more than yesterday at this time" / "45m less than the day before" / "same as yesterday" */
+function compare(k, now, before, against) {
+  const unit = unitOf(k), bad = INFO[k] ? INFO[k].bad : true;
+  now = now || 0; before = before || 0;
+  if (!now && !before) return {text: "none " + (against.startsWith("yesterday") ? "yesterday either" : against + " either"), cls: ""};
+  const d = now - before;
+  if (Math.abs(d) < (unit === "seconds" ? 60 : 1)) return {text: `same as ${against}`, cls: ""};
+  const more = d > 0;
+  const word = unit === "seconds" ? (more ? "more" : "less") : (more ? "more" : "fewer");
+  const good = bad ? !more : more;
+  return {text: `${fmt(unit, Math.abs(d))} ${word} than ${against}`, cls: good ? "better" : "worse"};
+}
+
+// ---------------------------------------------------------------- routing: #tab=habits&day=2026-10-15&view=detail&k=cigarette
+const route = () => Object.fromEntries(new URLSearchParams(location.hash.slice(1)));
+const go = p => { location.hash = new URLSearchParams(Object.entries(p).filter(([, v]) => v)).toString(); };
+const iso = d => { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 10); };
+const todayISO = () => iso(new Date());
+const shiftDay = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.getDate() + n); return iso(d); };
+const dayName = s => s === todayISO() ? "Today" : s === shiftDay(todayISO(), -1) ? "Yesterday"
+  : new Date(s + "T12:00:00").toLocaleDateString([], {weekday: "long", day: "numeric", month: "short"});
+const selectedDay = () => route().day || todayISO();
+const currentTab = () => TABS[route().tab] ? route().tab : "home";
+function openDetail(k, day) {
+  const tab = route().view === "detail" ? currentTab() : currentTab() === "home" ? tabOf(k) : currentTab();
+  go({tab, day: day === undefined ? route().day : day < todayISO() ? day : "", view: "detail", k});
+}
+
+$("prevDay").onclick = () => go({...route(), day: shiftDay(selectedDay(), -1)});
+$("nextDay").onclick = () => { const n = shiftDay(selectedDay(), 1); go({...route(), day: n >= todayISO() ? "" : n}); };
+// tabs keep the day you're looking at
+document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", e => { e.preventDefault(); go({tab: t.dataset.tab, day: route().day}); }));
+window.addEventListener("hashchange", () => { window.scrollTo(0, 0); animNext = true; render(); });
+document.addEventListener("keydown", e => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches("[data-open]:not(button)")) { e.preventDefault(); openDetail(e.target.dataset.open); return; }
+  if (e.target.closest("input, select, textarea") || e.metaKey || e.ctrlKey) return;
+  if (e.key === "ArrowLeft") $("prevDay").click();
+  if (e.key === "ArrowRight" && !$("nextDay").disabled) $("nextDay").click();
+  if (e.key === "Escape" && route().view) go({tab: currentTab(), day: route().day});
+});
+
+// ---------------------------------------------------------------- logging with undo
+let undoId = null, toastTimer = null;
+function toast(text, id) {
+  undoId = id; $("toastText").textContent = text;
+  $("toastUndo").style.display = id ? "" : "none";
+  $("toast").classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => $("toast").classList.remove("show"), 6000);
+}
+$("toastUndo").onclick = async () => {
+  if (!undoId) return;
+  await post("/api/event/delete", {id: undoId});
+  toast("Removed", null); render();
+};
+async function logKind(k) {
+  const h = INFO[k];
+  const r = await post("/api/event", {kind: k, device: "dashboard"});
+  if (!r.ok) { toast("Couldn't save. Is LazyTrack running?", null); return; }
+  const j = await r.json();
+  toast(`Logged ${h.e} ${h.one}`, j.id);
+  render();
+}
+async function removeEvent(id) {
+  await post("/api/event/delete", {id});
+  toast("Removed", null); render();
+}
+
+let showAllLogs = false, showAllRecent = false;
+function drawLogbar() {
+  $("logbar").innerHTML = HABITS.map(h =>
+    `<button class="logbtn" style="background:var(${h.fill})" data-log="${h.k}" ${!h.main && !showAllLogs ? "hidden" : ""}><span class="e" aria-hidden="true">${h.e}</span>${esc(h.one[0].toUpperCase() + h.one.slice(1))}</button>`).join("");
+  $("moreLogs").textContent = showAllLogs ? "Fewer" : "More things to log";
+}
+drawLogbar();
+document.addEventListener("click", e => {
+  const l = e.target.closest("[data-log]"); if (l) { logKind(l.dataset.log); return; }
+  if (e.target.closest("#moreLogs")) { showAllLogs = !showAllLogs; drawLogbar(); return; }
+  if (e.target.closest("#moreRecent")) { showAllRecent = true; render(); return; }
+  const d = e.target.closest("[data-del]"); if (d) { e.stopPropagation(); removeEvent(+d.dataset.del); return; }
+  const o = e.target.closest("[data-open]"); if (o) openDetail(o.dataset.open);
+});
+
+// ---------------------------------------------------------------- charts
+const charts = {};
+// each bar's value is written above it (the total, for stacked bars) so you don't have to read an axis
+const valueLabels = {
+  id: "valueLabels",
+  afterDatasetsDraw(c, _a, o) {
+    if (!o || !o.format) return;
+    const {ctx} = c, bars = c.data.datasets.map((d, i) => ({d, i})).filter(x => (x.d.type || c.config.type) === "bar" && c.isDatasetVisible(x.i));
+    ctx.save();
+    ctx.font = `700 11px ${css("--body")}`; ctx.fillStyle = css("--ink"); ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+    const n = c.data.labels.length;
+    if (o.stacked) {
+      for (let k = 0; k < n; k++) {
+        const total = bars.reduce((s, x) => s + (+x.d.data[k] || 0), 0);
+        if (!total) continue;
+        const top = Math.min(...bars.map(x => c.getDatasetMeta(x.i).data[k]).filter(Boolean).map(el => el.y));
+        const el = c.getDatasetMeta(bars[0].i).data[k];
+        ctx.fillText(o.format(total), el.x, top - 4);
+      }
+    } else {
+      for (const x of bars) c.getDatasetMeta(x.i).data.forEach((el, k) => {
+        const v = +x.d.data[k] || 0; if (v) ctx.fillText(o.format(v), el.x, el.y - 4);
+      });
+    }
+    ctx.restore();
+  },
+};
+const hoursLabel = v => v >= 1 ? `${+v.toFixed(1)}h` : `${Math.round(v * 60)}m`;
+function chart(id, type, data, opts = {}) {
+  if (charts[id]) charts[id].destroy();
+  if (!window.Chart) return;
+  Chart.defaults.color = css("--ink-2"); Chart.defaults.borderColor = css("--soft");
+  Chart.defaults.font.family = css("--body");
+  const fmtv = opts.hours ? hoursLabel : (v => String(v));
+  charts[id] = new Chart($(id), {type, data, plugins: [valueLabels], options: {
+    responsive: true, maintainAspectRatio: false,
+    animation: animNow && calm ? {duration: 700, easing: "easeOutQuart"} : false,
+    layout: {padding: {top: opts.labels ? 18 : 4}},
+    interaction: {mode: "index", intersect: false},
+    plugins: {
+      legend: {display: data.datasets.length > 1, position: "bottom", labels: {boxWidth: 12, boxHeight: 12, color: css("--ink"), font: {weight: 700}}},
+      tooltip: {callbacks: {label: x => `${x.dataset.label}: ${opts.hours ? hm(x.raw * 3600) : x.raw}`,
+                            footer: opts.stacked ? xs => `Total: ${hm(xs.reduce((a, x) => a + x.raw, 0) * 3600)}` : undefined}},
+      valueLabels: opts.labels ? {format: fmtv, stacked: !!opts.stacked} : {},
+      ...(opts.plugins || {})},
+    scales: {x: {stacked: !!opts.stacked, grid: {display: false}, border: {display: false}, ticks: {maxRotation: 0, autoSkip: true, autoSkipPadding: 10}},
+             y: {stacked: !!opts.stacked, beginAtZero: true, display: !opts.labels, grace: "5%",
+                 ticks: {precision: 0, callback: v => opts.hours ? hoursLabel(v) : v}, border: {display: false}}},
+    onClick: opts.onClick,
+    onHover: opts.onClick ? (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; } : undefined,
+  }});
+}
+const BAR = () => ({borderRadius: 5, borderSkipped: false, borderWidth: 2, borderColor: css("--line"), maxBarThickness: 26});
+// fixed colour per screen category, light/dark steps of a colour-blind-checked palette
+const CAT = {coding: ["#1baf7a", "#199e70"], youtube: ["#e34948", "#e66767"], social: ["#2a78d6", "#3987e5"],
+             streaming: ["#6250d6", "#9085e9"], gaming: ["#eb6834", "#d95926"], browsing: ["#eda100", "#c98500"], other: ["#9aa0ad", "#6f7587"]};
+const dark = () => css("color-scheme") === "dark";
+const catColor = c => (CAT[c] || CAT.other)[dark() ? 1 : 0];
+
+// ---------------------------------------------------------------- the pet
+// 10x10 pixel art, one per mood: . empty, o outline, b body, c cheeks, s smoke, z sleep, * sparkle, m mouth
+const PET = {
+  happy:  ["..........", "..........", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmbbmbbo", ".obbmmbbo.", "..oo..oo.."],
+  smoky:  ["......ss..", ".....s..s.", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbbmmbbbo", ".obbbbbbo.", "..oo..oo.."],
+  proud:  ["*........*", "....**....", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmbbmbbo", ".obbmmbbo.", "..oo..oo.."],
+  sleepy: [".......zz.", "........z.", "..oooooo..", ".obbbbbbo.", "obbbbbbbbo", "obboobbobo", "obcbbbbcbo", "obbbmmbbbo", ".obbbbbbo.", "..oo..oo.."],
+  meh:    ["..........", "..........", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmmmmbbo", ".obbbbbbo.", "..oo..oo.."],
+};
+const PET_COL = {".": "transparent", o: "#1d1b20", b: "var(--pet)", c: "#ff8fb1", s: "#a8a3b3", z: "#5b5370", "*": "#e0b100", m: "#1d1b20"};
+// two extra looks that come from HP instead of the day's mood: y gold crown, g bandage, d droopy eye
+PET.legend = ["..y.yy.y..", "..yyyyyy..", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmbbmbbo", ".obbmmbbo.", "..oo..oo.."];
+PET.sick   = ["..........", "..........", "..oooooo..", ".obbbggbo.", "obbbbggbbo", "obddbbddbo", "obbobbobbo", "obbbbbbbbo", ".obbmmmbo.", "..oo..oo.."];
+const PET_TINT = {legend: {}, shiny: {}, okay: {}, tired: {b: "#a89fc4", c: "#e3a3b8"}, sick: {b: "#b4c29a", c: "#c9b29a"}};
+function petCells(art, tier) {
+  const col = {...PET_COL, y: "#f2b705", g: "#f4ecd9", d: "#5b5370", ...(PET_TINT[tier] || {})};
+  return art.join("").split("").map(ch => `<i style="background:${col[ch]}"></i>`).join("");
+}
+
+// ---------------------------------------------------------------- HP: how Mochi is doing
+// Every day starts fresh at 70 (OKAY). Bad stuff takes HP, good stuff gives it, and every
+// smoke-free hour heals a bit, so a bad day can always be turned around. Mochi never dies.
+const TIERS = [[90, "legend", "LEGENDARY"], [72, "shiny", "SHINY"], [50, "okay", "OKAY"], [30, "tired", "TIRED"], [0, "sick", "SICK"]];
+function health(O) {
+  const t = O.today, v = k => O.val(t, k), min = s => s / 60;
+  const parts = [];
+  const add = (n, why) => { if (Math.round(n)) parts.push([Math.round(n), why]); };
+  // each habit gives or takes its own HP (good ones up to a daily cap)
+  let smokeHp = 0;
+  for (const h of HABITS) {
+    const n = v(h.k); if (!n) continue;
+    if (h.bad) { add(h.hp * n, plural(n, h.one)); if (h.smoke) smokeHp += -h.hp * n; }
+    else add(Math.min(h.cap || h.hp * 3, h.hp * n), h.n.toLowerCase());
+  }
+  // smoke-free hours since the last one heal 3 HP each, up to most of what smoking took
+  let healed = 0, sinceMin = null;
+  const smokeKinds = HABITS.filter(h => h.smoke).map(h => h.k);
+  if (O.is_today && smokeHp) {
+    const last = (O.recent_events || []).filter(e => smokeKinds.includes(e.kind)).map(e => e.ts).sort((a, b) => b - a)[0];
+    if (last) {
+      sinceMin = (Date.now() / 1000 - last) / 60;
+      healed = Math.min(Math.floor(sinceMin / 60) * 3, Math.round(0.75 * smokeHp));
+      add(healed, "smoke-free hours");
+    }
+  }
+  add(Math.min(20, min(v("coding")) / 6), "coding");
+  add(Math.min(8, 2 * v("commits")), "commits");
+  const fun = min(v("youtube") + v("social"));
+  add(-Math.min(20, Math.max(0, fun - 90) / 10), "YouTube and social");
+  add(-Math.min(10, Math.max(0, min(v("screen")) - 600) / 15), "over 10h of screens");
+  const hp = Math.max(5, Math.min(100,   // never below 5: Mochi gets sick, never dies
+    70 + parts.reduce((s, p) => s + p[0], 0)));
+  const i = TIERS.findIndex(([at]) => hp >= at);
+  const [, tier, name] = TIERS[i];
+  const next = i > 0 ? TIERS[i - 1] : null;
+
+  // the quickest ways up from here, with how much each one is worth
+  const quests = [];
+  if (O.is_today) {
+    if (smokeHp && healed < Math.round(0.75 * smokeHp) && sinceMin != null)
+      quests.push(["Stay smoke-free", `+3 HP every hour, next one in ${Math.max(1, Math.ceil(60 - sinceMin % 60))}m`]);
+    // good habits not done yet today, biggest boost first
+    for (const h of HABITS.filter(h => !h.bad && !v(h.k)).sort((a, b) => b.hp - a.hp).slice(0, 2))
+      quests.push([`${h.e} ${h.n}`, `+${h.hp} HP${h.main ? `, tap ${h.one} on Home` : ""}`]);
+    if (SHOW_SCREEN.includes("coding") && min(v("coding")) < 120) quests.push(["Code for 30 minutes", "+5 HP"]);
+    if (fun > 90) quests.push(["Close YouTube and socials", "stops the HP drain"]);
+  }
+  return {hp: Math.round(hp), tier, name, next: next && {name: next[2], need: next[0] - Math.round(hp)}, parts, quests: quests.slice(0, 3)};
+}
+
+function drawPet(mood, label, tier = "okay") {
+  const art = tier === "legend" ? PET.legend : tier === "sick" && mood !== "sleepy" ? PET.sick : PET[mood] || PET.happy;
+  $("pet").innerHTML = petCells(art, tier);
+  $("pet").setAttribute("aria-label", label);
+  $("pet").classList.toggle("bob", calm);
+  $("petcard").dataset.mood = mood;
+}
+
+// ---------------------------------------------------------------- shared pieces
+function rowHTML(k, value, cmp, extraLabel) {
+  const i = INFO[k];
+  return `<button class="row" data-open="${k}">
+      <span class="e" aria-hidden="true">${i.e}</span><span class="name">${esc(extraLabel || i.n)}</span>
+      <span class="val">${value}</span><span class="chev" aria-hidden="true">›</span>
+      <span class="cmp ${cmp.cls}">${esc(cmp.text)}</span></button>`;
+}
+function deadlineLevel(days) {
+  return days < 0 ? ["--red", "PASSED"] : days <= 14 ? ["--red", "HURRY UP"] : days <= 30 ? ["--orange", "GETTING CLOSE"]
+       : days <= 60 ? ["--lime", "ON TRACK"] : ["--green", "PLENTY OF TIME"];
+}
+
+let O = null;   // the last overview, shared by the tabs
+async function loadOverview() {
+  const r = await api("/api/overview" + (route().day ? `?day=${route().day}` : ""));
+  if (!r.ok) throw new Error(r.status);
+  O = await r.json();
+  const t = O.today, isToday = O.is_today;
+  O.ref = isToday && O.yesterday_by_now ? O.yesterday_by_now : O.yesterday;
+  O.against = isToday ? "yesterday at this time" : "the day before";
+  O.val = (src, k) => k === "screen" ? src.screen_total : k === "screen_pc" ? (src.screen_pc || 0) : k === "screen_phone" ? (src.screen_phone || 0)
+    : k === "commits" ? src.commits
+    : k === "sleep" ? src.sleep_avg : k === "steps" ? src.steps_total
+    : INFO[k] && SCREEN.includes(INFO[k]) ? (src.categories[k] || 0) : (src.events[k] || 0);
+  O.health = health(O);
+  aura.set(O.health.tier);
+  if (O.is_today) pushCard();
+  return O;
+}
+const days14 = () => O.daily.map(d => d.day);
+const labels14 = () => days14().map(d => new Date(d + "T12:00:00").toLocaleDateString([], {weekday: "short", day: "numeric"}));
+const openDay = (e, els) => { if (els.length) { const dd = days14()[els[0].index]; go({tab: currentTab(), day: dd >= todayISO() ? "" : dd}); } };
+
+// ---------------------------------------------------------------- HOME
+function renderHome() {
+  const t = O.today, ref = O.ref, val = O.val, isToday = O.is_today, against = O.against;
+  // the "main" bad habit (the first one in the list) leads the headline and the mood
+  const lead = HABITS.find(h => h.bad);
+  const cig = lead ? val(t, lead.k) : 0, cigRef = lead ? val(ref, lead.k) : 0;
+  const coding = val(t, "coding"), yt = val(t, "youtube"), commits = val(t, "commits");
+  const hour = new Date().getHours();
+
+  // what the pet says: the day in one sentence
+  let s1;
+  if (!lead) {
+    s1 = "";
+  } else if (cig) {
+    const c = compare(lead.k, cig, cigRef, against);
+    s1 = `${plural(cig, lead.one)}${isToday ? " so far" : ""}${c.cls ? ", " + c.text : c.text.startsWith("same") ? ", the " + c.text : ""}.`;
+  } else {
+    const none = `No ${lead.n.toLowerCase()}`;
+    s1 = isToday ? `${none} yet${cigRef ? `. By now yesterday you'd had ${cigRef}` : ""}.` : `${none} that day.`;
+  }
+  const bits = [];
+  if (coding) bits.push(`${hm(coding)} of coding`);
+  if (yt) bits.push(`${hm(yt)} of YouTube`);
+  if (commits) bits.push(plural(commits, "commit"));
+  const rest = bits.length ? bits.join(", ").replace(/, ([^,]*)$/, " and $1") + "." : "";
+  $("headline").textContent = (s1 + (s1 && rest ? " " : "") + (s1 ? rest : rest.replace(/^./, c => c.toUpperCase()))) || (isToday ? "A fresh day. Let's go." : "A quiet day.");
+
+  // the pet's mood follows the day
+  let mood = "happy", say = "Nice and calm today. Keep it up.";
+  if (isToday && hour >= 1 && hour < 5) { mood = "sleepy"; say = "It's really late. Bed soon?"; }
+  else if (cig && cig > cigRef) { mood = lead.smoke ? "smoky" : "meh"; say = lead.smoke ? "I'm a little smoky today." : `More ${lead.n.toLowerCase()} than yesterday. We can do better.`; }
+  else if (coding >= 2 * 3600 || commits >= 3) { mood = "proud"; say = "Look at you, getting stuff done!"; }
+  else if (yt > coding + 3600) { mood = "meh"; say = "Lots of YouTube. Code a bit with me?"; }
+  else if (!isToday) { say = `That was ${dayName(O.day)}.`; }
+  $("petWho").textContent = isToday ? "MOCHI SAYS" : `MOCHI, ${dayName(O.day).toUpperCase()}`;
+  const H = O.health;
+  if (H.tier === "legend") say = "I feel LEGENDARY. Whatever you're doing, keep doing it.";
+  else if (H.tier === "sick" && isToday) say = "I'm not feeling great. Help me back up? It doesn't take much.";
+  else if (H.tier === "tired" && isToday && mood === "happy") say = "Bit tired today. A few small things would help.";
+  $("petMood").textContent = say;
+  drawPet(mood, `Your pet Mochi, feeling ${mood}, ${H.name.toLowerCase()} at ${H.hp} HP`, H.tier);
+  $("petcard").dataset.tier = H.tier;
+
+  // HP bar + what gets Mochi to the next level (never a guilt trip: always the way up)
+  const seg = Math.round(H.hp / 10);
+  const why = H.parts.length ? H.parts.map(([n, w]) => `${n > 0 ? "+" : ""}${n} ${w}`).join(", ") : "nothing yet today";
+  $("hp").innerHTML = `<div class="hprow" title="Starts at 70 every day: ${esc(why)}">
+      <span class="hpl">HP</span>
+      <span class="hpbar" role="img" aria-label="${H.hp} out of 100">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>
+      <span class="hpn">${H.hp}</span><span class="tierb">${H.name}</span>
+      ${H.next && isToday ? `<span class="hpnext">+${H.next.need} to ${H.next.name}</span>` : ""}</div>
+    ${H.quests.length && isToday && H.hp < 90 ? `<div class="quests"><div class="ql">${H.hp < 50 ? "WAYS TO HEAL MOCHI" : "LEVEL UP"}</div>
+      ${H.quests.map(([a, b]) => `<div class="q"><span class="qa">${esc(a)}</span><span class="qb">${esc(b)}</span></div>`).join("")}</div>` : ""}`;
+
+  // game-style stats vs yesterday at this time. Arrow = what happened (▲ more, ▼ less),
+  // color = was it good: more cigs = red ▲, fewer = green ▼; more coding = green ▲, less = red ▼.
+  const STATS = [...HABITS.map(h => [h.k, h.s || h.n.slice(0, 5).toUpperCase()]), ...SHOW_SCREEN.filter(k => INFO[k]).map(k => [k, SCREEN_LABEL[k] || k.toUpperCase()])];
+  $("statsheet").innerHTML = STATS.map(([k, label]) => {
+    const now = val(t, k), before = val(ref, k), c = compare(k, now, before, against);
+    const sym = !c.cls ? "=" : now > before ? "▲" : "▼";
+    const [cls, word] = c.cls === "better" ? ["good", "better"] : c.cls === "worse" ? ["bad", "worse"] : ["same", "same"];
+    const shown = unitOf(k) === "seconds" ? hm(now) : now;
+    return `<button class="stat" data-open="${k}" title="${esc(c.text)}" aria-label="${esc(INFO[k].n)}: ${esc(String(shown))}, ${word}: ${esc(c.text)}">
+      <span class="sl">${label}</span><span class="sq">=</span>
+      <span class="sv">${esc(String(shown))}</span><span class="sa ${cls}" aria-hidden="true">${sym}</span></button>`;
+  }).join("");
+
+  // three stat bars, game style
+  const bar = (k, label, value, frac, fill, hint) => `<button class="barrow" data-open="${k}">
+      <span class="top2"><span>${label}</span><span>${value}</span></span>
+      <span class="meter ${animNow ? "anim" : ""}"><i style="width:${Math.max(2, Math.min(100, frac * 100)).toFixed(0)}%;background:var(${fill})"></i></span>
+      <span class="hint">${esc(hint)}</span></button>`;
+  const smokes = HABITS.filter(h => h.smoke), puffs = smokes.reduce((n, h) => n + val(t, h.k), 0);
+  const lungs = Math.max(0.05, 1 - puffs * 0.08);
+  $("statbars").innerHTML =
+    (smokes.length ? bar(smokes[0].k, "LUNGS", `${Math.round(lungs * 100)}%`, lungs, "--pink", puffs ? `${plural(puffs, smokes.length > 1 ? "smoke" : smokes[0].one)} today, each one takes a bit` : "Full health today") : "")
+    + bar("coding", "CODING XP", hm(coding), coding / (4 * 3600), "--blue", `${compare("coding", coding, val(ref, "coding"), against).text}. Goal: 4h`)
+    + bar("youtube", "YOUTUBE BRAIN ROT", hm(yt), yt / (3 * 3600), "--yellow", compare("youtube", yt, val(ref, "youtube"), against).text);
+
+  // coming up: the two deadlines and the commit streak
+  const ft = O.ft, gh = O.github || {};
+  const chip = (title, days) => {
+    if (days == null) return `<a class="chip plain" href="#tab=settings"><span class="k">${esc(title)}</span><span class="s">Set the date</span></a>`;
+    const [fill, state] = deadlineLevel(days);
+    return `<a class="chip" style="--lvl:var(${fill})" href="#tab=school"><span class="k">${esc(title)}</span>
+      <span class="v">${Math.max(0, days)}<small> days</small></span><span class="s">${state.toLowerCase().replace(/^./, c => c.toUpperCase())}</span></a>`;
+  };
+  $("chips").innerHTML = (MODULES.school ? chip("BLACKHOLE", ft.blackhole_days) + chip((ft.milestone_name || "MILESTONE").toUpperCase(), ft.milestone_days) : "")
+    + (!MODULES.github ? "" : gh.configured
+      ? `<a class="chip" style="--lvl:var(--lilac)" href="#tab=school"><span class="k">COMMIT STREAK</span><span class="v">${gh.streak.current}<small> days</small></span><span class="s">Best ${gh.streak.longest}</span></a>`
+      : `<a class="chip plain" href="#tab=settings"><span class="k">GITHUB</span><span class="s">Connect it to see your streak</span></a>`);
+}
+
+// ---------------------------------------------------------------- HABITS
+function renderHabits() {
+  const t = O.today, ref = O.ref, val = O.val, against = O.against, isToday = O.is_today;
+  $("habitsSub").textContent = isToday ? "Compared with yesterday at this time. Tap one for its timeline." : "Compared with the day before. Tap one for its timeline.";
+  const show = () => true;   // you picked them, so they all show
+  $("hBad").innerHTML = `<div class="label">BAD HABITS</div>` + HABITS.filter(h => h.bad && show(h))
+    .map(h => rowHTML(h.k, val(t, h.k), compare(h.k, val(t, h.k), val(ref, h.k), against))).join("");
+  $("hGood").innerHTML = `<div class="label">GOOD HABITS</div>` + HABITS.filter(h => !h.bad && show(h))
+    .map(h => rowHTML(h.k, val(t, h.k), compare(h.k, val(t, h.k), val(ref, h.k), against))).join("");
+  const sl = val(t, "sleep"), st = val(t, "steps");
+  $("hBody").innerHTML = `<div class="label">BODY</div>`
+    + rowHTML("sleep", sl ? hm(sl) : "–", sl ? compare("sleep", sl, val(O.yesterday, "sleep"), isToday ? "the night before" : "the day before") : {text: "Comes from the iPhone app", cls: ""}, isToday ? "Sleep last night" : "Sleep")
+    + rowHTML("steps", st ? fmt("count", st) : "–", st ? compare("steps", st, val(ref, "steps"), against) : {text: "Comes from the iPhone app", cls: ""});
+
+  const rec = O.recent_events.filter(e => INFO[e.kind]);
+  $("moreRecent").style.display = rec.length > 5 && !showAllRecent ? "" : "none";
+  $("recent").innerHTML = rec.slice(0, showAllRecent ? 15 : 5).map(e => `<li>
+      <span>${INFO[e.kind].e} <b>${esc(INFO[e.kind].one)}</b> <span class="meta">${new Date(e.ts * 1000).toLocaleString([], {weekday: "short", hour: "2-digit", minute: "2-digit"})}, ${esc(SOURCE[e.source] || e.source)}</span></span>
+      <button class="del" data-del="${e.id}">Remove</button></li>`).join("")
+    || `<li class="empty">Nothing logged yet. Use the buttons on Home.</li>`;
+
+  const charted = HABITS.filter(h => h.bad).slice(0, 3), cols = ["--today", "--prev", "--avg"];
+  chart("cHabits", "bar", {labels: labels14(), datasets: (charted.length ? charted : HABITS.slice(0, 2)).map((h, i) =>
+    ({label: h.n, backgroundColor: css(cols[i]), ...BAR(), data: O.daily.map(d => d.events[h.k] || 0)}))}, {labels: true, onClick: openDay});
+
+  const w = O.week, lw = O.last_week;
+  const rows = HABITS.filter(h => w.events[h.k] || lw.events[h.k]).map(h => rowHTML(h.k, w.events[h.k] || 0, compare(h.k, w.events[h.k] || 0, lw.events[h.k] || 0, "last week")));
+  if (w.sleep_nights) rows.push(rowHTML("sleep", hm(w.sleep_avg), compare("sleep", w.sleep_avg, lw.sleep_avg, "last week"), "Sleep per night"));
+  $("hWeek").innerHTML = rows.join("") || `<p class="empty">Nothing logged this week yet.</p>`;
+}
+
+// ---------------------------------------------------------------- SCREEN
+function renderScreen() {
+  const t = O.today, ref = O.ref, val = O.val, against = O.against;
+  const row = k => rowHTML(k, hm(val(t, k)), compare(k, val(t, k), val(ref, k), against));
+  const what = SCREEN.filter(s => !["screen", "screen_pc", "screen_phone", "coding"].includes(s.k) && (["youtube", "social"].includes(s.k) || val(t, s.k) > 60));
+  $("sToday").innerHTML = `<div class="label">WHERE</div>` + ["screen_pc", "screen_phone", "screen"].map(row).join("")
+    + `<div class="label">ON WHAT</div>` + what.map(s => row(s.k)).join("") + row("coding");
+  const apps = O.week.top_apps || [];
+  const max = Math.max(1, ...apps.map(a => a.seconds));
+  $("apps").innerHTML = apps.map(a => `<li style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><b>${esc(a.app)}</b><span class="when">${hm(a.seconds)}</span></div>
+      <div class="appbar" style="width:${(100 * a.seconds / max).toFixed(1)}%"></div></li>`).join("") || `<li class="empty">Nothing tracked yet.</li>`;
+  const cats = ["coding", "youtube", "social", "streaming", "gaming", "browsing", "other"].filter(c => O.daily.some(d => d.categories[c]));
+  chart("cScreen", "bar", {labels: labels14(), datasets: cats.map(c => ({label: INFO[c].n, backgroundColor: catColor(c), ...BAR(), borderRadius: 3,
+    data: O.daily.map(d => +((d.categories[c] || 0) / 3600).toFixed(2))}))}, {stacked: true, hours: true, labels: true, onClick: openDay});
+  const w = O.week, lw = O.last_week;
+  $("sWeek").innerHTML = ["screen_pc", "screen_phone", "screen", "youtube", "social", "coding"].map(k => {
+    const a = O.val(w, k), b = O.val(lw, k);
+    return rowHTML(k, hm(a), compare(k, a, b, "last week"));
+  }).join("");
+}
+
+// ---------------------------------------------------------------- SCHOOL
+function renderSchool() {
+  const t = O.today, ref = O.ref, val = O.val, against = O.against, ft = O.ft, w = O.week, lw = O.last_week;
+  const ftEl = $("pFt"), sub = ftEl.previousElementSibling;
+  [ftEl, sub, sub.previousElementSibling].forEach(e => { e.style.display = MODULES.school ? "" : "none"; });
+  $("pGh").style.display = MODULES.github ? "" : "none";
+  const deadline = (title, days, dateIso) => {
+    if (days == null) return `<div class="dl-box empty-box"><div class="k">${esc(title.toUpperCase())}</div><a class="btn" href="#tab=settings">Set the date</a></div>`;
+    const [fill, state] = deadlineLevel(days);
+    const when = new Date(dateIso + "T12:00:00").toLocaleDateString([], {weekday: "short", day: "numeric", month: "long"});
+    const weeks = Math.floor(Math.abs(days) / 7), rest = Math.abs(days) % 7;
+    const span = days < 0 ? `${Math.abs(days)} days ago` : weeks ? `${weeks} week${weeks === 1 ? "" : "s"}${rest ? ` ${rest} day${rest === 1 ? "" : "s"}` : ""}` : "";
+    const frac = Math.max(0.03, Math.min(1, days / 90));
+    return `<div class="dl-box" style="--lvl:var(${fill})">
+      <div class="k">${esc(title.toUpperCase())}</div>
+      <div class="days">${Math.max(0, days)} <small>${Math.abs(days) === 1 ? "day" : "days"} left</small></div>
+      <div class="when">${esc(when)}${span ? `, ${esc(span)}` : ""}</div>
+      <div class="meter ${animNow ? "anim" : ""}" role="img" aria-label="${esc(state)}"><i style="width:${(frac * 100).toFixed(1)}%"></i></div>
+      <div class="state">${state}</div></div>`;
+  };
+  $("pFt").innerHTML = `<div class="deadlines">${deadline("Blackhole", ft.blackhole_days, ft.blackhole_date)}${deadline(ft.milestone_name || "Next milestone", ft.milestone_days, ft.milestone_date)}</div>
+    ${ft.connected
+      ? `<p class="note" style="margin-top:14px">${esc(ft.login)}, level ${ft.level ? (+ft.level).toFixed(2) : "?"}. ${hm(w.logtime_42)} at school this week.${ft.active.length ? ` Working on ${ft.active.map(p => esc(p.name)).join(", ")}.` : ""}</p>`
+      : `<p class="note" style="margin-top:14px">Connect 42 in <a href="#tab=settings">Settings</a> to fill in the blackhole, logtime and projects by themselves.</p>`}`;
+
+  const gh = O.github || {};
+  const card = $("pGh");
+  if (!gh.configured) {
+    card.removeAttribute("data-open"); card.classList.remove("clickcard");
+    card.innerHTML = `<div class="label">GITHUB</div><p class="note" style="margin-bottom:14px">See your contributions, streak and repos here.</p><a class="btn" href="#tab=settings">Connect GitHub</a>`;
+  } else {
+    card.dataset.open = "github"; card.classList.add("clickcard");
+    const max = Math.max(1, ...gh.heat.map(x => x.count));
+    const level = n => !n ? 0 : Math.min(4, Math.ceil(4 * n / max));
+    const pad = (new Date(gh.heat[0].day + "T12:00:00").getDay() + 6) % 7;
+    const cells = Array(pad).fill(`<i style="visibility:hidden"></i>`).concat(gh.heat.map(x =>
+      `<i data-l="${level(x.count)}" title="${esc(new Date(x.day + "T12:00:00").toLocaleDateString([], {day: "numeric", month: "short"}))}: ${x.count} contribution${x.count === 1 ? "" : "s"}"></i>`));
+    const wcmp = compare("github", gh.week, gh.last_week_so_far, "last week");
+    card.innerHTML = `<div class="label">GITHUB · ${esc(gh.login.toUpperCase())}</div>
+      <div class="gh-top">
+        <div><b>${gh.today}</b><span>today</span></div>
+        <div><b>${gh.week}</b><span>this week</span></div>
+        <div><b>${gh.streak.current}</b><span>day streak, best ${gh.streak.longest}</span></div>
+        <div><b>${(gh.year_total ?? 0).toLocaleString()}</b><span>${gh.source === "full" ? "this year" : "lately (public)"}</span></div>
+      </div>
+      <div class="heat" aria-label="Contributions in the last 12 weeks">${cells.join("")}</div>
+      <div class="heat-legend">Less <i style="background:var(--gh0)"></i><i style="background:var(--gh1)"></i><i style="background:var(--gh2)"></i><i style="background:var(--gh3)"></i><i style="background:var(--gh4)"></i> More</div>
+      <p class="note" style="margin-top:12px"><span class="${wcmp.cls}">This week: ${esc(wcmp.text)}.</span> ${gh.repo_count} repos${gh.stars ? `, ${gh.stars} ★` : ""}${gh.languages.length ? `. Mostly ${esc(gh.languages.join(", "))}` : ""}.</p>`;
+  }
+
+  $("codeRows").innerHTML = `<div class="label">TODAY</div>`
+    + rowHTML("coding", hm(val(t, "coding")), compare("coding", val(t, "coding"), val(ref, "coding"), against))
+    + rowHTML("commits", val(t, "commits"), compare("commits", val(t, "commits"), val(ref, "commits"), against))
+    + `<div class="label">THIS WEEK</div>`
+    + rowHTML("coding", hm(w.categories.coding), compare("coding", w.categories.coding, lw.categories.coding, "last week"))
+    + rowHTML("commits", w.commits, compare("commits", w.commits, lw.commits, "last week"))
+    + `<div class="row static"><span class="e" aria-hidden="true">🏫</span><span class="name">42 logtime</span><span class="val">${hm(w.logtime_42)}</span><span></span>
+       <span class="cmp ${compare("coding", w.logtime_42, lw.logtime_42, "last week").cls}">${esc(compare("coding", w.logtime_42, lw.logtime_42, "last week").text)}</span></div>`;
+
+  chart("cCoding", "bar", {labels: labels14(), datasets: [{label: "Coding", backgroundColor: catColor("coding"), ...BAR(),
+    data: O.daily.map(d => +((d.categories.coding || 0) / 3600).toFixed(2))}]}, {hours: true, labels: true, onClick: openDay});
+}
+
+// ---------------------------------------------------------------- DETAIL
+async function loadDetail(k) {
+  const day = selectedDay();
+  const r = await api(`/api/detail?kind=${encodeURIComponent(k)}&day=${day}`);
+  if (!r.ok) throw new Error(r.status);
+  const d = await r.json();
+  const i = INFO[k] || {e: "", n: k, bad: true}, u = d.unit;
+  const dn = dayName(d.day), prev = d.is_today ? "yesterday" : "the day before";
+  const asDay = v => u === "seconds" ? +(v / 3600).toFixed(2) : v;
+  const noData = d.type === "metric" && !d.value;
+
+  const tab = currentTab();
+  $("backLink").href = `#tab=${tab}${route().day ? `&day=${route().day}` : ""}`;
+  $("backName").textContent = `Back to ${TABS[tab]}`;
+  $("dWhat").textContent = `${i.n.toUpperCase()}, ${dn.toUpperCase()}`;
+  if (noData) $("dBig").textContent = "–"; else countUp($("dBig"), d.value, u);
+
+  let say;
+  if (noData) say = `No ${i.n.toLowerCase()} data for ${dn.toLowerCase()} yet. It comes from Apple Health through the iPhone app.`;
+  else {
+    const parts = [];
+    const the = t => (t.startsWith("same") ? "the " : "") + t;
+    if (d.is_today && d.yesterday_by_now != null && d.hourly) parts.push(`That's ${the(compare(k, d.value, d.yesterday_by_now, "yesterday at this time").text)}`);
+    const full = compare(k, d.value, d.yesterday, d.is_today ? `all of yesterday (${fmt(u, d.yesterday)})` : `the day before (${fmt(u, d.yesterday)})`);
+    parts.push(parts.length ? `and ${the(full.text)}` : `That's ${the(full.text)}`);
+    say = parts.join(", ") + ".";
+    if (d.avg7) {
+      const ratio = d.value / d.avg7;
+      if (ratio > 1.25) say += ` Above your usual ${fmt(u, d.avg7)} a day.`;
+      else if (ratio < 0.75 && !(d.is_today && i.bad)) say += ` Below your usual ${fmt(u, d.avg7)} a day.`;
+      else if (ratio < 0.75) say += ` Your usual is ${fmt(u, d.avg7)} a day, so you're on track to beat it.`;
+      else say += ` Close to your usual ${fmt(u, d.avg7)} a day.`;
+    }
+    if (d.type === "event" && d.is_today && d.gaps && d.gaps.last) say += ` The last one was ${hm(d.now - d.gaps.last)} ago.`;
+  }
+  $("dSay").textContent = say;
+  $("dActions").innerHTML = d.type === "event" && d.is_today ? `<button class="btn" data-log="${k}">+ Log a ${esc(i.one)} now</button>` : "";
+
+  const facts = [[fmt(u, d.avg7), "average per day, last 7 days"], [fmt(u, d.avg30), "average per day, last 30 days"]];
+  if (d.streak) facts.push([`${d.streak.days} ${d.streak.days === 1 ? "day" : "days"}`, d.streak.kind === "clean" ? `without any, before ${dn.toLowerCase()}` : "in a row"]);
+  const g = d.gaps || {};
+  if (g.first) facts.push([g.first === g.last ? clock(g.first) : `${clock(g.first)} to ${clock(g.last)}`, g.first === g.last ? "only one, at" : "first and last"]);
+  if (g.avg_gap) facts.push([hm(g.avg_gap), "average time between them"]);
+  if (g.longest_gap) facts.push([hm(g.longest_gap), "longest break"]);
+  $("dFacts").innerHTML = facts.map(([v, kk]) => `<div class="card fact"><div class="v">${esc(v)}</div><div class="k">${esc(kk)}</div></div>`).join("");
+
+  $("dHours").style.display = d.timeline ? "" : "none";
+  if (d.timeline) {
+    $("dHoursSub").textContent = d.type === "activity"
+      ? `Each block is a stretch of time on ${i.n.toLowerCase()}. Hover or tap a block to see when and how long.`
+      : `Each square is one ${d.type === "commits" ? "commit" : i.one}, at the time it was registered. Hover or tap it to see the time.`;
+    renderTimeline(d, i, dn, prev);
+  }
+
+  const hl = d.history;
+  $("dHistSub").textContent = `The pink bar is ${dn.toLowerCase()}. The dashed line is your 30-day average.${u === "seconds" ? " In hours." : ""} Tap a bar to open that day.`;
+  chart("cHist", "bar", {labels: hl.map(x => new Date(x.day + "T12:00:00").toLocaleDateString([], {day: "numeric", month: "short"})), datasets: [
+    {label: i.n, data: hl.map(x => asDay(x.value)), ...BAR(), backgroundColor: hl.map(x => x.day === d.day ? css("--today") : css("--prev"))},
+    {label: "30-day average", type: "line", data: hl.map(() => asDay(d.avg30)), borderColor: css("--avg"), borderWidth: 2, borderDash: [6, 4], pointRadius: 0, pointHoverRadius: 0}]},
+    {hours: u === "seconds", onClick: (e, els) => { if (els.length) openDetail(k, hl[els[0].index].day); },
+     plugins: {legend: {display: false}, tooltip: {callbacks: {label: x => x.datasetIndex ? `30-day average: ${fmt(u, d.avg30)}` : `${i.n}: ${fmt(u, hl[x.dataIndex].value)}`}}}});
+
+  const items = d.items || [], list = $("dList");
+  $("dListSec").style.display = d.type === "metric" ? "none" : "";
+  if (d.type === "event") {
+    $("dListTitle").textContent = `Each ${i.one}, ${dn.toLowerCase()}`;
+    list.innerHTML = items.map((it, n) => `<li><span><span class="when">${clock(it.ts)}</span>
+        <span class="meta"> ${esc(SOURCE[it.source] || it.source)}${n ? `, ${hm(it.ts - items[n - 1].ts)} after the one before` : ""}${it.note ? `, ${esc(it.note)}` : ""}</span></span>
+        <button class="del" data-del="${it.id}">Remove</button></li>`).reverse().join("")
+      || `<li class="empty">${i.bad ? `None ${dn.toLowerCase()}. Nice.` : `None ${dn.toLowerCase()} yet.`}</li>`;
+  } else if (d.type === "github") {
+    $("dListTitle").textContent = "Your most recently updated repos";
+    list.innerHTML = items.map(r => `<li><span><b>${esc(r.name)}</b>${r.private ? ` <span class="meta">private</span>` : ""}
+        <span class="meta"> ${esc(r.language || "")}${r.stars ? `, ${r.stars} ★` : ""}, updated ${esc(new Date(r.pushed_at).toLocaleDateString([], {day: "numeric", month: "short"}))}</span></span>
+        ${r.url ? `<a class="del" href="${esc(r.url)}" target="_blank" rel="noopener">Open</a>` : ""}</li>`).join("") || `<li class="empty">No repos yet.</li>`;
+  } else if (d.type === "commits") {
+    $("dListTitle").textContent = `Commits, ${dn.toLowerCase()}`;
+    list.innerHTML = items.map(c => `<li><span><span class="when">${clock(c.ts)}</span> <span class="meta">${esc(c.repo)}</span><br>${esc(c.message)}</span></li>`).reverse().join("")
+      || `<li class="empty">No commits ${dn.toLowerCase()}.</li>`;
+  } else {
+    $("dListTitle").textContent = `Where the time went, ${dn.toLowerCase()}`;
+    const max = Math.max(1, ...items.map(x => x.seconds));
+    list.innerHTML = items.map(x => `<li style="display:block"><div style="display:flex;justify-content:space-between;gap:10px">
+        <span><b>${esc(x.name)}</b> <span class="meta">on ${esc(x.device)}</span></span><span class="when">${hm(x.seconds)}</span></div>
+        <div class="appbar" style="width:${(100 * x.seconds / max).toFixed(1)}%"></div></li>`).join("") || `<li class="empty">Nothing tracked ${dn.toLowerCase()}.</li>`;
+  }
+}
+
+function renderTimeline(d, i, dn, prev) {
+  const lanes = [
+    {name: dn, cls: "today", items: d.timeline, base: d.day_start, isToday: d.is_today},
+    {name: prev[0].toUpperCase() + prev.slice(1), cls: "prev", items: d.timeline_yesterday, base: d.yesterday_start},
+  ];
+  const hoursOf = (x, base) => ((x.ts ?? x.start) - base) / 3600, endOf = (x, base) => ((x.end ?? x.ts) - base) / 3600;
+  let lo = 24, hi = 0;
+  for (const l of lanes) for (const x of l.items) { lo = Math.min(lo, hoursOf(x, l.base)); hi = Math.max(hi, endOf(x, l.base)); }
+  const nowH = (Date.now() / 1000 - d.day_start) / 3600;
+  if (d.is_today) hi = Math.max(hi, nowH);
+  if (lo > hi) { lo = 8; hi = 23; }
+  lo = Math.max(0, Math.floor(lo) - 1); hi = Math.min(24, Math.ceil(hi) + 1);
+  if (hi - lo < 6) { const mid = (lo + hi) / 2; lo = Math.max(0, Math.floor(mid - 3)); hi = Math.min(24, lo + 6); }
+  const pos = h => `${(100 * (h - lo) / (hi - lo)).toFixed(2)}%`;
+  const trackPx = Math.max(200, ($("timeline").clientWidth || 600) - (innerWidth <= 640 ? 0 : 246));
+  const step = [1, 2, 3, 4, 6, 12].find(st => trackPx / ((hi - lo) / st) >= 48) || 12;
+  const ticks = [];
+  for (let h = Math.ceil(lo / step) * step; h <= hi; h += step) ticks.push(h);
+  const grid = ticks.map(h => `<span class="grid" style="left:${pos(h)}"></span>`).join("");
+  const edge = h => { const f = (h - lo) / (hi - lo); return f < 0.18 ? "edge-l" : f > 0.82 ? "edge-r" : ""; };
+  let n = 0; const stagger = () => Math.min(250 + 70 * n++, 1400);
+  const laneHTML = l => {
+    const marks = d.type === "activity"
+      ? l.items.map(x => {
+          const tip = `${clock(x.start)} to ${clock(x.end)}, ${hm(x.end - x.start)}`;
+          const w = Math.max(0.4, 100 * (x.end - x.start) / 3600 / (hi - lo));
+          return `<button class="block ${l.cls} ${edge(hoursOf(x, l.base))}" style="left:${pos(hoursOf(x, l.base))};width:${w.toFixed(2)}%;--d:${stagger()}ms" data-tip="${esc(tip)}" aria-label="${esc(tip)}"></button>`;
+        }).join("")
+      : l.items.map(x => {
+          const tip = d.type === "commits" ? `${clock(x.ts)}: ${x.label}` : `${clock(x.ts)}, ${SOURCE[x.source] || x.source}`;
+          return `<button class="dot ${l.cls} ${edge(hoursOf(x, l.base))}" style="left:${pos(hoursOf(x, l.base))};--d:${stagger()}ms" data-tip="${esc(tip.length > 60 ? tip.slice(0, 57) + "…" : tip)}" aria-label="${esc(tip)}"></button>`;
+        }).join("");
+    const now = l.isToday && nowH >= lo && nowH <= hi ? `<span class="now" style="left:${pos(nowH)}"></span>` : "";
+    const total = d.type === "activity" ? hm(l.items.reduce((a, x) => a + x.end - x.start, 0)) : l.items.length;
+    const firstLast = d.type !== "activity" && l.items.length
+      ? (l.items.length === 1 ? clock(l.items[0].ts) : `${clock(l.items[0].ts)}–${clock(l.items[l.items.length - 1].ts)}`) : (l.items.length ? "" : "none");
+    return `<div class="lane"><div class="lname">${esc(l.name)}<small>${esc(firstLast)}</small></div>
+      <div class="track">${grid}${marks}${now}</div><div class="count">${total}</div></div>`;
+  };
+  $("timeline").classList.toggle("anim", animNow);
+  $("timeline").innerHTML = lanes.map(laneHTML).join("")
+    + `<div class="ticks">${ticks.map(h => `<span style="left:${pos(h)}">${String(h % 24).padStart(2, "0")}:00</span>`).join("")}</div>`;
+}
+
+// ---------------------------------------------------------------- SETTINGS
+$("hr").innerHTML = [...Array(24).keys()].map(h => `<option value="${h}">${String(h).padStart(2, "0")}:00</option>`).join("");
+let settingsLoaded = false;
+async function loadSettings() {
+  if (settingsLoaded) return;
+  const r = await api("/api/settings");
+  const f = $("sForm");
+  if (!r.ok) { $("sNote").textContent = r.status === 403 ? "Settings can only be changed on the Mac itself." : "Couldn't load settings."; return; }
+  const s = await r.json();
+  for (const [k, v] of Object.entries(s)) {
+    f.querySelectorAll(`[name="${k}"]`).forEach(el => { if (el.type === "checkbox") el.checked = !!v; else if (el.type === "radio") el.checked = el.value === v; else el.value = v; });
+  }
+  settingsLoaded = true;
+}
+// ---------------------------------------------------------------- friends
+// The dashboard only talks to your own LazyTrack (/api/cloud/...), which talks to the
+// friends server. Your card goes up whenever a dashboard is open; chat polls every few seconds.
+let CLOUD = {connected: false};
+async function refreshCloud() {
+  try { const r = await api("/api/cloud/state"); if (r.ok) CLOUD = await r.json(); } catch (_) {}
+}
+async function updateBadge() {
+  if (!CLOUD.connected) { $("fBadge").hidden = true; return; }
+  try {
+    const r = await api("/api/cloud/unread"); if (!r.ok) return;
+    const n = (await r.json()).count;
+    $("fBadge").hidden = !n; $("fBadge").textContent = n > 9 ? "9+" : n;
+  } catch (_) {}
+}
+const shareKeys = () => SHARE || [...HABITS.filter(h => !h.bad).map(h => h.k), ...SHOW_SCREEN.filter(k => ["coding", "commits", "screen"].includes(k))];
+function buildCard() {
+  const t = O.today, keys = shareKeys();
+  const all = [...HABITS.map(h => ({k: h.k, s: h.s, n: h.n, bad: !!h.bad})),
+               ...SHOW_SCREEN.map(k => ({k, s: SCREEN_LABEL[k] || k.toUpperCase(), n: (INFO[k] || {}).n || k, bad: !!(INFO[k] || {}).bad}))];
+  const gh = O.github || {};
+  return {name: AUTH.user ? AUTH.user.display_name : CLOUD.username, hp: O.health.hp, tier: O.health.tier, tierName: O.health.name,
+          palette: themePrefs().palette || "lavender", day: O.day,
+          streak: MODULES.github && gh.configured ? gh.streak.current : null,
+          stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
+}
+let lastPush = 0;
+function pushCard(force) {
+  if (!CLOUD.connected || !O || !O.is_today) return;
+  if (!force && Date.now() - lastPush < 150000) return;
+  lastPush = Date.now();
+  post("/api/cloud/card", {card: buildCard()}).catch(() => {});
+}
+
+const ago = iso => { if (!iso) return "never"; const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  return m < 2 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)}h ago` : `${Math.round(m / 1440)} days ago`; };
+const TIER_BG = {legend: "#ffeeb0", tired: "#d9d3e6", sick: "#d3dbc4"};
+function fcardHTML(p, opts = {}) {
+  const c = p.card;
+  const pal = (THEMES[c && c.palette] || THEMES.lavender).light;
+  const tier = c ? c.tier : "okay";
+  const art = tier === "legend" ? PET.legend : tier === "sick" ? PET.sick : PET.happy;
+  const bg = TIER_BG[tier] || pal["--lilac"] || "#c9b8ff";
+  const seg = c ? Math.round(c.hp / 10) : 0;
+  const stale = c && c.day && c.day !== todayISO();
+  const stats = c && !stale ? (c.stats || []).map(x => `<span><i>${esc(x.s)}</i>${esc(x.unit === "seconds" ? hm(x.v) : x.v)}</span>`).join("")
+    + (c.streak != null ? `<span><i>STREAK</i>${c.streak}d</span>` : "") : "";
+  const tag = opts.me ? "div" : "button";
+  return `<${tag} ${opts.me ? "" : `type="button" data-friend="${esc(p.uid)}"`} class="fcard ${opts.me ? "me" : ""}" style="--fbg:${bg};--pet:${pal["--pet"] || "#b9a7ff"};--hpc:${tier === "legend" ? "#f2b705" : tier === "sick" ? "#e0735a" : tier === "tired" ? "#e8a23c" : "#3fbf6f"}">
+    ${p.unread ? `<span class="fnew">${p.unread} new</span>` : ""}
+    <div class="ftop"><div class="fpet"><div class="pet ${calm ? "bob" : ""}">${petCells(art, tier)}</div></div>
+      <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span></div></div>
+    ${c ? `<div class="hprow"><span class="hpl">HP</span><span class="hpbar">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>
+      <span class="hpn">${stale ? "?" : c.hp}</span><span class="tierb">${esc(stale ? "ASLEEP" : c.tierName || tier.toUpperCase())}</span></div>
+      ${stats ? `<div class="fstats">${stats}</div>` : ""}` : `<p class="fmeta" style="margin:0">No card yet. It shows up once they open LazyTrack.</p>`}
+    <div class="fmeta">${opts.me ? "Updates while LazyTrack is open" : c ? `Updated ${ago(p.updated_at)}` : ""}</div></${tag}>`;
+}
+
+function drawConnect() {
+  $("fMain").hidden = true; $("fProfile").innerHTML = "";
+  $("fConnect").innerHTML = `<div class="card pad connect">
+    <div class="apet"><div class="pet bob">${petCells(PET.happy, "okay")}</div></div>
+    <h2 class="ptitle" style="font-size:28px">Add an email to use friends</h2>
+    <p class="psub">Your account doesn't have an email yet. Add one and friends can find you as <b>@${esc(AUTH.user ? AUTH.user.username : "you")}</b>,
+      and you can log into your account on your other devices.</p>
+    <button type="button" class="btn primary wgo" style="animation:none" data-edit-account>Add my email <span class="arr" aria-hidden="true">→</span></button></div>`;
+}
+
+const chat = {
+  uid: null, last: 0, timer: null,
+  stop() { clearInterval(this.timer); this.timer = null; this.uid = null; },
+  async load() {
+    if (!this.uid) return;
+    try {
+      const r = await api(`/api/cloud/messages?with=${this.uid}&after=${this.last}`); if (!r.ok) return;
+      const rows = await r.json(), log = $("chatLog"); if (!log) return;
+      if (rows.length && log.querySelector(".chatempty")) log.innerHTML = "";
+      const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 60;
+      for (const m of rows) {
+        log.insertAdjacentHTML("beforeend", `<div class="msg ${m.mine ? "mine" : ""}">${esc(m.body)}<time>${new Date(m.created_at).toLocaleString([], {weekday: "short", hour: "2-digit", minute: "2-digit"})}</time></div>`);
+        this.last = Math.max(this.last, m.id);
+      }
+      if (rows.length && (atBottom || this.first)) log.scrollTop = log.scrollHeight;
+      this.first = false;
+      if (rows.some(m => !m.mine)) updateBadge();
+    } catch (_) {}
+  },
+  open(uid) {
+    this.stop(); this.uid = uid; this.last = 0; this.first = true;
+    this.load();
+    this.timer = setInterval(() => { if (!document.hidden) this.load(); }, 4000);
+  },
+};
+
+async function renderFriends() {
+  await refreshCloud();
+  if (!CLOUD.connected) { drawConnect(); return; }
+  $("fConnect").innerHTML = "";
+  const r = await api("/api/cloud/friends");
+  if (!r.ok) {
+    const j = await r.json().catch(() => ({}));
+    $("fMain").hidden = true;
+    $("fConnect").innerHTML = `<div class="card pad connect"><h2 class="ptitle" style="font-size:24px">Can't reach friends right now</h2><p class="psub">${esc(j.error || "")}</p>
+      <button type="button" class="btn" data-go-friends>Try again</button></div>`;
+    return;
+  }
+  const F = await r.json();
+  renderFriends.data = F;
+  const f = route().f;
+  if (f) {   // one friend: their card + chat
+    $("fMain").hidden = true;
+    const p = F.friends.find(x => x.uid === f);
+    if (!p) { go({tab: "friends"}); return; }
+    if (chat.uid === f && $("chatLog")) { $("fProfileCard").innerHTML = fcardHTML({...p, unread: 0}, {me: true}); return; }
+    $("fProfile").innerHTML = `<div style="margin-top:22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button type="button" class="btn" data-go-friends>‹ Friends</button></div>
+      <div class="grid2" style="margin-top:18px">
+        <div class="stack"><div id="fProfileCard">${fcardHTML({...p, unread: 0}, {me: true})}</div>
+          <button type="button" class="btn" id="fRemove" data-fid="${p.id}" style="justify-self:start">Remove friend</button></div>
+        <div class="card chatcard"><div class="chatlog" id="chatLog"><p class="chatempty">No messages yet. Say hi to ${esc(p.display_name)}!</p></div>
+          <form class="chatin" id="chatForm"><input id="chatText" maxlength="1000" placeholder="Message ${esc(p.display_name)}" autocomplete="off"><button class="btn primary" type="submit">Send</button></form></div>
+      </div>`;
+    chat.open(f);
+    return;
+  }
+  chat.stop(); $("fProfile").innerHTML = ""; $("fMain").hidden = false;
+  pushCard(true);
+  const me = {...F.me, card: O && O.is_today ? buildCard() : F.me.card, updated_at: new Date().toISOString()};
+  $("fMe").innerHTML = fcardHTML(me, {me: true});
+  const keys = shareKeys();
+  const opts = [...HABITS.map(h => [h.k, `${h.e} ${h.n}`]), ...SHOW_SCREEN.map(k => [k, `${(INFO[k] || {}).e || ""} ${(INFO[k] || {}).n || k}`])];
+  $("fShare").innerHTML = `<div class="label">WHAT FRIENDS SEE</div><p class="note" style="margin-bottom:10px">Mochi, HP and your level always show. Green = shared.</p>
+    <div class="sharechips">${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>
+    <div class="actions" style="margin-top:14px"><button type="button" class="btn" id="cOut">Disconnect from friends</button></div>`;
+  $("fReq").innerHTML = (F.incoming.length ? `<h2 class="sec">Wants to be your friend</h2><div class="card">${F.incoming.map(x =>
+      `<div class="reqrow"><b>${esc(x.display_name)} <span class="note">@${esc(x.username)}</span></b>
+        <button type="button" class="btn primary" data-accept="${x.id}">Accept</button><button type="button" class="btn" data-decline="${x.id}">No thanks</button></div>`).join("")}</div>` : "")
+    + (F.outgoing.length ? `<h2 class="sec">Waiting for an answer</h2><div class="card">${F.outgoing.map(x =>
+      `<div class="reqrow"><b>${esc(x.display_name)} <span class="note">@${esc(x.username)}</span></b><button type="button" class="btn" data-decline="${x.id}">Cancel</button></div>`).join("")}</div>` : "");
+  $("fList").innerHTML = F.friends.map(x => fcardHTML(x)).join("")
+    || `<div class="card pad" style="grid-column:1/-1"><p class="note">No friends yet. Send your username <b>@${esc(CLOUD.username || "")}</b> to a friend, or add theirs above.</p></div>`;
+  if (animNow) entrance("friends");
+}
+// keep the list fresh while it's open (cards, requests, unread)
+setInterval(() => { if (document.body.dataset.view === "friends" && !route().f && !document.hidden && CLOUD.connected) { animNow = false; renderFriends(); } }, 30000);
+
+document.addEventListener("submit", async e => {
+  if (e.target.id === "fAdd") {
+    e.preventDefault();
+    const name = $("fName").value.trim(); if (!name) return;
+    $("fAddNote").textContent = "Sending…";
+    const r = await post("/api/cloud/request", {username: name}), j = await r.json().catch(() => ({}));
+    $("fAddNote").textContent = r.ok ? j.message : j.error || "That didn't work.";
+    if (r.ok) { $("fName").value = ""; renderFriends(); }
+  }
+  if (e.target.id === "chatForm") {
+    e.preventDefault();
+    const t = $("chatText").value.trim(); if (!t) return;
+    $("chatText").value = "";
+    const r = await post("/api/cloud/send", {to: chat.uid, body: t});
+    if (!r.ok) { const j = await r.json().catch(() => ({})); toast(j.error || "Couldn't send.", null); $("chatText").value = t; return; }
+    const log = $("chatLog"); if (log) log.scrollTop = log.scrollHeight;
+    chat.first = true; chat.load();
+  }
+});
+document.addEventListener("click", async e => {
+  if (e.target.closest("[data-edit-account]")) { editAccount.open = true; go({tab: "settings"}); return; }
+  const fr = e.target.closest("[data-friend]"); if (fr) { go({tab: "friends", f: fr.dataset.friend}); return; }
+  if (e.target.closest("[data-go-friends]")) { go({tab: "friends"}); renderFriends(); return; }
+  const ac = e.target.closest("[data-accept]"); if (ac) { await post("/api/cloud/accept", {id: +ac.dataset.accept}); renderFriends(); updateBadge(); return; }
+  const de = e.target.closest("[data-decline]"); if (de) { await post("/api/cloud/remove", {id: +de.dataset.decline}); renderFriends(); updateBadge(); return; }
+  const rm = e.target.closest("#fRemove");
+  if (rm) {
+    if (!rm.dataset.sure) { rm.dataset.sure = 1; rm.textContent = "Sure? Tap again"; return; }
+    await post("/api/cloud/remove", {id: +rm.dataset.fid}); go({tab: "friends"}); return;
+  }
+  const sh = e.target.closest("[data-share]");
+  if (sh) {
+    const k = sh.dataset.share, keys = shareKeys();
+    const next = keys.includes(k) ? keys.filter(x => x !== k) : [...keys, k];
+    sh.setAttribute("aria-pressed", next.includes(k));
+    SHARE = next;
+    await post("/api/habits", {share: next});
+    pushCard(true);
+    $("fMe").innerHTML = fcardHTML({...renderFriends.data.me, card: buildCard(), updated_at: new Date().toISOString()}, {me: true});
+    return;
+  }
+  if (e.target.closest("#cOut")) {
+    const b = e.target.closest("#cOut");
+    if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = "Sure? Tap again"; return; }
+    await post("/api/cloud/disconnect", {}); CLOUD = {connected: false}; updateBadge(); render(); return;
+  }
+});
+
+// ---------------------------------------------------------------- account + habits (settings)
+const editAccount = {
+  open: false,
+  html(u) {
+    return `<div class="aform card pad" id="eForm" style="margin-top:14px;max-width:520px;box-shadow:none">
+      <div><label for="eName">Name</label><input id="eName" value="${esc(u.display_name)}" maxlength="30"></div>
+      <div><label for="eUser">Username</label><input id="eUser" value="${esc(u.username)}" maxlength="20" autocapitalize="none" spellcheck="false"></div>
+      <div><label for="eMail">Email</label><input id="eMail" type="email" value="${esc(u.email || "")}" placeholder="you@example.com" autocomplete="email"></div>
+      <div><label for="ePass">New password <span style="font-weight:500;color:var(--ink-3)">(leave empty to keep it)</span></label><input id="ePass" type="password" autocomplete="new-password"></div>
+      <div><label for="eCur">Current password</label><input id="eCur" type="password" autocomplete="current-password" placeholder="Needed to save changes"></div>
+      <p class="aerr" id="eErr" role="alert"></p>
+      <div class="actions"><button class="btn primary" type="button" id="eSave">Save</button><button type="button" class="btn" id="eCancel">Cancel</button></div></div>`;
+  },
+  async save() {
+    if (!$("eCur").value) { $("eErr").textContent = "Type your current password to save."; return; }
+    $("eErr").textContent = "Checking…";
+    const r = await post("/api/auth/update", {display_name: $("eName").value.trim(), username: $("eUser").value.trim(), email: $("eMail").value.trim(),
+                                               new_password: $("ePass").value, current_password: $("eCur").value});
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) { $("eErr").textContent = j.error || "That didn't work."; return; }
+    AUTH.user = j.user; this.open = false;
+    await refreshCloud();
+    drawAccount();
+    toast(j.note || "Account saved.", null);
+  },
+};
+// it sits inside the Settings form, so it's a plain block with its own Save button (forms can't nest)
+document.addEventListener("keydown", e => { if (e.key === "Enter" && e.target.closest("#eForm")) { e.preventDefault(); editAccount.save(); } });
+document.addEventListener("click", e => {
+  if (e.target.closest("#aEdit")) { editAccount.open = true; drawAccount(); setTimeout(() => $("eName") && $("eName").focus(), 50); }
+  if (e.target.closest("#eCancel")) { editAccount.open = false; drawAccount(); }
+  if (e.target.closest("#eSave")) editAccount.save();
+});
+function drawUpdates() {
+  const u = AUTH.update || {};
+  const when = t => t ? new Date(t * 1000).toLocaleString([], {weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"}) : "never";
+  $("uStatus").innerHTML = !u.repo ? "Not connected to GitHub yet, so no automatic updates."
+    : u.dev ? "This copy is a git checkout: update it with git pull."
+    : `Version <b>${esc(u.version || "unknown")}</b>${u.updated_at ? `, updated ${esc(when(u.updated_at))}` : ""}. Last check: ${esc(when(u.last_check))}.`
+      + (u.message ? `<br>Latest change: ${esc(u.message)}` : "");
+  $("uCheck").hidden = !u.repo || u.dev;
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("#uCheck"); if (!b) return;
+  b.disabled = true; $("uStatus").textContent = "Checking…";
+  try {
+    const r = await post("/api/update/check", {install: true}), j = await r.json();
+    $("uStatus").textContent = j.state === "updated" ? `Updated: ${j.text} Restarting…` : j.text;
+    if (j.state === "updated") setTimeout(() => location.reload(), 7000);
+  } catch (_) { $("uStatus").textContent = "Couldn't check right now."; }
+  b.disabled = false;
+});
+
+function drawAccount() {
+  const u = AUTH.user;
+  $("sAccount").innerHTML = `<h2>Account</h2>` + (u
+    ? `<div class="acct"><div class="apet"><div class="pet">${petCells(PET.happy, (O && O.health || {}).tier || "okay")}</div></div>
+        <div class="who"><b>${esc(u.display_name)}</b><span class="note">@${esc(u.username)} · ${u.email ? esc(u.email) : "no email yet"}</span></div></div>
+       ${editAccount.open ? editAccount.html(u) : ""}
+       <div class="actions" style="margin-top:14px;flex-wrap:wrap">
+         ${editAccount.open ? "" : `<button type="button" class="btn primary" id="aEdit">${u.email ? "Edit account" : "Edit account, add email"}</button>`}
+         <button type="button" class="btn" id="aOut">Log out</button>
+         <button type="button" class="btn" id="aSetup">Run the setup again</button>
+         ${AUTH.local ? `<button type="button" class="btn" id="aDel">Delete account, keep data</button>` : ""}</div>
+       <p class="note" id="aNote" style="margin-top:10px"></p>`
+    : `<p class="note">${AUTH.paired ? "This phone is paired with your computer, so it doesn't need to log in." : "Not logged in."}</p>`);
+  $("hList").innerHTML = HABITS.map(h => `<div class="hitem"><span class="he" aria-hidden="true">${esc(h.e)}</span>
+      <span class="hn">${esc(h.n)}<br><span class="tag">${h.bad ? "LESS OF" : "MORE OF"} · ${h.hp > 0 ? "+" : ""}${h.hp} HP</span></span>
+      <button type="button" data-hrm="${esc(h.k)}" aria-label="Remove ${esc(h.n)}" title="Remove">✕</button></div>`).join("")
+    || `<p class="note">No habits yet. Add some.</p>`;
+}
+document.addEventListener("click", async e => {
+  const rm = e.target.closest("[data-hrm]");
+  if (rm) {
+    const k = rm.dataset.hrm, h = HABITS.find(x => x.k === k);
+    const keep = HABITS.filter(x => x.k !== k).map(x => x.custom ? {k: x.k, n: x.n, e: x.e, bad: x.bad, one: x.one, s: x.s, fill: x.fill,
+      size: Math.abs(x.hp) >= 10 ? "big" : Math.abs(x.hp) <= 3 ? "small" : "medium"} : x.k);
+    const r = await post("/api/habits", {habits: keep});
+    if (r.ok) { applyHabits(await r.json()); drawAccount(); toast(`Removed ${h ? h.n : k}. Its history is kept.`, null); }
+    return;
+  }
+  if (e.target.closest("#hEdit") || e.target.closest("#aSetup")) { setup.begin("edit"); return; }
+  if (e.target.closest("#aOut")) { await post("/api/auth/logout", {}); location.hash = ""; location.reload(); return; }
+  const del = e.target.closest("#aDel");
+  if (del) {
+    if (!del.dataset.sure) { del.dataset.sure = 1; del.textContent = "Sure? Tap again"; $("aNote").textContent = "Only the login goes. Every log, screen time and setting stays, and you can make a new account right away."; return; }
+    await post("/api/auth/delete", {}); location.hash = ""; location.reload();
+  }
+});
+
+// ---------------------------------------------------------------- color themes (settings > Look)
+function saveTheme(change) {
+  const p = {...themePrefs(), ...change};
+  try { localStorage.setItem("lt-theme", JSON.stringify(p)); } catch (_) {}
+  applyTheme(p);
+  drawThemePicker();
+  if (change.fx) aura.set(aura.tier || "okay", change.fx); else aura.refresh();   // new colors on the new background
+}
+function drawThemePicker() {
+  const p = themePrefs(), cur = THEMES[p.palette] ? p.palette : "lavender";
+  const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+  const base = dark ? {"--bg": "#17141f", "--card": "#241f30", "--lilac": "#c9b8ff", "--yellow": "#ffe45e", "--pet": "#b9a7ff"}
+                    : {"--bg": "#efeaff", "--card": "#ffffff", "--lilac": "#c9b8ff", "--yellow": "#ffe45e", "--pet": "#b9a7ff"};
+  $("themes").innerHTML = Object.entries(THEMES).map(([k, t]) => {
+    const c = {...base, ...(dark ? t.dark : t.light)};
+    return `<button type="button" class="th" role="radio" aria-checked="${k === cur}" data-palette="${k}">
+      <span class="pv" style="background:${c["--bg"]}"><i style="background:${c["--card"]}"></i><i style="background:${c["--lilac"]}"></i><i style="background:${c["--yellow"]}"></i><i class="pet" style="background:${c["--pet"]}"></i></span>
+      <span class="nm">${esc(t.name)}<span aria-hidden="true">${k === cur ? "✓" : ""}</span></span></button>`;
+  }).join("");
+  document.querySelectorAll('[name="ui_mode"]').forEach(el => { el.checked = el.value === (p.mode || "auto"); });
+  const fx = FX[p.fx] ? p.fx : "mood";
+  $("fxs").innerHTML = Object.entries(FX).map(([k, f]) => `<button type="button" class="fxb" role="radio" aria-checked="${k === fx}" data-fx="${k}">
+      <span class="fxn">${esc(f.name)}</span><span class="fxd">${esc(f.desc)}</span></button>`).join("");
+}
+$("fxs").addEventListener("click", e => { const b = e.target.closest(".fxb"); if (b) saveTheme({fx: b.dataset.fx}); });
+$("themes").addEventListener("click", e => { const b = e.target.closest(".th"); if (b) saveTheme({palette: b.dataset.palette}); });
+document.querySelectorAll('[name="ui_mode"]').forEach(el => el.addEventListener("change", () => saveTheme({mode: el.value})));
+
+$("sForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const body = {};
+  for (const el of e.target.elements) {
+    if (!el.name || el.name.startsWith("ui_")) continue;
+    if (el.type === "checkbox") body[el.name] = el.checked;
+    else if (el.type === "radio") { if (el.checked) body[el.name] = el.value; }
+    else body[el.name] = el.type === "number" || el.tagName === "SELECT" ? +el.value : el.value;
+  }
+  $("sNote").textContent = "Saving…";
+  const r = await post("/api/settings", body);
+  if (!r.ok) { $("sNote").textContent = "Couldn't save. Is LazyTrack running?"; return; }
+  await post("/api/restart", {});
+  $("sNote").textContent = "Saved. Restarting LazyTrack…";
+  settingsLoaded = false;
+  setTimeout(async () => {
+    for (let n = 0; n < 20; n++) {
+      try { if ((await api("/api/ping")).ok) { $("sNote").textContent = "Saved and restarted. Your changes are active."; return; } } catch (_) {}
+      await new Promise(res => setTimeout(res, 700));
+    }
+    $("sNote").textContent = "Saved. If it didn't come back, start LazyTrack again.";
+  }, 1200);
+});
+
+// ---------------------------------------------------------------- calm motion
+const calm = !matchMedia("(prefers-reduced-motion: reduce)").matches;
+let animNext = true, animNow = false;   // animate when a page opens, never on the 60-second refresh
+
+function countUp(el, value, unit) {
+  if (!animNow || !calm || !value) { el.textContent = fmt(unit, value); return; }
+  const t0 = performance.now(), dur = 700;
+  const tick = t => {
+    const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    el.textContent = fmt(unit, unit === "seconds" ? value * e : Math.round(value * e));
+    if (p < 1) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+function wordsIn(el, start = 120) {
+  if (!calm) return;
+  let i = 0;
+  const walk = node => {
+    for (const ch of [...node.childNodes]) {
+      if (ch.nodeType === 3) {
+        const frag = document.createDocumentFragment();
+        for (const part of ch.textContent.split(/(\s+)/)) {
+          if (!part) continue;
+          if (/^\s+$/.test(part)) { frag.append(part); continue; }
+          const w = document.createElement("span");
+          w.className = "w"; w.textContent = part; w.style.setProperty("--d", `${Math.min(start + 38 * i++, 1100)}ms`);
+          frag.append(w);
+        }
+        ch.replaceWith(frag);
+      } else if (ch.nodeType === 1) walk(ch);
+    }
+  };
+  walk(el);
+}
+const ENTER = {
+  home: ["#petcard", "#logbar .logbtn:not([hidden])", "#home > .logmore", "#home > h2", "#home > .sub", "#home > .card", "#chips > *"],
+  habits: ["#habits > h2", "#habits > .sub", "#habits > .grid2", "#habits > .card", "#habits > div"],
+  screen: ["#screen > h2", "#screen > .sub", "#screen > .grid2", "#screen > .card"],
+  school: ["#school > h2", "#school > .sub", "#school > .card", "#school > .grid2"],
+  detail: ["#detail .back", "#detail .dhero", "#dFacts .fact", "#detail > section"],
+  settings: ["#sForm > section", "#sForm > .actions"],
+  friends: ["#fConnect > *", "#fMain > *", "#fProfile > *"],
+};
+function entrance(view) {
+  if (!calm) return;
+  let i = 0;
+  for (const sel of ENTER[view]) for (const el of document.querySelectorAll(sel)) {
+    if (el.offsetParent === null && el.tagName !== "SECTION") continue;
+    el.classList.remove("anim-in"); void el.offsetWidth;
+    el.style.setProperty("--d", `${Math.min(60 * i++, 600)}ms`);
+    el.classList.add("anim-in");
+    el.addEventListener("animationend", () => el.classList.remove("anim-in"), {once: true});
+  }
+  if (view === "home") wordsIn($("headline"), 160);
+}
+
+// ---------------------------------------------------------------- render
+async function render() {
+  animNow = animNext; animNext = false;
+  const r = route(), tab = currentTab();
+  const view = r.view === "detail" && r.k ? "detail" : tab;
+  document.body.dataset.view = view;
+  document.querySelectorAll(".tab").forEach(t => { if (t.dataset.tab === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
+  const day = selectedDay();
+  $("dayLabel").textContent = dayName(day);
+  $("nextDay").disabled = day >= todayISO();
+  document.querySelector(".daynav").style.visibility = view === "settings" || view === "friends" ? "hidden" : "";
+  if (view !== "friends") chat.stop();
+  updateBadge();
+  try {
+    if (view === "detail") await loadDetail(r.k);
+    else if (view === "settings") { drawAccount(); drawUpdates(); await loadSettings(); }
+    else {
+      await loadOverview();
+      ({home: renderHome, habits: renderHabits, screen: renderScreen, school: renderSchool, friends: renderFriends})[view]();
+    }
+    $("offline").style.display = "none";
+    if (animNow) entrance(view);
+  } catch (e) {
+    if (String(e.message) === "401") return;   // not logged in yet: the login screen handles it
+    console.error(e);
+    $("offline").style.display = "block";
+  }
+}
+// ---------------------------------------------------------------- background effects
+// A canvas behind everything (never on top of the cards). Pixels snap to a 4px grid,
+// drawn at ~30 fps, paused while the tab is hidden, one still frame with reduced motion.
+// The style is picked in Settings > Look. "Mochi's mood" changes with HP; every other
+// style still listens to HP: more and brighter when Mochi is doing great, fewer and
+// greyer when he's tired or sick.
+const MOOD = {
+  legend: {n: 1 / 15000, max: 75, kinds: ["spark", "spark", "ember"], cols: ["#f2b705", "#ffd23f", "#ffffff", "#c9b8ff"], a: .75},
+  shiny:  {n: 1 / 48000, max: 26, kinds: ["spark"], cols: ["#c9b8ff", "#7ad3ff", "#ffffff"], a: .6},
+  okay:   {n: 1 / 90000, max: 12, kinds: ["float"], cols: ["#c9b8ff", "#7ad3ff", "#ff8fb1"], a: .35},
+  tired:  {n: 1 / 40000, max: 30, kinds: ["dust"], cols: ["#8f877d", "#a59d93", "#6f685f"], a: .45},
+  sick:   {n: 1 / 30000, max: 40, kinds: ["dust", "dust", "spore"], cols: ["#7d8b5a", "#8c7a52", "#5e6b3e"], a: .5},
+};
+const TIER_FX = {legend: {k: 1.5, grey: 0}, shiny: {k: 1.2, grey: 0}, okay: {k: 1, grey: 0}, tired: {k: .7, grey: .6}, sick: {k: .5, grey: .85}};
+const R = (a, b) => a + Math.random() * (b - a), pick = arr => arr[Math.floor(Math.random() * arr.length)];
+const snap = v => Math.round(v / 4) * 4;
+
+// Each style: how many (per px²), its colors, how to start, move and draw one particle.
+const FX = {
+  mood: {name: "Mochi's mood", desc: "Sparkles when you're doing great, dust when not"},
+  stars: {name: "Starfield", desc: "Twinkling pixel stars drifting slowly", n: 1 / 9000, max: 140,
+    cols: dk => dk ? ["#ffffff", "--lilac", "--yellow", "--blue"] : ["--ink-3", "--lilac", "--prev"],
+    spawn: (p, w, h, fresh) => { p.x = fresh ? R(0, w) : w + 8; p.y = R(0, h); p.layer = pick([1, 1, 1, 2, 3]); p.ph = R(0, 7); p.sp = R(.5, 2); },
+    move: (p, dt) => { p.x -= p.layer * 3 * dt; return p.x > -10; },
+    draw: (c, p, a, t) => { a *= .35 + .65 * Math.abs(Math.sin(t * p.sp + p.ph)); c.globalAlpha = a;
+      const x = snap(p.x), y = snap(p.y);
+      if (p.layer === 3 && a > .5) { c.fillRect(x, y - 4, 4, 12); c.fillRect(x - 4, y, 12, 4); } else c.fillRect(x, y, 4, 4); }},
+  rain: {name: "Pixel rain", desc: "Soft rain falling at an angle", n: 1 / 7000, max: 160,
+    cols: dk => dk ? ["--blue", "--ink-3"] : ["--prev", "--ink-3"],
+    spawn: (p, w, h, fresh) => { p.x = R(-100, w); p.y = fresh ? R(0, h) : R(-60, -10); p.v = R(260, 380); p.len = pick([12, 16, 20]); },
+    move: (p, dt, w, h) => { p.y += p.v * dt; p.x += p.v * .18 * dt; return p.y < h + 20; },
+    draw: (c, p, a) => { c.globalAlpha = a * .6; const x = snap(p.x), y = snap(p.y);
+      c.fillRect(x, y, 4, p.len / 2); c.fillRect(x + 4, y + p.len / 2, 4, p.len / 2); }},
+  snow: {name: "Snow", desc: "Slow pixel snowflakes", n: 1 / 9000, max: 120,
+    cols: dk => dk ? ["#ffffff", "#dfe7ff"] : ["--ink-3", "--prev"],
+    spawn: (p, w, h, fresh) => { p.x = R(0, w); p.y = fresh ? R(0, h) : -12; p.v = R(12, 30); p.s = pick([4, 4, 8]); p.ph = R(0, 7); },
+    move: (p, dt, w, h) => { p.y += p.v * dt; p.ph += dt; return p.y < h + 12; },
+    draw: (c, p, a) => { c.globalAlpha = a * (p.s === 8 ? .8 : .55); const x = snap(p.x + Math.sin(p.ph) * 12), y = snap(p.y);
+      if (p.s === 8) { c.fillRect(x + 4, y, 4, 12); c.fillRect(x, y + 4, 12, 4); } else c.fillRect(x, y, 4, 4); }},
+  fireflies: {name: "Fireflies", desc: "Little lights wandering around", n: 1 / 32000, max: 45,
+    cols: dk => dk ? ["#e8ff7a", "#ffd23f"] : ["#c9a400", "#8fb800"],
+    spawn: (p, w, h) => { p.x = R(0, w); p.y = R(0, h); p.dir = R(0, 7); p.ph = R(0, 7); p.sp = R(.6, 1.4); },
+    move: (p, dt, w, h) => { p.dir += R(-1.5, 1.5) * dt; p.x += Math.cos(p.dir) * 14 * dt; p.y += Math.sin(p.dir) * 14 * dt;
+      if (p.x < -10) p.x = w + 10; if (p.x > w + 10) p.x = -10; if (p.y < -10) p.y = h + 10; if (p.y > h + 10) p.y = -10; return true; },
+    draw: (c, p, a, t) => { const g = Math.max(0, Math.sin(t * p.sp + p.ph)); if (g < .05) return; const x = snap(p.x), y = snap(p.y);
+      c.globalAlpha = a * g * .25; c.fillRect(x - 4, y - 4, 12, 12); c.globalAlpha = a * g; c.fillRect(x, y, 4, 4); }},
+  bubbles: {name: "Bubbles", desc: "Pixel bubbles floating up", n: 1 / 28000, max: 50,
+    cols: dk => ["--blue", "--lilac", "--pink"],
+    spawn: (p, w, h, fresh) => { p.x = R(0, w); p.y = fresh ? R(0, h) : h + 20; p.v = R(14, 30); p.s = pick([12, 16, 20]); p.ph = R(0, 7); },
+    move: (p, dt) => { p.y -= p.v * dt; p.ph += dt * 1.3; return p.y > -30; },
+    draw: (c, p, a) => { c.globalAlpha = a * .7; const x = snap(p.x + Math.sin(p.ph) * 8), y = snap(p.y), s = p.s;
+      c.fillRect(x + 4, y, s - 8, 4); c.fillRect(x + 4, y + s - 4, s - 8, 4); c.fillRect(x, y + 4, 4, s - 8); c.fillRect(x + s - 4, y + 4, 4, s - 8);
+      c.globalAlpha = a * .5; c.fillRect(x + 4, y + 4, 4, 4); }},
+  petals: {name: "Petals", desc: "Cherry blossom petals drifting down", n: 1 / 26000, max: 55,
+    cols: dk => ["--pink", "#ffc2d6", "#ff7aa8"],
+    spawn: (p, w, h, fresh) => { p.x = R(-50, w); p.y = fresh ? R(0, h) : -12; p.v = R(18, 34); p.ph = R(0, 7); },
+    move: (p, dt, w, h) => { p.y += p.v * dt; p.x += 10 * dt; p.ph += dt * 1.6; return p.y < h + 12; },
+    draw: (c, p, a) => { c.globalAlpha = a * .8; const x = snap(p.x + Math.sin(p.ph) * 14), y = snap(p.y);
+      if (Math.cos(p.ph) > 0) { c.fillRect(x, y, 8, 4); c.fillRect(x + 4, y + 4, 8, 4); } else { c.fillRect(x + 4, y, 4, 8); c.fillRect(x, y + 4, 4, 4); } }},
+  code: {name: "Code rain", desc: "Falling 0s and 1s, for coding days", n: 1 / 22000, max: 70,
+    cols: dk => dk ? ["--good", "--green"] : ["--good", "--ink-3"],
+    spawn: (p, w, h, fresh) => { p.x = snap(R(0, w) / 16) * 16; p.y = fresh ? R(-h, h) : R(-200, -20); p.v = R(30, 70); p.ch = Array.from({length: pick([4, 6, 8])}, () => pick("01{};<>=")); },
+    move: (p, dt, w, h) => { p.y += p.v * dt; if (Math.random() < dt * 2) p.ch[Math.floor(R(0, p.ch.length))] = pick("01{};<>="); return p.y - p.ch.length * 16 < h; },
+    draw: (c, p, a) => { c.font = "12px Silkscreen, monospace";
+      p.ch.forEach((ch, i) => { c.globalAlpha = a * .8 * ((i + 1) / p.ch.length); c.fillText(ch, p.x, snap(p.y - (p.ch.length - i) * 16)); }); }},
+  none: {name: "None", desc: "Just the plain background"},
+};
+// mood style, built from MOOD the same way as the others
+FX.mood.n = 0;
+
+const aura = {
+  tier: null, style: null, ps: [], cv: null, ctx: null, raf: 0, last: 0,
+  set(tier, style = this.style || themePrefs().fx || "mood") {
+    if (tier === this.tier && style === this.style) return;
+    this.tier = tier; this.style = FX[style] ? style : "mood";
+    document.body.dataset.aura = tier;
+    this.cv = this.cv || $("aura"); this.ctx = this.ctx || this.cv.getContext("2d");
+    this.resize();
+    if (!calm || this.style === "none") { this.draw(0); return; }
+    if (!this.raf) this.raf = requestAnimationFrame(t => this.loop(t));
+  },
+  refresh() { const t = this.tier, s = this.style; this.tier = null; if (t) this.set(t, s); },
+  resize() {
+    const d = Math.min(2, devicePixelRatio || 1), w = innerWidth, h = innerHeight;
+    this.cv.width = w * d; this.cv.height = h * d; this.ctx.setTransform(d, 0, 0, d, 0, 0);
+    this.w = w; this.h = h;
+    // colors: theme tokens are read now, so they follow the theme; tired/sick fade toward grey
+    const dk = css("color-scheme") === "dark", tf = TIER_FX[this.tier] || TIER_FX.okay;
+    const greyed = col => { if (!tf.grey) return col; const m = col.match(/^#(..)(..)(..)$/); if (!m) return col;
+      const [r, g, b] = m.slice(1).map(x => parseInt(x, 16)), l = .3 * r + .59 * g + .11 * b;
+      return "#" + [r, g, b].map(v => Math.round(v + (l - v) * tf.grey).toString(16).padStart(2, "0")).join(""); };
+    if (this.style === "mood") {
+      const cfg = MOOD[this.tier] || MOOD.okay;
+      this.cfg = {a: cfg.a, cols: cfg.cols};
+      const n = Math.min(cfg.max, Math.round(w * h * cfg.n));
+      this.ps = Array.from({length: n}, () => this.spawnMood(cfg, true));
+    } else if (this.style === "none") {
+      this.ps = [];
+    } else {
+      const fx = FX[this.style];
+      this.cfg = {a: dk ? .7 : .6, cols: fx.cols(dk).map(c => greyed(c.startsWith("--") ? css(c) : c))};
+      const n = Math.min(Math.round(fx.max * tf.k), Math.round(w * h * fx.n * tf.k));
+      this.ps = Array.from({length: n}, () => { const p = {col: pick(this.cfg.cols)}; fx.spawn(p, w, h, true); return p; });
+    }
+  },
+  spawnMood(cfg, anywhere) {
+    const kind = pick(cfg.kinds), falling = kind === "dust" || kind === "spore";
+    return {kind, col: pick(cfg.cols),
+      x: Math.random() * this.w, y: anywhere ? Math.random() * this.h : falling ? -12 : this.h + 12,
+      vy: kind === "ember" ? -R(8, 22) : kind === "float" ? -R(3, 8) : falling ? R(6, 16) : 0,
+      sway: R(0, 7), size: kind === "spore" ? 8 : kind === "float" ? pick([8, 12]) : 4, ph: R(0, 7), sp: R(.6, 1.8)};
+  },
+  loop(t) {
+    this.raf = 0;
+    if (this.style === "none") return;
+    if (document.hidden) { document.addEventListener("visibilitychange", () => this.refresh(), {once: true}); return; }
+    if (t - this.last > 33) { this.draw(Math.min((t - this.last) / 1000, .1)); this.last = t; }
+    this.raf = requestAnimationFrame(tt => this.loop(tt));
+  },
+  draw(dt) {
+    const c = this.ctx, now = performance.now() / 1000, still = !calm;
+    c.clearRect(0, 0, this.w, this.h);
+    if (this.style === "none") return;
+    if (this.style !== "mood") {
+      const fx = FX[this.style];
+      for (const p of this.ps) {
+        if (!still && !fx.move(p, dt, this.w, this.h)) { p.col = pick(this.cfg.cols); fx.spawn(p, this.w, this.h, false); }
+        c.fillStyle = p.col; fx.draw(c, p, this.cfg.a, still ? 1 : now);
+      }
+      c.globalAlpha = 1;
+      return;
+    }
+    const cfg = MOOD[this.tier] || MOOD.okay;
+    for (let i = 0; i < this.ps.length; i++) {
+      const p = this.ps[i];
+      if (!still) { p.y += p.vy * dt; p.sway += dt * .8; }
+      const x = snap(p.x + (p.kind === "spark" ? 0 : Math.sin(p.sway) * 10)), y = snap(p.y);
+      if (y < -20 || y > this.h + 20) { this.ps[i] = this.spawnMood(cfg, false); continue; }
+      let a = cfg.a;
+      if (p.kind === "spark") a *= still ? .7 : Math.max(0, Math.sin(now * p.sp + p.ph));   // twinkle
+      if (p.kind === "ember") a *= Math.min(1, (this.h - p.y) / 120) * Math.min(1, p.y / 200);
+      if (a < .02) continue;
+      c.globalAlpha = a; c.fillStyle = p.col;
+      if (p.kind === "spark") {            // pixel star: a plus, bigger when it peaks
+        c.fillRect(x, y - 4, 4, 12); c.fillRect(x - 4, y, 12, 4);
+        if (a > cfg.a * .7) { c.globalAlpha = a * .5; c.fillRect(x, y - 8, 4, 4); c.fillRect(x, y + 8, 4, 4); c.fillRect(x - 8, y, 4, 4); c.fillRect(x + 8, y, 4, 4); }
+      } else if (p.kind === "spore") {
+        c.fillRect(x, y, 8, 8); c.globalAlpha = a * .6; c.fillStyle = "#3f4a28"; c.fillRect(x + 4, y + 4, 4, 4);
+      } else {
+        c.fillRect(x, y, p.size, p.size);
+      }
+    }
+    c.globalAlpha = 1;
+  },
+};
+addEventListener("resize", () => { if (aura.cv) { aura.resize(); if (!calm) aura.draw(0); } });
+drawThemePicker();   // needs FX, so it runs after the effects are defined
+
+// ---------------------------------------------------------------- welcome, login and setup
+// One overlay with panels side by side: hello -> log in / make account -> setup 1-3 -> done.
+// Each step slides in from the right. At the end the whole overlay slides away and the
+// app slides in, like before. The app loads behind it, so Home is ready when it arrives.
+let AUTH = {logged_in: true, has_account: false, user: null};
+const PANELS = ["pHello", "pAuth", "pS1", "pS2", "pS3", "pS4"];
+const flow = {
+  cur: "pHello", mode: "new",
+  show(id) {
+    if (id === this.cur) return;
+    const from = $(this.cur), to = $(id), fwd = PANELS.indexOf(id) > PANELS.indexOf(this.cur);
+    from.classList.remove("on"); if (fwd) from.classList.add("left");
+    from.inert = true;
+    to.classList.remove("left"); void to.offsetWidth; to.classList.add("on");
+    to.inert = false; to.scrollTop = 0;
+    this.cur = id;
+    const first = to.querySelector("input:not([hidden])");
+    if (first && matchMedia("(hover: hover)").matches) setTimeout(() => first.focus({preventScroll: true}), 650);
+  },
+  /** what comes after the hello screen */
+  next() {
+    if (!AUTH.logged_in) return auth.open();
+    if (AUTH.user && !AUTH.user.setup_done) return setup.begin("new");
+    this.leave();
+  },
+  leave() {
+    if (!welcome.on) return;
+    welcome.on = false;
+    clearInterval(welcome.blink);
+    animNext = true;
+    render();                        // home page plays its entrance while it slides in
+    const done = () => {
+      document.body.classList.remove("welcoming", "leaving", "returning");
+      $("welcome").classList.remove("slidein");
+      // reset the panels for next time (Settings > change habits)
+      PANELS.forEach(id => { $(id).classList.remove("on", "left"); $(id).inert = true; });
+      $("pHello").classList.add("on"); $("pHello").inert = false; this.cur = "pHello";
+    };
+    if (!calm) return done();
+    document.body.classList.add("leaving");
+    setTimeout(done, 850);
+  },
+};
+
+const welcome = {
+  on: true, tier: "okay",
+  start() {
+    scrollTo(0, 0);
+    animNext = false;   // the home page animates when it slides in, not now while hidden
+    this.greet();
+    this.drawPet(false);
+    if (calm) this.blink = setInterval(() => { this.drawPet(true); setTimeout(() => this.drawPet(false), 160); }, 3800);
+    $("wGo").addEventListener("click", () => flow.next());
+    addEventListener("keydown", e => {
+      if (!this.on || flow.cur !== "pHello" || e.target.closest("input, textarea, select")) return;
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); flow.next(); }
+    });
+  },
+  greet() {
+    const h = new Date().getHours();
+    const name = AUTH.user ? AUTH.user.display_name : "";
+    const hello = (h >= 5 && h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : h < 23 ? "Good evening" : "Hey, night owl") + (name ? `, ${name}.` : ".");
+    $("wTitle").innerHTML = hello.split(" ").map((w, i) => `<span class="wl" style="--d:${700 + i * 140}ms">${esc(w)}</span>`).join(" ");
+  },
+  drawPet(closed) {
+    const base = this.tier === "legend" ? PET.legend : this.tier === "sick" ? PET.sick : PET.happy;
+    const eyes = this.tier === "sick" ? 6 : 4;
+    const art = base.map((row, y) => closed && y === eyes ? "obbbbbbbbo" : row);
+    $("wPet").innerHTML = petCells(art, this.tier);
+    $("wPet").classList.toggle("bob", calm);
+  },
+  /** the sentence that fades in, made from today's numbers once they've loaded */
+  fill() {
+    if (!this.on) return;
+    if (!AUTH.logged_in) {
+      $("wLine").textContent = AUTH.has_account ? "Log in and Mochi will show you how today is going." : "Let's set up your account. It takes a minute.";
+      return;
+    }
+    if (!O || !O.is_today) return;
+    this.tier = O.health.tier; this.drawPet(false);
+    const t = O.today, lead = HABITS.find(h => h.bad), code = O.val(t, "coding"), scr = O.val(t, "screen");
+    const cig = lead ? O.val(t, lead.k) : 0;
+    const bits = [];
+    if (cig) bits.push(`<b>${plural(cig, esc(lead.one))}</b>`);
+    if (code) bits.push(`<b>${hm(code)}</b> of coding`);
+    if (scr && bits.length < 2) bits.push(`<b>${hm(scr)}</b> on screens`);
+    $("wLine").innerHTML = bits.length
+      ? `So far today: ${bits.join(" and ")}. Mochi kept count, you just relax.`
+      : "A brand new day, nothing tracked yet. Mochi's ready when you are.";
+  },
+};
+
+// ---------------- log in / make account
+const auth = {
+  signup: true,
+  open(signup = !AUTH.has_account) {
+    this.signup = signup;
+    $("aTitle").textContent = this.signup ? "Make your account" : "Welcome back";
+    $("aSub").textContent = this.signup ? "One account for all your devices and for friends. Your detailed data stays on this computer."
+                                        : "Use your email or username. On a new computer, use your email.";
+    $("aUserL").textContent = this.signup ? "Username" : "Email or username";
+    $("aUser").placeholder = this.signup ? "3 to 20 letters or numbers" : "you@example.com or your username";
+    $("aNameF").hidden = !this.signup; $("aMailF").hidden = !this.signup;
+    $("aData").hidden = !(this.signup && AUTH.has_data);
+    $("aPass").placeholder = this.signup ? "At least 6 characters" : "";
+    $("aPass").autocomplete = this.signup ? "new-password" : "current-password";
+    $("aGo").firstChild.textContent = this.signup ? "Create account " : "Log in ";
+    $("aErr").textContent = "";
+    $("aPet").innerHTML = petCells(PET.happy, "okay");
+    $("aSwitch").textContent = this.signup ? "Already have an account? Log in" : "New here? Make an account";
+    flow.show("pAuth");
+  },
+  async submit(e) {
+    e.preventDefault();
+    const body = this.signup
+      ? {username: $("aUser").value.trim(), email: $("aMail").value.trim(), password: $("aPass").value, display_name: $("aName").value.trim()}
+      : {login: $("aUser").value.trim(), password: $("aPass").value};
+    if (this.signup && (!body.username || !body.email || !body.password)) { $("aErr").textContent = "Fill in your username, email and password."; return; }
+    if (!this.signup && (!body.login || !body.password)) { $("aErr").textContent = "Fill in your email or username and your password."; return; }
+    $("aErr").textContent = this.signup ? "Checking the name and email…" : "";
+    $("aGo").disabled = true; $("aErr").textContent = "";
+    try {
+      const r = await post(this.signup ? "/api/auth/signup" : "/api/auth/login", body);
+      const j = await r.json();
+      if (!r.ok) { $("aErr").textContent = j.error || "That didn't work."; return; }
+      $("aPass").value = "";
+      await refreshAuth();
+      await refreshCloud();
+      await loadHabits();
+      render().then(() => welcome.fill());    // load the app behind the overlay
+      if (AUTH.user && !AUTH.user.setup_done) setup.begin("new"); else flow.leave();
+    } catch (_) {
+      $("aErr").textContent = "Can't reach LazyTrack. Is it running?";
+    } finally { $("aGo").disabled = false; }
+  },
+};
+$("aForm").addEventListener("submit", e => auth.submit(e));
+$("aSwitch").addEventListener("click", () => { auth.open(!auth.signup); });
+async function refreshAuth() {
+  try { const r = await api("/api/auth/state"); if (r.ok) AUTH = await r.json(); } catch (_) {}
+  if (AUTH.os) {   // name the computer after what LazyTrack runs on, not the device you're looking from
+    const mac = AUTH.os === "darwin";
+    SCREEN_LABEL.screen_pc = mac ? "MAC" : "PC";
+    INFO.screen_pc.n = mac ? "Screen time on the Mac" : "Screen time on the computer";
+  }
+}
+
+// ---------------- setup: pick habits, screen stats and extras
+const EMOJI_BAD = ["😬", "🍕", "🥤", "🎰", "🛒", "📱", "🍩", "🌙"], EMOJI_GOOD = ["🚿", "🎸", "🧹", "🌞", "🏃", "🍎", "✍️", "🛏️"];
+const SIZE_HP = {small: 3, medium: 6, big: 10};
+const setup = {
+  sel: null,
+  begin(mode) {
+    this.mode = mode;
+    // start from what's tracked now when there's history (or when editing), from a light default otherwise
+    const fromNow = mode === "edit" || AUTH.has_data;
+    const defaults = {habits: ["gym", "water"], screen: ["coding", "youtube", "social", "screen"], modules: {school: false, github: false}};
+    this.sel = fromNow
+      ? {habits: HABITS.map(h => h.custom ? {k: h.k, n: h.n, e: h.e, bad: h.bad, one: h.one, s: h.s, size: Math.abs(h.hp) >= 10 ? "big" : Math.abs(h.hp) <= 3 ? "small" : "medium"} : h.k),
+         screen: [...SHOW_SCREEN], modules: {...MODULES}}
+      : {habits: defaults.habits, screen: defaults.screen, modules: defaults.modules};
+    this.customs = this.sel.habits.filter(x => typeof x === "object");
+    this.draw();
+    if (mode === "edit") {
+      welcome.on = true;
+      document.body.classList.add("welcoming", "returning");
+      $("welcome").classList.add("slidein");
+      PANELS.forEach(id => { $(id).classList.remove("on", "left"); $(id).inert = true; });
+      $("pS1").classList.add("on"); $("pS1").inert = false; flow.cur = "pS1";
+      scrollTo(0, 0);
+    } else flow.show("pS1");
+  },
+  has(k) { return this.sel.habits.some(x => (typeof x === "string" ? x : x.k) === k); },
+  chip(h, on, i, hint) {
+    return `<button type="button" class="hchip si ${on ? "on" : ""}" style="--i:${3 + i}" data-hk="${esc(h.k)}" aria-pressed="${on}">
+      <span class="he" aria-hidden="true">${esc(h.e)}</span><span class="hn">${esc(h.n)}</span><span class="hh">${esc(hint)}</span><span class="hx" aria-hidden="true">✓</span></button>`;
+  },
+  draw() {
+    for (const bad of [true, false]) {
+      const list = [...CATALOG.filter(h => h.bad === bad), ...this.customs.filter(c => c.bad === bad).map(c => ({...c, hp: (bad ? -1 : 1) * SIZE_HP[c.size || "medium"]}))];
+      const g = $(bad ? "gBad" : "gGood");
+      g.innerHTML = list.map((h, i) => this.chip(h, this.has(h.k), i, `${h.hp > 0 ? "+" : ""}${h.hp} HP each`)).join("")
+        + `<button type="button" class="hchip add si" style="--i:${3 + list.length}" data-addc="${bad ? 1 : 0}"><span class="he" aria-hidden="true">+</span><span class="hn">Add your own</span><span class="hh">anything you like</span></button>`;
+      $(bad ? "fBad" : "fGood").hidden = true;
+    }
+    $("gScreen").innerHTML = SCREEN_CATALOG.map((x, i) => this.chip({k: "s:" + x.k, e: (INFO[x.k] || {}).e || "📊", n: x.n},
+      this.sel.screen.includes(x.k), i, "tracked by itself")).join("");
+    const mods = [{k: "m:school", e: "🎓", n: "I'm at 42", hint: "blackhole, logtime"}, {k: "m:github", e: "🐙", n: "I use GitHub", hint: "commit streak"}];
+    $("gMods").innerHTML = mods.map((m, i) => this.chip(m, !!this.sel.modules[m.k.slice(2)], 10 + i, m.hint)).join("");
+  },
+  toggle(btn) {
+    const k = btn.dataset.hk, on = !btn.classList.contains("on");
+    btn.classList.toggle("on", on); btn.setAttribute("aria-pressed", on);
+    if (k.startsWith("s:")) {
+      const sk = k.slice(2);
+      this.sel.screen = on ? [...this.sel.screen, sk] : this.sel.screen.filter(x => x !== sk);
+    } else if (k.startsWith("m:")) {
+      this.sel.modules[k.slice(2)] = on;
+    } else if (on) {
+      this.sel.habits.push(this.customs.find(c => c.k === k) || k);
+    } else {
+      this.sel.habits = this.sel.habits.filter(x => (typeof x === "string" ? x : x.k) !== k);
+    }
+  },
+  openCustom(bad) {
+    const f = $(bad ? "fBad" : "fGood");
+    if (!f.hidden) { f.hidden = true; return; }
+    const emos = bad ? EMOJI_BAD : EMOJI_GOOD;
+    f.innerHTML = `<div class="crow"><input class="cn" maxlength="30" placeholder="${bad ? "e.g. Nail biting" : "e.g. Cold showers"}" aria-label="Name">
+        <input class="ce" maxlength="4" value="${emos[0]}" aria-label="Emoji"></div>
+      <div class="emos">${emos.map(x => `<button type="button" data-emo="${x}" aria-label="Use ${x}">${x}</button>`).join("")}</div>
+      <div class="cbtm"><div class="seg" role="radiogroup" aria-label="How big is it">
+          ${["small", "medium", "big"].map(z => `<label><input type="radio" name="csize${bad ? 1 : 0}" value="${z}" ${z === "medium" ? "checked" : ""}> ${z[0].toUpperCase() + z.slice(1)} ${bad ? "−" : "+"}${SIZE_HP[z]}</label>`).join("")}</div>
+        <button type="button" class="btn primary" data-cadd="${bad ? 1 : 0}">Add it</button></div>`;
+    f.hidden = false;
+    setTimeout(() => f.querySelector(".cn").focus({preventScroll: true}), 50);
+  },
+  addCustom(bad) {
+    const f = $(bad ? "fBad" : "fGood"), name = f.querySelector(".cn").value.trim();
+    if (!name) { f.querySelector(".cn").focus(); return; }
+    let k = "c_" + (name.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 24) || "habit");
+    const all = new Set([...CATALOG.map(c => c.k), ...this.customs.map(c => c.k)]);
+    for (let i = 2, base = k; all.has(k); i++) k = `${base}_${i}`;
+    const c = {k, n: name, e: f.querySelector(".ce").value.trim() || (bad ? "❌" : "⭐"), bad,
+               size: (f.querySelector("input[type=radio]:checked") || {}).value || "medium"};
+    this.customs.push(c); this.sel.habits.push(c);
+    const g = $(bad ? "gBad" : "gGood"), add = g.querySelector(".add");
+    add.insertAdjacentHTML("beforebegin", this.chip(c, true, 0, `${bad ? "−" : "+"}${SIZE_HP[c.size]} HP each`));
+    f.hidden = true;
+  },
+  summary() {
+    const hs = this.sel.habits.map(x => typeof x === "string" ? CATALOG.find(c => c.k === x) : x).filter(Boolean);
+    const less = hs.filter(h => h.bad).length, more = hs.filter(h => !h.bad).length;
+    const name = AUTH.user ? AUTH.user.display_name : "";
+    $("dTitle").textContent = this.mode === "edit" ? "Saved your picks." : `All set${name ? ", " + name : ""}.`;
+    $("dLine").textContent = `Mochi will help you with ${less} thing${less === 1 ? "" : "s"} to cut down, ${more} to do more of, and ${this.sel.screen.length} screen stat${this.sel.screen.length === 1 ? "" : "s"}.`
+      + (this.mode === "edit" ? " Anything you removed keeps its history, in case you add it back." : "");
+    $("dGo").firstChild.textContent = this.mode === "edit" ? "Back to the app " : "Meet Mochi ";
+    $("dPet").innerHTML = petCells(PET.legend, "legend");
+  },
+  async finish() {
+    $("dGo").disabled = true;
+    try {
+      const r = await post("/api/setup", this.sel);
+      if (r.ok) applyHabits(await r.json());
+      await refreshAuth();
+    } catch (_) {}
+    $("dGo").disabled = false;
+    flow.leave();
+  },
+};
+$("welcome").addEventListener("click", e => {
+  const chip = e.target.closest(".hchip[data-hk]"); if (chip) return setup.toggle(chip);
+  const add = e.target.closest("[data-addc]"); if (add) return setup.openCustom(add.dataset.addc === "1");
+  const cadd = e.target.closest("[data-cadd]"); if (cadd) return setup.addCustom(cadd.dataset.cadd === "1");
+  const emo = e.target.closest("[data-emo]"); if (emo) { emo.closest(".cform").querySelector(".ce").value = emo.dataset.emo; return; }
+  if (e.target.closest("[data-next]")) {
+    const i = PANELS.indexOf(flow.cur);
+    if (PANELS[i + 1] === "pS4") setup.summary();
+    return flow.show(PANELS[i + 1]);
+  }
+  if (e.target.closest("[data-back]")) {
+    const i = PANELS.indexOf(flow.cur);
+    if (flow.cur === "pS1") return setup.mode === "edit" ? flow.leave() : flow.show(AUTH.user && AUTH.has_account ? "pHello" : "pAuth");
+    return flow.show(PANELS[i - 1]);
+  }
+});
+$("welcome").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.closest(".cform")) { e.preventDefault(); setup.addCustom(e.target.closest("#fBad") !== null); }
+});
+$("dGo").addEventListener("click", () => setup.finish());
+
+// ---------------- start
+(async function boot() {
+  await refreshAuth();
+  welcome.start();
+  try {   // tell each device once that LazyTrack updated itself
+    const u = AUTH.update || {}, seen = +(localStorage.getItem("lt-seen-update") || 0);
+    if (u.updated_at && u.updated_at > seen) {
+      localStorage.setItem("lt-seen-update", String(u.updated_at));
+      if (seen) setTimeout(() => toast(`✨ LazyTrack updated${u.message ? `: ${u.message}` : ""}`, null), 1500);
+    }
+  } catch (_) {}
+  if (AUTH.logged_in || !AUTH.has_account) {
+    await loadHabits();
+    await refreshCloud();
+    render().then(() => welcome.fill());
+  } else welcome.fill();
+})();
+setInterval(() => { if (!["settings", "friends"].includes(document.body.dataset.view)) render(); }, 60000);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); drawThemePicker(); render(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+# Windows: same as requirements.txt minus the Mac-only pieces (pyobjc).
+# CLIP comes as a zip so git doesn't need to be installed.
+requests
+opencv-python
+ultralytics
+clip @ https://github.com/ultralytics/CLIP/archive/refs/heads/main.zip
+qrcode

@@ -1,0 +1,160 @@
+"""Updates LazyTrack by itself from GitHub.
+
+When LazyTrack runs, this checks the GitHub repo a minute after starting and then every few
+hours. If there's a newer version, it downloads it (a zip of the repo, no git needed),
+copies the new code over the old, installs new Python packages if the list changed, and
+restarts. Your data is never touched: it lives in ~/.lazytrack, not in the code folder.
+
+The installed version is the commit id (sha) of the code, kept in the file VERSION next to
+the code. A folder that is a git checkout (has .git) is never overwritten: that's a developer
+copy, update it with git instead.
+"""
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import logging
+import os
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import urllib.request
+import zipfile
+from pathlib import Path
+
+from . import db
+
+log = logging.getLogger(__name__)
+APP_DIR = Path(__file__).resolve().parent.parent      # the folder with install.sh / install.bat
+VERSION_FILE = APP_DIR / "VERSION"
+KEEP = {".venv", ".git", "__pycache__", "VERSION"}      # never overwritten or removed
+_lock = threading.Lock()
+
+
+def _get(url: str, timeout: int = 20) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": "LazyTrack-updater", "Accept": "application/vnd.github+json"})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def installed() -> str:
+    try:
+        return VERSION_FILE.read_text().strip()
+    except OSError:
+        return ""
+
+
+def latest(repo: str, branch: str) -> dict:
+    """{"sha": ..., "message": first line of the commit message, "date": ...}"""
+    j = json.loads(_get(f"https://api.github.com/repos/{repo}/commits/{branch}"))
+    c = j.get("commit", {})
+    return {"sha": j["sha"], "message": (c.get("message") or "").split("\n")[0][:140],
+            "date": (c.get("committer") or {}).get("date", "")}
+
+
+def status(cfg: dict) -> dict:
+    u = cfg.get("update", {})
+    return {"repo": u.get("repo", ""), "auto": bool(u.get("auto", True)), "version": installed()[:7],
+            "dev": (APP_DIR / ".git").exists(), "last_check": float(db.kv_get("update_checked") or 0),
+            "updated_at": float(db.kv_get("update_done_at") or 0), "message": db.kv_get("update_message") or ""}
+
+
+def _req_file() -> str:
+    return "requirements-windows.txt" if sys.platform == "win32" else "requirements.txt"
+
+
+def _hash(p: Path) -> str:
+    try:
+        return hashlib.sha256(p.read_bytes()).hexdigest()
+    except OSError:
+        return ""
+
+
+def apply(repo: str, branch: str, info: dict) -> None:
+    """Download the repo at that commit and copy it over the code folder."""
+    data = _get(f"https://codeload.github.com/{repo}/zip/{info['sha']}", timeout=120)
+    req_before = _hash(APP_DIR / _req_file())
+    with tempfile.TemporaryDirectory() as tmp:
+        zipfile.ZipFile(io.BytesIO(data)).extractall(tmp)
+        roots = [p for p in Path(tmp).iterdir() if p.is_dir()]
+        if len(roots) != 1 or not (roots[0] / "lazytrack" / "__init__.py").exists():
+            raise RuntimeError("the download doesn't look like LazyTrack")
+        src = roots[0]
+        for item in src.rglob("*"):
+            rel = item.relative_to(src)
+            if rel.parts[0] in KEEP or "__pycache__" in rel.parts:
+                continue
+            dest = APP_DIR / rel
+            if item.is_dir():
+                dest.mkdir(parents=True, exist_ok=True)
+            else:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                tmpdest = dest.with_name(dest.name + ".new")
+                shutil.copy2(item, tmpdest)
+                os.replace(tmpdest, dest)     # swap in one step, so a file is never half-written
+        for sh in ("install.sh", "start.command", "lt"):    # keep the Mac launchers clickable
+            p = APP_DIR / sh
+            if p.exists() and sys.platform != "win32":
+                p.chmod(0o755)
+    if _hash(APP_DIR / _req_file()) != req_before:
+        log.info("updater: new packages needed, installing...")
+        py = Path(sys.executable)
+        subprocess.run([str(py), "-m", "pip", "install", "-q", "-r", str(APP_DIR / _req_file())], cwd=APP_DIR, timeout=1800)
+    VERSION_FILE.write_text(info["sha"] + "\n")
+    db.kv_set("update_done_at", time.time())
+    db.kv_set("update_message", info.get("message", ""))
+
+
+def check(cfg: dict, install: bool = True) -> dict:
+    """Looks for a new version; installs it (and restarts) if install=True. Returns what happened."""
+    u = cfg.get("update", {})
+    repo, branch = u.get("repo", ""), u.get("branch", "main")
+    if not repo:
+        return {"state": "off", "text": "Updates aren't set up yet."}
+    if (APP_DIR / ".git").exists():
+        return {"state": "dev", "text": "This is a git copy: update it with git pull."}
+    with _lock:
+        db.kv_set("update_checked", time.time())
+        try:
+            info = latest(repo, branch)
+        except Exception as e:
+            return {"state": "error", "text": f"Couldn't reach GitHub ({e.__class__.__name__})."}
+        if info["sha"] == installed():
+            return {"state": "current", "text": "You have the newest version."}
+        if not install:
+            return {"state": "available", "text": info["message"] or "A new version is ready."}
+        log.info("updater: updating %s -> %s (%s)", installed()[:7] or "?", info["sha"][:7], info["message"])
+        apply(repo, branch, info)
+    restart_soon()
+    return {"state": "updated", "text": info["message"] or "Updated."}
+
+
+def restart_soon(delay: float = 1.0) -> None:
+    from . import settings
+    settings.restart_soon(delay)
+
+
+class UpdateWorker(threading.Thread):
+    """Checks a minute after starting, then every few hours."""
+
+    def __init__(self, cfg: dict, stop: threading.Event):
+        super().__init__(name="updater", daemon=True)
+        self.cfg, self.stop_ev = cfg, stop
+
+    def run(self) -> None:
+        if self.stop_ev.wait(60):
+            return
+        while not self.stop_ev.is_set():
+            u = self.cfg.get("update", {})
+            if u.get("auto", True) and u.get("repo"):
+                try:
+                    r = check(self.cfg)
+                    log.info("updater: %s", r["text"])
+                except Exception:
+                    log.exception("update failed")
+            if self.stop_ev.wait(3600 * float(u.get("check_hours", 6))):
+                return

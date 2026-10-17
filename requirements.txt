@@ -1,0 +1,7 @@
+pyobjc-framework-Cocoa
+pyobjc-framework-Quartz
+requests
+opencv-python
+ultralytics
+git+https://github.com/ultralytics/CLIP.git
+qrcode
