@@ -45,6 +45,11 @@ class SyncWorker(threading.Thread):
                 except Exception as e:
                     log.warning("GitHub sync failed: %s", e)
                 next_gh = now + 60 * self.cfg["github"]["sync_minutes"]
+            try:
+                from . import cloud
+                cloud.heartbeat()   # friends see you as online while LazyTrack runs
+            except Exception as e:
+                log.debug("friends heartbeat failed: %s", e)
             self.stop_ev.wait(30)
 
 

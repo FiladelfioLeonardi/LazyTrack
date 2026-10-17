@@ -190,7 +190,38 @@ def push_card(card: dict) -> bool:
     _http("POST", "/rest/v1/cards", {"user_id": uid, "card": card, "updated_at": _now()}, token=_token(),
           prefer="resolution=merge-duplicates,return=minimal")
     _last_card.update(t=time.time(), body=body)
+    db.kv_set("cloud_last_card", body)
     return True
+
+
+ONLINE_SECONDS = 300   # a friend whose LazyTrack checked in within 5 minutes shows as online
+
+
+def heartbeat() -> None:
+    """While LazyTrack runs (window open or not), re-send your last card every ~2 minutes, so friends
+    see you as online. The card's own "built" time tells them how fresh Mochi's mood is."""
+    if not state()["connected"] or time.time() - _last_card["t"] < 120:
+        return
+    body = db.kv_get("cloud_last_card")
+    if not body:
+        return
+    try:
+        _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": json.loads(body), "updated_at": _now()},
+              token=_token(), prefer="resolution=merge-duplicates,return=minimal")
+        _last_card.update(t=time.time(), body=body)
+    except (CloudError, ValueError) as e:
+        log.debug("heartbeat failed: %s", e)
+
+
+def _online(updated_at) -> bool:
+    if not updated_at:
+        return False
+    try:
+        from datetime import datetime, timezone
+        t = datetime.fromisoformat(str(updated_at).replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - t).total_seconds() < ONLINE_SECONDS
+    except ValueError:
+        return False
 
 
 def _now() -> str:
@@ -218,7 +249,8 @@ def friends() -> dict:
         p = profs.get(uid, {"username": "?", "display_name": "?"})
         c = cards.get(uid) or {}
         return {"uid": uid, "username": p["username"], "display_name": p["display_name"] or p["username"],
-                "card": c.get("card"), "updated_at": c.get("updated_at"), "unread": unread.get(uid, 0)}
+                "card": c.get("card"), "updated_at": c.get("updated_at"), "online": _online(c.get("updated_at")),
+                "unread": unread.get(uid, 0)}
 
     out = {"me": person(me), "friends": [], "incoming": [], "outgoing": []}
     for r in rows:
@@ -229,7 +261,7 @@ def friends() -> dict:
             out["incoming"].append(who)
         else:
             out["outgoing"].append(who)
-    out["friends"].sort(key=lambda f: (-f["unread"], f["display_name"].lower()))
+    out["friends"].sort(key=lambda f: (-f["unread"], not f["online"], f["display_name"].lower()))
     return out
 
 

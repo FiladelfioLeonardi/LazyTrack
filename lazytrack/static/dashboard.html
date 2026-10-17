@@ -281,6 +281,11 @@
   .fstats span { background: rgba(255,255,255,.65); border: 2px solid #1d1b20; border-radius: 8px; padding: 3px 8px; font: 700 13px var(--body); }
   .fstats span i { font: 400 11px var(--pixel); font-style: normal; margin-right: 4px; }
   .fcard .fmeta { font-size: 13px; opacity: .7; }
+  .fcard .pres { display: inline-flex; align-items: center; gap: 5px; font: 700 12px var(--body); opacity: 1; }
+  .fcard .pres i { width: 9px; height: 9px; border-radius: 50%; background: #9a94a6; border: 1.5px solid var(--line); display: inline-block; }
+  .fcard .pres.on i { background: #3fbf6f; box-shadow: 0 0 0 3px rgba(63,191,111,.25); }
+  .fcard .fstate { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 4px; }
+  .fcard .fstate span { font: 700 11px var(--pixel); border: 2px solid var(--line); border-radius: 7px; padding: 1px 6px; background: rgba(255,255,255,.7); color: #1d1b20; }
   .fcard .fnew { position: absolute; top: -10px; right: 12px; background: var(--today); color: #fff; border: 2px solid #1d1b20; border-radius: 10px; padding: 2px 9px; font: 800 12px var(--body); }
   .fgrid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
   .addf { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -3237,6 +3242,9 @@ function buildCard() {
   return {name: AUTH.user ? AUTH.user.display_name : CLOUD.username, hp: O.health.hp, tier: O.health.tier, tierName: O.health.name,
           gen: L.gen || 1, age: L.age || 0, best: (L.best || {}).days || 0, deaths: L.deaths || 0,
           palette: themePrefs().palette || "lavender", day: O.day, pet: PET_LOOK,
+          // how Mochi is doing right now (drunk, high, coughing) so friends see it too; "built" = when
+          mood: (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy",
+          fx: (({high, drunk, coughy}) => ({high, drunk, coughy}))(petState(O)), built: Math.round(Date.now() / 1000),
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
           stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
 }
@@ -3264,12 +3272,26 @@ function fcardHTML(p, opts = {}) {
   return `<${tag} ${opts.me ? "" : `type="button" data-friend="${esc(p.uid)}"`} class="fcard ${opts.me ? "me" : ""}" style="--fbg:${bg};--pet:${pal["--pet"] || "#b9a7ff"};--hpc:${tier === "legend" ? "#f2b705" : tier === "sick" ? "#e0735a" : tier === "tired" ? "#e8a23c" : "#3fbf6f"}">
     ${p.unread ? `<span class="fnew">${p.unread} new</span>` : ""}
     <div class="ftop">${(() => { const fp = c && c.pet || {}, bg = placeURL(fp.place || LOOK_DEFAULT.place, {tier: stale ? "okay" : tier, soft: softColor(fp)});
-      return `<div class="fpet scene" style="background-image:url(${bg})"><div class="pet ${calm ? "bob" : ""}">${mochiCells(fp, "happy", stale ? "okay" : tier)}</div></div>`; })()}
-      <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span>${c && c.gen ? `<span class="fgen">Mochi #${c.gen} · ${c.age || 0}d old · record ${Math.max(c.best || 0, c.age || 0)}d</span>` : ""}</div></div>
+      const fx = friendFx(c, stale), motion = fx.drunk ? "drunk" + fx.drunk : fx.high ? "high" + fx.high : "bob";
+      return `<div class="fpet scene" style="background-image:url(${bg})"><div class="pet ${calm ? motion : ""}">${mochiCells(fp, fx.mood, stale ? "okay" : tier, false, {high: fx.high, drunk: fx.drunk})}</div></div>`; })()}
+      <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span>${c && c.gen ? `<span class="fgen">Mochi #${c.gen} · ${c.age || 0}d old · record ${Math.max(c.best || 0, c.age || 0)}d</span>` : ""}
+        ${(() => { const fx = friendFx(c, stale), tags = [fx.drunk && `🍺 ${["", "TIPSY", "DRUNK", "WASTED"][fx.drunk]}`, fx.high && `🌿 ${["", "BUZZED", "HIGH", "SO HIGH"][fx.high]}`, fx.coughy && "🚬 COUGHING"].filter(Boolean);
+          return tags.length ? `<span class="fstate">${tags.map(t => `<span>${t}</span>`).join("")}</span>` : ""; })()}</div></div>
     ${c ? `<div class="hprow"><span class="hpl">HP</span><span class="hpbar">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>
       <span class="hpn">${stale ? "?" : c.hp}</span><span class="tierb">${esc(stale ? "ASLEEP" : c.tierName || tier.toUpperCase())}</span></div>
       ${stats ? `<div class="fstats">${stats}</div>` : ""}` : `<p class="fmeta" style="margin:0">No card yet. It shows up once they open LazyTrack.</p>`}
-    <div class="fmeta">${opts.me ? "Updates while LazyTrack is open" : c ? `Updated ${ago(p.updated_at)}` : ""}</div></${tag}>`;
+    <div class="fmeta">${opts.me ? "Updates while LazyTrack is open" : presence(p)}</div></${tag}>`;
+}
+/** Online = their LazyTrack checked in within 5 minutes (it does every ~2 while it runs). */
+function presence(p) {
+  if (!p.updated_at) return `<span class="pres"><i></i> Not seen yet</span>`;
+  const on = p.online ?? (Date.now() - new Date(p.updated_at) < 300000);
+  return on ? `<span class="pres on"><i></i> Online</span>` : `<span class="pres"><i></i> Last seen ${ago(p.updated_at)}</span>`;
+}
+/** What their Mochi is going through right now. Only trusted while fresh: older than 30 min, it may have worn off. */
+function friendFx(c, stale) {
+  const fresh = c && c.fx && !stale && c.built && Date.now() / 1000 - c.built < 1800;
+  return fresh ? {high: +c.fx.high || 0, drunk: +c.fx.drunk || 0, coughy: +c.fx.coughy || 0, mood: c.mood || "happy"} : {high: 0, drunk: 0, coughy: 0, mood: "happy"};
 }
 
 function drawConnect() {
