@@ -546,6 +546,7 @@
 
   /* ------------------------------------------------------------ views */
   /* ---- admin page */
+  @media (max-width: 560px) { .hidesm { display: none; } }
   .admin-only { display: none; text-decoration: none; } body.is-admin .admin-only { display: inline-flex; align-items: center; }
   #admin > .card { margin-top: 16px; } #admin [data-as].offcat { display: none; }
   .admtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
@@ -883,7 +884,7 @@ applyTheme();
     <h3 id="tourTitle"></h3>
     <p id="tourText"></p>
     <div class="tdots" id="tourDots" aria-label="Jump to a step"></div>
-    <div class="tbtns"><button type="button" class="tskip" id="tourSkip">Skip tour</button><span class="sp"></span>
+    <div class="tbtns"><button type="button" class="tskip" id="tourSkip">Skip tutorial</button><span class="sp"></span>
       <button type="button" class="btn" id="tourBack">Back</button><button type="button" class="btn primary" id="tourNext">Next →</button></div>
   </div>
 </div>
@@ -909,8 +910,8 @@ applyTheme();
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#"><span class="mini" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 10 10" shape-rendering="crispEdges"><path fill="#1d1b20" d="M2 2h6v1H2zM1 3h1v5H1zM8 3h1v5H8zM3 4h1v1H3zM6 4h1v1H6zM2 8h2v1H2zM6 8h2v1H6zM4 6h2v1H4z"/></svg></span>LAZYTRACK</a>
-    <a class="tourbtn admin-only" id="adminBtn" href="#tab=admin" title="Admin: ideas, users, announcements, test lab">🛠 Admin</a>
-    <button type="button" class="tourbtn" id="tourBtn" title="A quick guided tour of LazyTrack">🧭 Tour</button>
+    <a class="tourbtn admin-only" id="adminBtn" href="#tab=admin" title="Admin: ideas, users, announcements, test lab" aria-label="Admin">🛠<span class="hidesm">&nbsp;Admin</span></a>
+    <button type="button" class="tourbtn" id="tourBtn" title="A quick tutorial of LazyTrack">🧭 Tutorial</button>
     <div class="daynav" role="group" aria-label="Choose day">
       <button id="prevDay" aria-label="Previous day">‹</button>
       <div class="lbl" id="dayLabel">Today</div>
@@ -1093,7 +1094,7 @@ applyTheme();
         <li><b>Make your account</b>: name, username, email and password. The same account logs in on your other devices.</li>
         <li><b>Setup</b>: pick what you want to do less of and more of (or add your own), what to show from your screen, extras (42, GitHub), then set your <a href="#tab=docs&sec=targets">targets</a>.</li>
       </ol>
-      <p>Right after the setup a <b>guided tour</b> walks you through the app. Skip any step or the whole thing; the <b>🧭 Tour</b> button at the top brings it back any time.</p>
+      <p>Right after the setup a <b>tutorial</b> walks you through the app. Skip any step or the whole thing; the <b>🧭 Tutorial</b> button at the top brings it back any time.</p>
       <p>LazyTrack has to be running to track; the installer makes it start with the computer. To remove it: Windows Settings → Apps → LazyTrack,
         or "Uninstall LazyTrack" in your Mac's Applications folder. Your data stays unless you choose to delete it.</p>
     </section>
@@ -1311,7 +1312,7 @@ applyTheme();
       <div class="labbtns">
         <button type="button" class="btn" data-lab="rip">💀 Death screen</button>
         <button type="button" class="btn" data-lab="smoke">📷 Smoking popup</button>
-        <button type="button" class="btn" data-lab="tour">🧭 Guided tour</button>
+        <button type="button" class="btn" data-lab="tour">🧭 Tutorial</button>
         <button type="button" class="btn" data-lab="idea">💡 Ideas form</button>
         <button type="button" class="btn" data-lab="update">✨ "Updated" message</button>
         <button type="button" class="btn" data-lab="toast">🔔 Toast with undo</button>
@@ -1329,7 +1330,7 @@ applyTheme();
     <form id="sForm" autocomplete="off">
       <section class="card pad docsbtn" data-cat="app"><h2>How LazyTrack works</h2>
         <p class="sub">Everything about Mochi, HP and targets, tracking, the camera, friends, your phone, updates and your data.</p>
-        <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a><button type="button" class="btn" data-tour>🧭 Take the guided tour</button></div></section>
+        <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a><button type="button" class="btn" data-tour>🧭 Start the tutorial</button></div></section>
       <section class="card pad" id="sAccount" data-cat="account"></section>
 
       <section class="card pad" data-cat="habits">
@@ -3483,10 +3484,12 @@ const OS_NAME = {darwin: "Mac", win32: "Windows", linux: "Linux", "?": "older ap
 const ADMIN_SECS = ["overview", "ideas", "news", "users", "lab"];
 const admin = {
   is: false, data: null, newsList: [], kind: "info", sure: null, lab: {mood: "happy", tier: "okay", high: 0, drunk: 0, coughy: 0, place: ""}, labT: null, labN: 0,
+  why: "",
   async check(fresh) {
-    let v = false;
-    if (CLOUD.connected) try { const r = await api(`/api/cloud/admin${fresh ? "?fresh=1" : ""}`); if (r.ok) v = !!(await r.json()).admin; } catch (_) { v = this.is; }
-    this.is = v; document.body.classList.toggle("is-admin", v);
+    let v = false, why = "not_connected";
+    if (CLOUD.connected) try { const r = await api(`/api/cloud/admin${fresh ? "?fresh=1" : ""}`); if (r.ok) { const j = await r.json(); v = !!j.admin; why = j.why || ""; } }
+      catch (_) { v = this.is; why = "offline"; }
+    this.is = v; this.why = why; document.body.classList.toggle("is-admin", v);
     return v;
   },
   async show(sec) {
@@ -3498,9 +3501,13 @@ const admin = {
     document.querySelectorAll("#admin [data-as]").forEach(s => s.classList.toggle("offcat", !ok || s.dataset.as !== sec));
     $("admCats").hidden = !ok;
     if (!ok) {
-      $("admNo").innerHTML = `<h2>Not an admin (yet)</h2><p class="sub">${CLOUD.connected
-        ? `To make <b>@${esc(CLOUD.username || "you")}</b> the admin: open <b>supabase/admin.sql</b> from the LazyTrack repo, put your username on the line near the top, paste the whole file in Supabase → SQL Editor and press Run. Then come back here.`
-        : `Log in to your LazyTrack account first (Friends tab), then come back.`}</p>`;
+      const how = `Open <b>supabase/admin.sql</b> from the LazyTrack repo, check the username near the top is <b>${esc(CLOUD.username || "yours")}</b>, paste the whole file in Supabase → SQL Editor and press Run. Then come back here.`;
+      $("admNo").innerHTML = `<h2>Not an admin (yet)</h2><p class="sub">${
+        this.why === "not_connected" ? `This LazyTrack isn't logged in to an account. Log in from the Friends tab, then come back.`
+        : this.why === "setup_missing" ? `The admin part of the server isn't set up yet. ${how}`
+        : this.why === "offline" ? `Can't reach the server right now. Check your internet and try again.`
+        : `The server says <b>@${esc(CLOUD.username || "this account")}</b> isn't the admin. ${how}`}</p>
+        <div class="actions"><button type="button" class="btn" data-goas="overview">↻ Check again</button></div>`;
       return;
     }
     if (sec !== "lab") this.stopLab();
@@ -3640,6 +3647,9 @@ document.addEventListener("change", e => {
   if (e.target.id === "labHome") { LAB_PET = e.target.checked ? admin.labState() : null; toast(LAB_PET ? "Home now shows the Test lab's Mochi" : "Home shows the real Mochi again", null); }
 });
 
+// not admin yet (or admin.sql just ran)? ask again every 2 minutes, so the button shows up without a restart
+setInterval(() => { if (CLOUD.connected && !admin.is && !document.hidden) admin.check(); }, 120000);
+
 // ---------------------------------------------------------------- inside the LazyTrack app window
 // Links to other websites open in the real browser, so the app window always stays LazyTrack.
 document.addEventListener("click", e => {
@@ -3655,7 +3665,7 @@ document.addEventListener("click", e => {
 // Steps point at parts of the app (switching tabs when needed). Skip any step with the dots,
 // skip the whole thing, or come back any time with the Tour button. Starts by itself after the first setup.
 const TOUR = [
-  {title: "Hey 👋 Quick tour?", text: "About a minute: what everything is and how Mochi's HP works. Use the dots to jump around or skip the whole thing. The 🧭 Tour button at the top brings it back any time."},
+  {title: "Hey 👋 Quick tutorial?", text: "About a minute: what everything is and how Mochi's HP works. Use the dots to jump around or skip the whole thing. The 🧭 Tutorial button at the top brings it back any time."},
   {tab: "home", el: "#petBox", title: "This is Mochi", text: "Your pet lives on how your day goes. Tap it to dress it up: bodies, hats, colors, outfits and the place it lives in. Everything is free."},
   {tab: "home", el: "#hp .hprow", title: "HP", text: "Mochi's health, 0 to 100. It carries over from day to day. TODAY shows how today is going so far: green means you're doing better than your targets."},
   {tab: "home", el: "#hp .lifeline", title: "Keep it alive", text: "If HP hits 0 at midnight, Mochi dies and a baby hatches. The game: keep one Mochi alive as long as you can. Its age, generation and your record are here (and on your friend card)."},
@@ -3667,8 +3677,8 @@ const TOUR = [
   {el: '.tab[data-tab="friends"]', title: "Friends", text: "Add friends by username, see each other's Mochi and chat. Who keeps theirs alive longest?"},
   {tab: "settings", cat: "habits", el: "#sTargets", title: "Targets", text: "What decides HP. On target is 0; under heals, over hurts. Change them whenever you like; the ones you make get a bit tighter every week."},
   {tab: "settings", cat: "tracking", el: "#sSmoke", title: "Smoking detector", text: "Optional: the webcam notices cigarettes and asks you. Pictures never leave your computer."},
-  {tab: "settings", cat: "app", el: ".docsbtn", title: "The full guide", text: "Everything in detail lives in the documentation, and the tour can be started from here too."},
-  {el: "#tourBtn", title: "That's it! 🎉", text: "Come back to this tour any time with this button. Now go keep Mochi alive.", last: true},
+  {tab: "settings", cat: "app", el: ".docsbtn", title: "The full guide", text: "Everything in detail lives in the documentation, and the tutorial can be started from here too."},
+  {el: "#tourBtn", title: "That's it! 🎉", text: "Come back to this tutorial any time with this button. Now go keep Mochi alive.", last: true},
 ];
 const tour = {
   i: 0, on: false, list: [],
@@ -3764,7 +3774,8 @@ function drawAccount() {
          <button type="button" class="btn" id="aOut">Log out</button>
          <button type="button" class="btn" id="aSetup">Run the setup again</button>
          ${AUTH.local ? `<button type="button" class="btn" id="aDel">Delete account, keep data</button>` : ""}</div>
-       <p class="note" id="aNote" style="margin-top:10px"></p>`
+       <p class="note" id="aNote" style="margin-top:10px"></p>
+       <p class="note" style="margin-top:6px;font-size:13px">Run LazyTrack for other people? <a href="#tab=admin">Open the admin page</a></p>`
     : `<p class="note">${AUTH.paired ? "This phone is paired with your computer, so it doesn't need to log in." : "Not logged in."}</p>`);
   $("hList").innerHTML = HABITS.map(h => `<div class="hitem"><span class="he" aria-hidden="true">${esc(h.e)}</span>
       <span class="hn">${esc(h.n)}<br><span class="tag">${h.bad ? "LESS OF" : "MORE OF"} · ${h.hp > 0 ? "+" : ""}${h.hp} HP</span></span>

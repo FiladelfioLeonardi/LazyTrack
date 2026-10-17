@@ -336,7 +336,7 @@ def make_handler(cfg: dict):
                 if path == "/api/cloud/ideas":
                     return self._send(200, cloud.ideas())
                 if path == "/api/cloud/admin":
-                    return self._send(200, {"admin": cloud.is_admin(qs.get("fresh", [""])[0] == "1")})
+                    return self._send(200, cloud.admin_status(qs.get("fresh", [""])[0] == "1"))
                 if path == "/api/cloud/news":
                     return self._send(200, {"news": cloud.news()})
                 if path == "/api/cloud/admin/overview":

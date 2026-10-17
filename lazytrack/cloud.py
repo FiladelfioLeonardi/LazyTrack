@@ -371,7 +371,7 @@ def set_idea_status(idea_id: int, status: str) -> None:
 # ---------------------------------------------------------------- admin page + announcements
 # Set up by supabase/admin.sql. The database decides who's an admin (the admins table); the
 # app only asks, so a modified app still can't read anything an admin can.
-_admin = {"t": 0.0, "uid": "", "v": False}
+_admin = {"t": 0.0, "uid": "", "v": False, "why": ""}
 _news = {"t": 0.0, "v": []}
 NEWS_KINDS = {"info", "new", "warn"}
 
@@ -381,21 +381,28 @@ def _missing(e: Exception) -> bool:
     return "could not find" in s or "does not exist" in s or "schema cache" in s
 
 
-def is_admin(fresh: bool = False) -> bool:
-    """Asks the server (kept for 10 minutes). False if not connected or admin.sql isn't set up."""
+def admin_status(fresh: bool = False) -> dict:
+    """{"admin": bool, "why": ""|"not_connected"|"setup_missing"|"not_admin"|"offline"}.
+    A yes is kept for 10 minutes, a no for 1 minute (so running admin.sql shows up quickly)."""
     st = state()
     if not st["connected"]:
-        return False
-    if not fresh and _admin["uid"] == st["uid"] and time.time() - _admin["t"] < 600:
-        return _admin["v"]
+        return {"admin": False, "why": "not_connected"}
+    keep = 600 if _admin["v"] else 60
+    if not fresh and _admin["uid"] == st["uid"] and time.time() - _admin["t"] < keep:
+        return {"admin": _admin["v"], "why": _admin["why"]}
     try:
         v = bool(_http("POST", "/rest/v1/rpc/is_admin", {}, token=_token()))
+        why = "" if v else "not_admin"
     except CloudError as e:
         if not _missing(e):
-            return _admin["v"] if _admin["uid"] == st["uid"] else False
-        v = False
-    _admin.update(t=time.time(), uid=st["uid"], v=v)
-    return v
+            return {"admin": _admin["v"] if _admin["uid"] == st["uid"] else False, "why": "offline"}
+        v, why = False, "setup_missing"
+    _admin.update(t=time.time(), uid=st["uid"], v=v, why=why)
+    return {"admin": v, "why": why}
+
+
+def is_admin(fresh: bool = False) -> bool:
+    return admin_status(fresh)["admin"]
 
 
 def _need_admin() -> str:
