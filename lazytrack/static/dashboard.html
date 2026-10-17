@@ -1319,6 +1319,12 @@ applyTheme();
         <button type="button" class="btn" data-lab="toast">🔔 Toast with undo</button>
         <button type="button" class="btn" data-lab="news">📣 Announcement on Home</button>
       </div>
+      <div class="label" style="margin-top:18px">NOTIFICATIONS</div>
+      <p class="note" style="margin-bottom:6px">Exactly what people get when a friend writes or adds them: the sound and the popup. Plays even if Sounds is off in Settings.</p>
+      <div class="labbtns">
+        <button type="button" class="btn" data-lab="nmsg">💬 New message</button>
+        <button type="button" class="btn" data-lab="nreq">👋 New friend request</button>
+      </div>
     </section>
   </main>
 
@@ -3673,6 +3679,8 @@ const admin = {
     if (a === "smoke") question.show({id: -Date.now(), buttons: ["Cigarette", "Joint", "Already registered", "Neither"]});
     if (a === "tour") tour.start();
     if (a === "idea") ideaBox.open();
+    if (a === "nmsg") { sfx.play("msg", true); toast("💬 New message from a friend", null); }
+    if (a === "nreq") { sfx.play("req", true); toast("👋 New friend request", null); }
     if (a === "update") toast("✨ LazyTrack updated: this is what people see after an update", null);
     if (a === "toast") toast("Logged a test. (Undo does nothing here)", null);
     if (a === "news") { const body = $("nBody").value.trim() || "This is how an announcement looks on Home."; news.test = {id: "test", kind: this.kind, body}; go({tab: "home"}); }
