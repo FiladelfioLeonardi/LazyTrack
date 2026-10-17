@@ -335,6 +335,14 @@ def make_handler(cfg: dict):
                     return self._send(200, {"count": cloud.unread()})
                 if path == "/api/cloud/ideas":
                     return self._send(200, cloud.ideas())
+                if path == "/api/cloud/admin":
+                    return self._send(200, {"admin": cloud.is_admin(qs.get("fresh", [""])[0] == "1")})
+                if path == "/api/cloud/news":
+                    return self._send(200, {"news": cloud.news()})
+                if path == "/api/cloud/admin/overview":
+                    return self._send(200, cloud.admin_overview())
+                if path == "/api/cloud/admin/news":
+                    return self._send(200, {"news": cloud.admin_news()})
             except cloud.CloudError as e:
                 return self._send(502, {"error": str(e)})
             return self._send(404, {"error": "not found"})
@@ -358,7 +366,22 @@ def make_handler(cfg: dict):
                     cloud.set_idea_status(int(b.get("id", 0)), str(b.get("status", "")))
                     return self._send(200, {"ok": True})
                 if path == "/api/cloud/card":
-                    return self._send(200, {"ok": True, "sent": cloud.push_card(b.get("card") or {})})
+                    from . import updater
+                    card = dict(b.get("card") or {})
+                    card["app"] = {"v": updater.installed()[:7], "os": sys.platform}   # for the admin's "versions in use"
+                    return self._send(200, {"ok": True, "sent": cloud.push_card(card)})
+                if path == "/api/cloud/admin/news":
+                    cloud.post_news(b.get("body", ""), str(b.get("kind", "")))
+                    return self._send(200, {"ok": True})
+                if path == "/api/cloud/admin/news/set":
+                    if b.get("delete"):
+                        cloud.delete_news(int(b.get("id", 0)))
+                    else:
+                        cloud.set_news(int(b.get("id", 0)), bool(b.get("active")))
+                    return self._send(200, {"ok": True})
+                if path == "/api/cloud/idea/delete":
+                    cloud.delete_idea(int(b.get("id", 0)))
+                    return self._send(200, {"ok": True})
                 if path == "/api/cloud/request":
                     return self._send(200, {"ok": True, "message": cloud.request(str(b.get("username", "")))})
                 if path == "/api/cloud/accept":

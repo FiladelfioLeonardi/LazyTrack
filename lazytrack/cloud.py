@@ -366,3 +366,90 @@ def set_idea_status(idea_id: int, status: str) -> None:
     if status not in IDEA_STATUS:
         raise CloudError("unknown status")
     _http("PATCH", f"/rest/v1/ideas?id=eq.{int(idea_id)}", {"status": status}, token=_token(), prefer="return=minimal")
+
+
+# ---------------------------------------------------------------- admin page + announcements
+# Set up by supabase/admin.sql. The database decides who's an admin (the admins table); the
+# app only asks, so a modified app still can't read anything an admin can.
+_admin = {"t": 0.0, "uid": "", "v": False}
+_news = {"t": 0.0, "v": []}
+NEWS_KINDS = {"info", "new", "warn"}
+
+
+def _missing(e: Exception) -> bool:
+    s = str(e).lower()
+    return "could not find" in s or "does not exist" in s or "schema cache" in s
+
+
+def is_admin(fresh: bool = False) -> bool:
+    """Asks the server (kept for 10 minutes). False if not connected or admin.sql isn't set up."""
+    st = state()
+    if not st["connected"]:
+        return False
+    if not fresh and _admin["uid"] == st["uid"] and time.time() - _admin["t"] < 600:
+        return _admin["v"]
+    try:
+        v = bool(_http("POST", "/rest/v1/rpc/is_admin", {}, token=_token()))
+    except CloudError as e:
+        if not _missing(e):
+            return _admin["v"] if _admin["uid"] == st["uid"] else False
+        v = False
+    _admin.update(t=time.time(), uid=st["uid"], v=v)
+    return v
+
+
+def _need_admin() -> str:
+    if not is_admin():
+        raise CloudError("Only the admin can do that.")
+    return _token()
+
+
+def admin_overview() -> dict:
+    tok = _need_admin()
+    return {"stats": _http("POST", "/rest/v1/rpc/admin_stats", {}, token=tok) or {},
+            "users": _http("POST", "/rest/v1/rpc/admin_users", {}, token=tok) or []}
+
+
+def news() -> list:
+    """The live announcements for Home (kept for 10 minutes)."""
+    if not state()["connected"]:
+        return []
+    if time.time() - _news["t"] < 600:
+        return _news["v"]
+    try:
+        v = _http("GET", "/rest/v1/announcements?select=id,body,kind,created_at&active=is.true&order=created_at.desc&limit=3",
+                  token=_token()) or []
+    except CloudError as e:
+        if not _missing(e):
+            return _news["v"]
+        v = []
+    _news.update(t=time.time(), v=v)
+    return v
+
+
+def admin_news() -> list:
+    return _http("GET", "/rest/v1/announcements?select=id,body,kind,active,created_at&order=created_at.desc&limit=50",
+                 token=_need_admin()) or []
+
+
+def post_news(body: str, kind: str) -> None:
+    body = str(body).strip()[:280]
+    if len(body) < 3:
+        raise CloudError("Write a few words first.")
+    _http("POST", "/rest/v1/announcements", {"body": body, "kind": kind if kind in NEWS_KINDS else "info"},
+          token=_need_admin(), prefer="return=minimal")
+    _news["t"] = 0
+
+
+def set_news(news_id: int, active: bool) -> None:
+    _http("PATCH", f"/rest/v1/announcements?id=eq.{int(news_id)}", {"active": bool(active)}, token=_need_admin(), prefer="return=minimal")
+    _news["t"] = 0
+
+
+def delete_news(news_id: int) -> None:
+    _http("DELETE", f"/rest/v1/announcements?id=eq.{int(news_id)}", token=_need_admin(), prefer="return=minimal")
+    _news["t"] = 0
+
+
+def delete_idea(idea_id: int) -> None:
+    _http("DELETE", f"/rest/v1/ideas?id=eq.{int(idea_id)}", token=_need_admin(), prefer="return=minimal")

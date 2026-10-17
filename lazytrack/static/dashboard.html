@@ -545,10 +545,44 @@
   .offline { background: var(--red); color: var(--on-fill); border: 3px solid var(--line); border-radius: 14px; padding: 12px 16px; margin-top: 16px; display: none; font-weight: 700; }
 
   /* ------------------------------------------------------------ views */
+  /* ---- admin page */
+  .admin-only { display: none; text-decoration: none; } body.is-admin .admin-only { display: inline-flex; align-items: center; }
+  #admin > .card { margin-top: 16px; } #admin [data-as].offcat { display: none; }
+  .admtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .admtile { border: 3px solid var(--line); border-radius: 14px; padding: 10px 12px; background: var(--soft); }
+  .admtile b { display: block; font: 900 30px/1.1 var(--body); font-variant-numeric: tabular-nums; }
+  .admtile span { font: 700 12px var(--pixel); color: var(--ink-2); }
+  .admgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-top: 18px; }
+  .hbar { display: grid; grid-template-columns: minmax(70px, 42%) 1fr auto; gap: 8px; align-items: center; margin: 5px 0; font-size: 14px; }
+  .hbar .k { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--pixel); font-size: 13px; }
+  .hbar .bar { height: 14px; border: 2px solid var(--line); border-radius: 6px; background: var(--card); overflow: hidden; }
+  .hbar .bar i { display: block; height: 100%; background: var(--yellow); }
+  .hbar .n { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .spark { display: flex; align-items: flex-end; gap: 3px; height: 70px; border-bottom: 2px solid var(--line); }
+  .spark i { flex: 1; background: var(--lilac); border: 2px solid var(--line); border-bottom: 0; border-radius: 4px 4px 0 0; min-height: 2px; }
+  .admtable { overflow-x: auto; margin-top: 10px; border: 3px solid var(--line); border-radius: 14px; }
+  .admtable table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 720px; }
+  .admtable th { text-align: left; font: 700 12px var(--pixel); color: var(--ink-2); padding: 8px 10px; border-bottom: 2px solid var(--line); background: var(--soft); }
+  .admtable td { padding: 8px 10px; border-bottom: 1px solid rgba(127,127,127,.25); vertical-align: top; }
+  .admtable td small { display: block; color: var(--ink-2); font-family: var(--pixel); font-size: 12px; }
+  .admsearch { width: 100%; max-width: 360px; padding: 10px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: 600 15px var(--body); }
+  .newsbar { display: flex; gap: 10px; align-items: flex-start; margin-top: 16px; padding: 12px 14px; border: 3px solid var(--line); border-radius: 14px;
+             background: #c9e4ff; color: #1d1b20; box-shadow: 3px 3px 0 var(--line); font-weight: 600; }
+  .newsbar.new { background: #c9f2d4; } .newsbar.warn { background: #ffd8a8; }
+  .newsbar p { margin: 0; flex: 1; white-space: pre-wrap; } .newsbar button { border: 0; background: none; font: 800 18px/1 var(--body); cursor: pointer; color: inherit; padding: 0 2px; }
+  .newsitem { display: grid; gap: 8px; padding: 10px 12px; border: 2px solid var(--line); border-radius: 12px; margin-top: 8px; background: var(--soft); }
+  .newsitem.off { opacity: .55; } .newsitem .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .newsitem .btn, .labbtns .btn { height: 38px; padding: 0 12px; font-size: 14px; }
+  .lab { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+  .lab .petbox { width: 150px; height: 150px; }
+  .labctl { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; flex: 1; min-width: 220px; max-width: 420px; }
+  .labctl label { font-weight: 800; } .labctl select { padding: 6px 8px; border: 2px solid var(--line); border-radius: 8px; background: var(--card); color: var(--ink); font: 700 14px var(--body); }
+  .labbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .labflag { margin-top: 16px; padding: 8px 12px; border: 3px dashed var(--line); border-radius: 12px; font-weight: 700; display: flex; gap: 10px; align-items: center; }
   .view { display: none; }
   body[data-view="friends"] #friends,
   body[data-view="home"] #home, body[data-view="habits"] #habits, body[data-view="screen"] #screen,
-  body[data-view="school"] #school, body[data-view="detail"] #detail, body[data-view="settings"] #settings, body[data-view="docs"] #docs { display: block; }
+  body[data-view="school"] #school, body[data-view="detail"] #detail, body[data-view="settings"] #settings, body[data-view="docs"] #docs, body[data-view="admin"] #admin { display: block; }
 
   /* ------------------------------------------------------------ calm motion (only when a page opens) */
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
@@ -875,6 +909,7 @@ applyTheme();
 <div class="wrap">
   <header class="top">
     <a class="brand" href="#"><span class="mini" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 10 10" shape-rendering="crispEdges"><path fill="#1d1b20" d="M2 2h6v1H2zM1 3h1v5H1zM8 3h1v5H8zM3 4h1v1H3zM6 4h1v1H6zM2 8h2v1H2zM6 8h2v1H6zM4 6h2v1H4z"/></svg></span>LAZYTRACK</a>
+    <a class="tourbtn admin-only" id="adminBtn" href="#tab=admin" title="Admin: ideas, users, announcements, test lab">🛠 Admin</a>
     <button type="button" class="tourbtn" id="tourBtn" title="A quick guided tour of LazyTrack">🧭 Tour</button>
     <div class="daynav" role="group" aria-label="Choose day">
       <button id="prevDay" aria-label="Previous day">‹</button>
@@ -895,6 +930,7 @@ applyTheme();
 
   <!-- ================================================== HOME: the pet + the essentials -->
   <main id="home" class="view">
+    <div id="newsBox"></div>
     <section class="card petcard" id="petcard">
       <div class="pettop">
         <button type="button" class="petbox" id="petBox" aria-label="Dress up Mochi"><div class="pet" id="pet" role="img" aria-label="Your pet"></div><span class="dress" aria-hidden="true">👕</span></button>
@@ -1228,6 +1264,62 @@ applyTheme();
     </section>
     </div>
   </main>
+  <!-- ================================================== ADMIN (only for the admin account) -->
+  <main id="admin" class="view">
+    <section class="card pad">
+      <h2>🛠 Admin</h2>
+      <p class="sub">Only you see this page: what people ask for, who's using LazyTrack, news for everyone, and a lab to try things without touching your data.</p>
+      <nav class="setcats" id="admCats" aria-label="Admin sections">
+        <button type="button" data-goas="overview">📊 Overview</button><button type="button" data-goas="ideas">💡 Ideas</button>
+        <button type="button" data-goas="news">📣 Announcements</button><button type="button" data-goas="users">👥 Users</button>
+        <button type="button" data-goas="lab">🧪 Test lab</button>
+      </nav>
+    </section>
+    <section class="card pad" id="admNo" hidden></section>
+    <section class="card pad" data-as="overview" id="admOverview"><p class="note">Loading…</p></section>
+    <section class="card pad" data-as="ideas">
+      <h2>💡 Ideas from people</h2>
+      <p class="sub">Everything sent with the + button. Set a status and the person sees it next to their idea. Delete spam with 🗑.</p>
+      <div class="inbox" id="ideaInbox"><p class="note">Loading…</p></div>
+    </section>
+    <section class="card pad" data-as="news">
+      <h2>📣 Announcements</h2>
+      <p class="sub">A short message on everyone's Home: a new feature, a fix, maintenance. People can close it. It reaches them within about 10 minutes.</p>
+      <textarea id="nBody" class="admsearch" style="max-width:none;min-height:80px" maxlength="280" placeholder="e.g. New: Mochi can wear a Christmas hat 🎄 Update from Settings → App"></textarea>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:10px">
+        <div class="ichips" id="nKind"></div><span class="note" id="nCount"></span>
+        <button type="button" class="btn primary" id="nPost" style="margin-left:auto">Post to everyone</button>
+      </div>
+      <div class="label" style="margin-top:14px">PREVIEW</div><div id="nPreview"></div>
+      <div class="label" style="margin-top:18px">POSTED</div><div id="nList"><p class="note">Loading…</p></div>
+    </section>
+    <section class="card pad" data-as="users">
+      <h2>👥 Users</h2>
+      <p class="sub">Everyone with a LazyTrack account. "Last active" is the last time their app sent their card. Only Mochi info shows here, never anyone's habits.</p>
+      <input class="admsearch" id="uSearch" placeholder="Search name or @username" autocomplete="off">
+      <div id="uList"><p class="note">Loading…</p></div>
+    </section>
+    <section class="card pad" data-as="lab">
+      <h2>🧪 Test lab</h2>
+      <p class="sub">Try every state and screen. Nothing here logs anything or changes your data.</p>
+      <div class="lab">
+        <div class="petbox scene" id="labBox"><div class="pet" id="labPet"></div></div>
+        <div class="labctl" id="labCtl"></div>
+      </div>
+      <label class="labflag"><input type="checkbox" id="labHome"> Show this Mochi on Home too (until you turn it off or restart)</label>
+      <div class="label" style="margin-top:18px">SCREENS AND POPUPS</div>
+      <div class="labbtns">
+        <button type="button" class="btn" data-lab="rip">💀 Death screen</button>
+        <button type="button" class="btn" data-lab="smoke">📷 Smoking popup</button>
+        <button type="button" class="btn" data-lab="tour">🧭 Guided tour</button>
+        <button type="button" class="btn" data-lab="idea">💡 Ideas form</button>
+        <button type="button" class="btn" data-lab="update">✨ "Updated" message</button>
+        <button type="button" class="btn" data-lab="toast">🔔 Toast with undo</button>
+        <button type="button" class="btn" data-lab="news">📣 Announcement on Home</button>
+      </div>
+    </section>
+  </main>
+
   <main id="settings" class="view">
     <nav class="setcats" id="setCats" aria-label="Settings sections">
       <button type="button" data-sc="account">👤 Account</button><button type="button" data-sc="habits">🎯 Habits</button>
@@ -1261,11 +1353,6 @@ applyTheme();
         <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="tSave">Save targets</button><span class="note" id="tNote"></span></div>
       </section>
 
-      <section class="card pad" id="sIdeas" data-cat="app" hidden>
-        <h2>💡 Ideas from people</h2>
-        <p class="sub">What everyone sent with the + button. Only you see this. Set a status and they see it next to their idea.</p>
-        <div class="inbox" id="ideaInbox"><p class="note">Loading…</p></div>
-      </section>
       <section class="card pad" data-cat="app">
         <h2>Updates</h2>
         <p class="sub">LazyTrack updates itself: it checks for new versions a minute after starting and every few hours.</p>
@@ -1455,7 +1542,7 @@ async function loadHabits() {
 }
 const SOURCE = {camera: "noticed by the webcam", manual: "logged by you", phone: "from your phone", dashboard: "logged by you",
                 shortcut: "via Siri or a shortcut", geofence: "logged automatically at the gym", food_photo: "from a food photo"};
-const TABS = {home: "Home", habits: "Habits", screen: "Screen", school: "School", friends: "Friends", settings: "Settings", docs: "Docs"};
+const TABS = {home: "Home", habits: "Habits", screen: "Screen", school: "School", friends: "Friends", settings: "Settings", docs: "Docs", admin: "Admin"};
 // which tab a detail page belongs to
 const tabOf = k => SCREEN.some(s => s.k === k) && k !== "coding" ? "screen" : ["coding", "commits", "github"].includes(k) ? "school" : "habits";
 
@@ -2181,8 +2268,10 @@ function drawPet(mood, label, tier = "okay", state = {}) {
   const L = (O && O.life) || {};
   $("pet").classList.toggle("baby0", !!L.baby && L.age === 0);
   $("pet").classList.toggle("baby1", !!L.baby && L.age > 0);
-  petAnim.set({mood, tier, ...state});
+  if (LAB_PET) { mood = LAB_PET.mood; tier = LAB_PET.tier; $("petcard").dataset.mood = mood; }
+  petAnim.set({mood, tier, ...state, ...(LAB_PET ? {high: LAB_PET.high, drunk: LAB_PET.drunk, coughy: LAB_PET.coughy} : {})});
 }
+let LAB_PET = null;   // the Test lab's "show this Mochi on Home"
 
 /**
  * What today did to Mochi, from the logs: high (weed), drunk (alcohol), coughy (cigarettes).
@@ -2805,7 +2894,7 @@ const Q_LABEL = {Cigarette: "🚬 Cigarette", Joint: "🌿 Joint", "Already regi
 const question = {
   shown: 0, done: new Set(),
   async poll() {
-    if (!AUTH.logged_in || document.hidden) return;
+    if (!AUTH.logged_in || document.hidden || this.shown < 0) return;   // < 0: the Test lab's popup
     try {
       const r = await api("/api/camera/question?visible=1"); if (!r.ok) return;
       const q = await r.json();
@@ -2824,6 +2913,7 @@ const question = {
   },
   hide() { this.shown = 0; $("qModal").hidden = true; },
   async answer(id, a) {
+    if (id < 0) { this.hide(); toast(`Test popup: you picked "${a}". Nothing was logged.`, null); return; }
     this.done.add(id); this.hide();
     try { await post("/api/camera/answer", {id, answer: a}); } catch (_) {}
     toast(a === "Cigarette" || a === "Joint" ? `Logged a ${a.toLowerCase()}. Camera off for a bit so it isn't counted twice.`
@@ -2880,6 +2970,9 @@ setInterval(() => { if (document.body.dataset.view === "home" && !document.hidde
 let CLOUD = {connected: false};
 async function refreshCloud() {
   try { const r = await api("/api/cloud/state"); if (r.ok) CLOUD = await r.json(); } catch (_) {}
+  // the Admin button: asked once per login (the server keeps the answer for 10 minutes)
+  if (CLOUD.connected && admin.askedFor !== CLOUD.uid) { admin.askedFor = CLOUD.uid; admin.check(); }
+  if (!CLOUD.connected && admin.is) { admin.askedFor = null; admin.is = false; document.body.classList.remove("is-admin"); }
 }
 async function updateBadge() {
   if (!CLOUD.connected) { $("fBadge").hidden = true; return; }
@@ -3274,6 +3367,7 @@ const rip = {
 };
 $("ripGo").addEventListener("click", async () => {
   $("ripModal").hidden = true;
+  if (rip.preview) { rip.preview = false; rip.shown = null; return; }   // the Test lab's preview
   try { await post("/api/life/seen", {}); } catch (_) {}
   render();
 });
@@ -3301,7 +3395,8 @@ const ideaBox = {
     const area = (IDEA_AREAS.find(a => a[0] === i.area) || ["", i.area])[1];
     return `<div class="it"><span class="t">${esc(i.title)}</span>${i.body ? `<span class="b">${esc(i.body)}</span>` : ""}
       <span class="row"><span class="m">${admin ? `@${esc(i.username || "?")} · ` : ""}${esc(area)} · ${esc((IDEA_WANT.find(w => w[0] === i.want) || ["", ""])[1])} · ${when}</span>
-      ${admin ? `<select data-istatus="${i.id}" aria-label="Status">${Object.entries(IDEA_STATUS).map(([k, n]) => `<option value="${k}" ${i.status === k ? "selected" : ""}>${n}</option>`).join("")}</select>`
+      ${admin ? `<select data-istatus="${i.id}" aria-label="Status">${Object.entries(IDEA_STATUS).map(([k, n]) => `<option value="${k}" ${i.status === k ? "selected" : ""}>${n}</option>`).join("")}</select>
+        <button type="button" class="st" data-idel="${i.id}" style="cursor:pointer" title="Delete this idea">🗑</button>${i.platform ? `<span class="m">${esc(OS_NAME[i.platform] || i.platform)}${i.version ? " · " + esc(i.version) : ""}</span>` : ""}`
               : `<span class="st ${esc(i.status)}">${IDEA_STATUS[i.status] || i.status}</span>`}</span></div>`;
   },
   async mine() {
@@ -3326,10 +3421,9 @@ const ideaBox = {
     } catch (e) { $("iNote").textContent = String(e.message || "Couldn't send it right now."); $("iSend").disabled = false; }
   },
   async inbox() {
-    if (!CLOUD.connected) { $("sIdeas").hidden = true; return; }
     let r;
-    try { r = await (await api("/api/cloud/ideas")).json(); } catch (_) { $("sIdeas").hidden = true; return; }
-    $("sIdeas").hidden = !r.admin;
+    try { r = await (await api("/api/cloud/ideas")).json(); } catch (_) { $("ideaInbox").innerHTML = `<p class="note">Can't reach the server right now.</p>`; return; }
+    if (r.missing) { $("ideaInbox").innerHTML = `<p class="note">The ideas table isn't set up yet: run supabase/admin.sql (see the top of this page).</p>`; return; }
     if (!r.admin) return;
     const all = r.ideas || [], by = s => all.filter(i => i.status === s).length;
     const sort = this.sort || "new";
@@ -3357,6 +3451,193 @@ document.addEventListener("change", async e => {
   const sel = e.target.closest("[data-istatus]"); if (!sel) return;
   try { await post("/api/cloud/idea/status", {id: +sel.dataset.istatus, status: sel.value}); toast("Status saved", null); } catch (_) {}
   ideaBox.inbox();
+});
+
+// ---------------------------------------------------------------- announcements on Home
+// Posted from Admin → Announcements. Closing one hides it on this device.
+const NEWS_KIND = {info: ["ℹ️", "Info"], new: ["✨", "New"], warn: ["⚠️", "Heads up"]};
+const newsHTML = (n, close) => `<div class="newsbar ${esc(n.kind)}" role="status"><span aria-hidden="true">${(NEWS_KIND[n.kind] || NEWS_KIND.info)[0]}</span><p>${esc(n.body)}</p>${close ? `<button type="button" data-newsx="${n.id}" aria-label="Close">×</button>` : ""}</div>`;
+const news = {
+  list: [], t: 0, test: null,
+  closed() { try { return JSON.parse(localStorage.getItem("lt-news-closed") || "[]"); } catch (_) { return []; } },
+  async draw() {
+    if (CLOUD.connected && Date.now() - this.t > 120000) {
+      this.t = Date.now();
+      try { const r = await api("/api/cloud/news"); if (r.ok) this.list = (await r.json()).news || []; } catch (_) {}
+    }
+    const shut = this.closed(), show = [...(this.test ? [this.test] : []), ...this.list.filter(n => !shut.includes(n.id))];
+    $("newsBox").innerHTML = show.map(n => newsHTML(n, true)).join("");
+  },
+};
+document.addEventListener("click", e => {
+  const x = e.target.closest("[data-newsx]"); if (!x) return;
+  const id = x.dataset.newsx;
+  if (id === "test") news.test = null;
+  else try { localStorage.setItem("lt-news-closed", JSON.stringify([...news.closed(), +id].slice(-50))); } catch (_) {}
+  news.draw();
+});
+
+// ---------------------------------------------------------------- admin page (#tab=admin)
+// Who's admin is decided by the database (supabase/admin.sql); this page only shows what it allows.
+const OS_NAME = {darwin: "Mac", win32: "Windows", linux: "Linux", "?": "older app"};
+const ADMIN_SECS = ["overview", "ideas", "news", "users", "lab"];
+const admin = {
+  is: false, data: null, newsList: [], kind: "info", sure: null, lab: {mood: "happy", tier: "okay", high: 0, drunk: 0, coughy: 0, place: ""}, labT: null, labN: 0,
+  async check(fresh) {
+    let v = false;
+    if (CLOUD.connected) try { const r = await api(`/api/cloud/admin${fresh ? "?fresh=1" : ""}`); if (r.ok) v = !!(await r.json()).admin; } catch (_) { v = this.is; }
+    this.is = v; document.body.classList.toggle("is-admin", v);
+    return v;
+  },
+  async show(sec) {
+    sec = ADMIN_SECS.includes(sec) ? sec : "overview";
+    document.querySelectorAll("#admCats [data-goas]").forEach(b => b.setAttribute("aria-pressed", b.dataset.goas === sec));
+    await refreshCloud();
+    const ok = await this.check(true);
+    $("admNo").hidden = ok;
+    document.querySelectorAll("#admin [data-as]").forEach(s => s.classList.toggle("offcat", !ok || s.dataset.as !== sec));
+    $("admCats").hidden = !ok;
+    if (!ok) {
+      $("admNo").innerHTML = `<h2>Not an admin (yet)</h2><p class="sub">${CLOUD.connected
+        ? `To make <b>@${esc(CLOUD.username || "you")}</b> the admin: open <b>supabase/admin.sql</b> from the LazyTrack repo, put your username on the line near the top, paste the whole file in Supabase → SQL Editor and press Run. Then come back here.`
+        : `Log in to your LazyTrack account first (Friends tab), then come back.`}</p>`;
+      return;
+    }
+    if (sec !== "lab") this.stopLab();
+    ({overview: () => this.overview(), ideas: () => ideaBox.inbox(), news: () => this.loadNews(), users: () => this.users(), lab: () => this.startLab()})[sec]();
+  },
+  async load(force) {
+    if (!this.data || force || Date.now() - this.data.t > 60000) {
+      const r = await api("/api/cloud/admin/overview"), j = await r.json();
+      if (!r.ok) throw new Error(j.error || "failed");
+      this.data = {...j, t: Date.now()};
+    }
+    return this.data;
+  },
+  bars(obj, label = k => k) {
+    const rows = Object.entries(obj || {}).sort((a, b) => b[1] - a[1]), max = Math.max(1, ...rows.map(r => r[1]));
+    return rows.map(([k, n]) => `<div class="hbar"><span class="k" title="${esc(label(k))}">${esc(label(k))}</span><span class="bar"><i style="width:${Math.round(n / max * 100)}%"></i></span><span class="n">${n}</span></div>`).join("")
+      || `<p class="note">Nothing yet.</p>`;
+  },
+  async overview() {
+    let d;
+    try { d = await this.load(); } catch (e) { $("admOverview").innerHTML = `<p class="note">Couldn't load: ${esc(e.message)}. If it says a function is missing, run supabase/admin.sql again.</p>`; return; }
+    const s = d.stats || {}, me = (d.users || []).find(u => u.username && CLOUD.username && u.username.toLowerCase() === CLOUD.username.toLowerCase()) || {};
+    const tile = (n, l) => `<div class="admtile"><b>${n ?? 0}</b><span>${l}</span></div>`;
+    const days = [...Array(30)].map((_, i) => shiftDay(todayISO(), i - 29)), su = Object.fromEntries((s.signups || []).map(x => [x.d, x.n]));
+    const smax = Math.max(1, ...days.map(x => su[x] || 0));
+    const ideas = s.ideas || {};
+    $("admOverview").innerHTML = `<h2>📊 Overview</h2>
+      <div class="admtiles">${tile(s.users, "PEOPLE")}${tile(s.new_7d, "NEW THIS WEEK")}${tile(s.active_1d, "ACTIVE TODAY")}${tile(s.active_7d, "ACTIVE THIS WEEK")}${tile(s.friendships, "FRIENDSHIPS")}${tile(s.messages_7d, "MESSAGES THIS WEEK")}</div>
+      <div class="admgrid">
+        <div><div class="label">SIGN-UPS, LAST 30 DAYS</div><div class="spark" title="Sign-ups per day">${days.map(x => `<i style="height:${Math.round((su[x] || 0) / smax * 100)}%" title="${x}: ${su[x] || 0}"></i>`).join("")}</div>
+          <p class="note" style="margin-top:6px">${days.reduce((a, x) => a + (su[x] || 0), 0)} in 30 days</p></div>
+        <div><div class="label">IDEAS</div>${Object.entries(IDEA_STATUS).map(([k, n]) => `<div class="hbar"><span class="k">${n}</span><span class="bar"><i style="width:${Math.round((ideas[k] || 0) / Math.max(1, ...Object.values(ideas)) * 100)}%"></i></span><span class="n">${ideas[k] || 0}</span></div>`).join("")}
+          <p class="note" style="margin-top:6px"><a href="#tab=admin&as=ideas">Open the ideas →</a></p></div>
+        <div><div class="label">VERSIONS IN USE (THIS WEEK)</div>${this.bars(s.versions, k => k === me.version ? `${k} (yours)` : k === "older" ? "before this page" : k)}</div>
+        <div><div class="label">COMPUTERS (THIS WEEK)</div>${this.bars(s.os, k => OS_NAME[k] || k)}</div>
+      </div>
+      <div class="actions" style="margin-top:14px"><button type="button" class="btn" id="admRefresh">↻ Refresh</button></div>`;
+  },
+  async users() {
+    let d;
+    try { d = await this.load(); } catch (e) { $("uList").innerHTML = `<p class="note">Couldn't load: ${esc(e.message)}</p>`; return; }
+    const q = $("uSearch").value.trim().toLowerCase().replace(/^@/, "");
+    const list = (d.users || []).filter(u => !q || (u.username || "").toLowerCase().includes(q) || (u.name || "").toLowerCase().includes(q));
+    $("uList").innerHTML = `<p class="note" style="margin-top:8px">${list.length} of ${(d.users || []).length}</p>
+      <div class="admtable"><table><thead><tr><th>PERSON</th><th>JOINED</th><th>LAST ACTIVE</th><th>MOCHI</th><th>APP</th><th>IDEAS</th><th>FRIENDS</th></tr></thead><tbody>
+      ${list.map(u => `<tr><td><b>${esc(u.name || u.username)}</b>${u.admin ? ` <span class="st">ADMIN</span>` : ""}<small>@${esc(u.username)}</small></td>
+        <td>${new Date(u.joined).toLocaleDateString([], {day: "numeric", month: "short", year: "2-digit"})}</td>
+        <td>${ago(u.seen)}</td>
+        <td>${u.hp == null ? "<small>no card yet</small>" : `${u.hp} HP<small>${esc((u.tier || "").toUpperCase())} · #${u.gen || 1} · ${u.age || 0}d · ${u.deaths || 0}💀</small>`}</td>
+        <td>${u.version ? esc(u.version) : "–"}<small>${esc(OS_NAME[u.os] || u.os || "")}</small></td>
+        <td>${u.ideas || 0}</td><td>${u.friends || 0}</td></tr>`).join("") || `<tr><td colspan="7">Nobody matches.</td></tr>`}
+      </tbody></table></div>`;
+  },
+  // ---- announcements
+  drawNewsForm() {
+    $("nKind").innerHTML = Object.entries(NEWS_KIND).map(([k, [e, n]]) => `<button type="button" data-nkind="${k}" aria-pressed="${k === this.kind}">${e} ${n}</button>`).join("");
+    const body = $("nBody").value.trim();
+    $("nCount").textContent = `${$("nBody").value.length}/280`;
+    $("nPreview").innerHTML = body ? newsHTML({id: "p", kind: this.kind, body}, false) : `<p class="note">Type a message to see it.</p>`;
+  },
+  async loadNews() {
+    this.drawNewsForm();
+    try { const r = await api("/api/cloud/admin/news"), j = await r.json(); if (!r.ok) throw new Error(j.error); this.newsList = j.news || []; }
+    catch (e) { $("nList").innerHTML = `<p class="note">Couldn't load: ${esc(e.message || "")}</p>`; return; }
+    $("nList").innerHTML = this.newsList.map(n => `<div class="newsitem ${n.active ? "" : "off"}">${newsHTML(n, false)}
+        <div class="row"><span class="m" style="font:400 12px var(--pixel)">${new Date(n.created_at).toLocaleString([], {day: "numeric", month: "short", hour: "2-digit", minute: "2-digit"})} · ${n.active ? "LIVE" : "HIDDEN"}</span>
+        <button type="button" class="btn" data-nset="${n.id}" data-on="${n.active ? 0 : 1}">${n.active ? "Hide" : "Show again"}</button>
+        <button type="button" class="btn" data-ndel="${n.id}">${this.sure === "n" + n.id ? "Sure? Delete" : "Delete"}</button></div></div>`).join("")
+      || `<p class="note">Nothing posted yet.</p>`;
+  },
+  async postNews() {
+    const body = $("nBody").value.trim();
+    if (body.length < 3) { toast("Write a few words first.", null); return; }
+    $("nPost").disabled = true;
+    try { const r = await post("/api/cloud/admin/news", {body, kind: this.kind}); const j = await r.json(); if (!r.ok) throw new Error(j.error);
+      $("nBody").value = ""; news.t = 0; toast("Posted. Everyone sees it within about 10 minutes 📣", null); }
+    catch (e) { toast(String(e.message || "Couldn't post it."), null); }
+    $("nPost").disabled = false; this.loadNews();
+  },
+  // ---- test lab
+  labState() { return {...this.lab, high: +this.lab.high, drunk: +this.lab.drunk, coughy: +this.lab.coughy}; },
+  drawLabCtl() {
+    const sel = (k, opts) => `<label for="lab_${k}">${{mood: "Mood", tier: "Health", high: "High 🌿", drunk: "Drunk 🍺", coughy: "Cough 🚬", place: "Place"}[k]}</label>
+      <select id="lab_${k}" data-labk="${k}">${opts.map(([v, n]) => `<option value="${v}" ${String(this.lab[k]) === String(v) ? "selected" : ""}>${n}</option>`).join("")}</select>`;
+    const lv = [[0, "no"], [1, "a bit"], [2, "more"], [3, "a lot"]];
+    $("labCtl").innerHTML = sel("mood", ["happy", "proud", "meh", "smoky", "sleepy"].map(m => [m, m]))
+      + sel("tier", TIERS.map(t => [t[1], t[2]])) + sel("high", lv) + sel("drunk", lv) + sel("coughy", lv)
+      + sel("place", [["", "your place"], ...Object.entries(MOCHI.places).map(([k, p]) => [k, p.n])]);
+    $("labHome").checked = !!LAB_PET;
+  },
+  startLab() {
+    this.drawLabCtl();
+    if (this.labT) return;
+    const draw = () => {
+      if (document.hidden) return;
+      const b = this.labState(), n = ++this.labN, now = Date.now();
+      const coughing = b.coughy && n % Math.max(4, 16 - b.coughy * 4) < 2;
+      const dx = b.drunk || b.high ? Math.floor(n / 6) % 3 - 1 : 0;
+      $("labPet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, n % 14 === 0, {high: b.high, drunk: b.drunk, cough: coughing, dx, frame: Math.floor(n / 2), breath: calm && Math.floor(now / 1700) % 2 === 1});
+      setPlace($("labBox"), b.place || PET_LOOK.place, {frame: Math.floor(n / 2), high: b.high, tier: b.tier, soft: softColor(PET_LOOK)});
+      const motion = b.drunk ? "drunk" + b.drunk : b.high ? "high" + b.high : "bob";
+      $("labPet").className = "pet" + (calm ? " " + motion : "");
+    };
+    draw(); this.labT = setInterval(draw, 300);
+  },
+  stopLab() { clearInterval(this.labT); this.labT = null; },
+  labAction(a) {
+    const L = (O && O.life) || {};
+    if (a === "rip") { rip.preview = true; rip.show({died: "lab" + Date.now(), gen: L.gen || 1, days: L.age || 12, cause: {e: "🚬", n: "Cigarettes"}}, {gen: (L.gen || 1) + 1, best: L.best || {days: 12}, deaths: (L.deaths || 0) + 1}); }
+    if (a === "smoke") question.show({id: -Date.now(), buttons: ["Cigarette", "Joint", "Already registered", "Neither"]});
+    if (a === "tour") tour.start();
+    if (a === "idea") ideaBox.open();
+    if (a === "update") toast("✨ LazyTrack updated: this is what people see after an update", null);
+    if (a === "toast") toast("Logged a test. (Undo does nothing here)", null);
+    if (a === "news") { const body = $("nBody").value.trim() || "This is how an announcement looks on Home."; news.test = {id: "test", kind: this.kind, body}; go({tab: "home"}); }
+  },
+};
+document.addEventListener("click", async e => {
+  const g = e.target.closest("[data-goas]"); if (g) { go({tab: "admin", as: g.dataset.goas}); return; }
+  if (e.target.closest("#admRefresh")) { admin.data = null; admin.overview(); return; }
+  const k = e.target.closest("[data-nkind]"); if (k) { admin.kind = k.dataset.nkind; admin.drawNewsForm(); return; }
+  if (e.target.closest("#nPost")) { admin.postNews(); return; }
+  const ns = e.target.closest("[data-nset]");
+  if (ns) { try { await post("/api/cloud/admin/news/set", {id: +ns.dataset.nset, active: ns.dataset.on === "1"}); news.t = 0; } catch (_) {} admin.loadNews(); return; }
+  const nd = e.target.closest("[data-ndel]");
+  if (nd) { if (admin.sure !== "n" + nd.dataset.ndel) { admin.sure = "n" + nd.dataset.ndel; admin.loadNews(); return; }
+    admin.sure = null; try { await post("/api/cloud/admin/news/set", {id: +nd.dataset.ndel, delete: true}); news.t = 0; } catch (_) {} admin.loadNews(); return; }
+  const idl = e.target.closest("[data-idel]");
+  if (idl) { if (admin.sure !== "i" + idl.dataset.idel) { admin.sure = "i" + idl.dataset.idel; idl.textContent = "Sure? 🗑"; return; }
+    admin.sure = null; try { await post("/api/cloud/idea/delete", {id: +idl.dataset.idel}); toast("Idea deleted", null); admin.data = null; } catch (_) {} ideaBox.inbox(); return; }
+  const lb = e.target.closest("[data-lab]"); if (lb) admin.labAction(lb.dataset.lab);
+});
+document.addEventListener("input", e => { if (e.target.id === "nBody") admin.drawNewsForm(); if (e.target.id === "uSearch") admin.users(); });
+document.addEventListener("change", e => {
+  const s = e.target.closest("[data-labk]");
+  if (s) { admin.lab[s.dataset.labk] = s.value; if (LAB_PET) LAB_PET = admin.labState(); }
+  if (e.target.id === "labHome") { LAB_PET = e.target.checked ? admin.labState() : null; toast(LAB_PET ? "Home now shows the Test lab's Mochi" : "Home shows the real Mochi again", null); }
 });
 
 // ---------------------------------------------------------------- inside the LazyTrack app window
@@ -3606,6 +3887,7 @@ const ENTER = {
   settings: ["#sForm > section", "#sForm > .actions"],
   friends: ["#fConnect > *", "#fMain > *", "#fProfile > *"],
   docs: ["#docs .card"],
+  admin: ["#admin > .card:not([hidden]):not(.offcat)"],
 };
 function entrance(view) {
   if (!calm) return;
@@ -3630,17 +3912,19 @@ async function render() {
   const day = selectedDay();
   $("dayLabel").textContent = dayName(day);
   $("nextDay").disabled = day >= todayISO();
-  document.querySelector(".daynav").style.visibility = view === "settings" || view === "friends" || view === "docs" ? "hidden" : "";
+  document.querySelector(".daynav").style.visibility = ["settings", "friends", "docs", "admin"].includes(view) ? "hidden" : "";
   if (view !== "friends") chat.stop();
+  if (view !== "admin") admin.stopLab();
   updateBadge();
   try {
     if (view === "detail") await loadDetail(r.k);
-    else if (view === "settings") { settingsCat(r.sc); settingsFor(); ideaBox.inbox(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
+    else if (view === "admin") await admin.show(r.as);
+    else if (view === "settings") { settingsCat(r.sc); settingsFor(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
       ({home: renderHome, habits: renderHabits, screen: renderScreen, school: renderSchool, friends: renderFriends})[view]();
-      if (view === "home") camWarn();
+      if (view === "home") { camWarn(); news.draw(); }
     }
     $("offline").style.display = "none";
     if (animNow) entrance(view);
