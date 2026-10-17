@@ -1379,6 +1379,13 @@ applyTheme();
               <label><input type="radio" name="ui_motion" value="system"> Like my computer</label>
               <label><input type="radio" name="ui_motion" value="off"> Off</label>
             </div></div>
+          <div class="field"><label>Sounds</label>
+            <p class="hint">A little chiptune when a friend sends you a message or a friend request.</p>
+            <div class="seg" role="radiogroup">
+              <label><input type="radio" name="ui_sound" value="on"> On</label>
+              <label><input type="radio" name="ui_sound" value="off"> Off</label>
+            </div>
+            <div class="actions" style="margin-top:8px"><button type="button" class="btn" data-sfx="msg">▶ Message</button><button type="button" class="btn" data-sfx="req">▶ Friend request</button></div></div>
           <div class="field"><label>Light or dark</label>
             <div class="seg" role="radiogroup">
               <label><input type="radio" name="ui_mode" value="auto"> Auto</label>
@@ -2976,14 +2983,59 @@ async function refreshCloud() {
   if (CLOUD.connected && admin.askedFor !== CLOUD.uid) { admin.askedFor = CLOUD.uid; admin.check(); }
   if (!CLOUD.connected && admin.is) { admin.askedFor = null; admin.is = false; document.body.classList.remove("is-admin"); }
 }
+/**
+ * Little chiptune sounds, made on the spot with WebAudio (no sound files).
+ * msg = a new DM, req = a new friend request. Off in Settings > Look > Sounds.
+ */
+const sfx = {
+  ac: null, last: {},
+  ctx() {
+    try { this.ac = this.ac || new (window.AudioContext || window.webkitAudioContext)(); if (this.ac.state === "suspended") this.ac.resume(); } catch (_) {}
+    return this.ac;
+  },
+  on() { return (themePrefs().sound || "on") !== "off"; },
+  notes: {   // [frequency Hz, start s, length s]
+    msg: {wave: "square", vol: .06, n: [[988, 0, .07], [1319, .08, .12]]},                      // bloop-bleep
+    req: {wave: "triangle", vol: .16, n: [[523, 0, .09], [659, .09, .09], [784, .18, .09], [1047, .27, .2]]},   // ta-da
+  },
+  play(kind, force) {
+    if (!force && !this.on()) return;
+    const now = Date.now();
+    if (!force && now - (this.last[kind] || 0) < 1500) return;   // the badge and the open chat can both notice the same message
+    this.last[kind] = now;
+    const ac = this.ctx(), s = this.notes[kind]; if (!ac || !s) return;
+    const t0 = ac.currentTime + .02;
+    for (const [f, at, len] of s.n) {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = s.wave; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t0 + at);
+      g.gain.linearRampToValueAtTime(s.vol, t0 + at + .01);
+      g.gain.exponentialRampToValueAtTime(.0001, t0 + at + len);
+      o.connect(g).connect(ac.destination);
+      o.start(t0 + at); o.stop(t0 + at + len + .02);
+    }
+  },
+};
+// browsers only let a page make sound after you've clicked something once
+["pointerdown", "keydown"].forEach(ev => addEventListener(ev, () => sfx.ctx(), {once: true}));
+
+let seenUnread = null;   // {messages, requests} from the last check; null = first check (no sound for old ones)
 async function updateBadge() {
-  if (!CLOUD.connected) { $("fBadge").hidden = true; return; }
+  if (!CLOUD.connected) { $("fBadge").hidden = true; seenUnread = null; return; }
   try {
     const r = await api("/api/cloud/unread"); if (!r.ok) return;
-    const n = (await r.json()).count;
+    const u = await r.json(), n = u.count;
     $("fBadge").hidden = !n; $("fBadge").textContent = n > 9 ? "9+" : n;
+    if (seenUnread) {
+      const inFriends = document.body.dataset.view === "friends";
+      if ((u.requests || 0) > seenUnread.requests) { sfx.play("req"); if (!inFriends) toast("👋 New friend request", null); }
+      else if ((u.messages || 0) > seenUnread.messages) { sfx.play("msg"); if (!inFriends) toast("💬 New message from a friend", null); }
+    }
+    seenUnread = {messages: u.messages || 0, requests: u.requests || 0};
   } catch (_) {}
 }
+// check every 15 seconds, also while LazyTrack is in the background, so the sound still plays
+setInterval(() => { if (CLOUD.connected) updateBadge(); }, 15000);
 const shareKeys = () => SHARE || [...HABITS.filter(h => !h.bad).map(h => h.k), ...SHOW_SCREEN.filter(k => ["coding", "commits", "screen"].includes(k))];
 function buildCard() {
   const t = O.today, keys = shareKeys();
@@ -3054,8 +3106,8 @@ const chat = {
         this.last = Math.max(this.last, m.id);
       }
       if (rows.length && (atBottom || this.first)) log.scrollTop = log.scrollHeight;
-      this.first = false;
-      if (rows.some(m => !m.mine)) updateBadge();
+      const first = this.first; this.first = false;
+      if (rows.some(m => !m.mine)) { if (!first) sfx.play("msg"); updateBadge(); }
     } catch (_) {}
   },
   open(uid) {
@@ -3823,6 +3875,7 @@ function drawThemePicker() {
   }).join("");
   document.querySelectorAll('[name="ui_mode"]').forEach(el => { el.checked = el.value === (p.mode || "auto"); });
   document.querySelectorAll('[name="ui_motion"]').forEach(el => { el.checked = el.value === (p.motion || "on"); });
+  document.querySelectorAll('[name="ui_sound"]').forEach(el => { el.checked = el.value === (p.sound || "on"); });
   const fx = FX[p.fx] ? p.fx : "mood";
   $("fxs").innerHTML = Object.entries(FX).map(([k, f]) => `<button type="button" class="fxb" role="radio" aria-checked="${k === fx}" data-fx="${k}">
       <span class="fxn">${esc(f.name)}</span><span class="fxd">${esc(f.desc)}</span></button>`).join("");
@@ -3831,6 +3884,8 @@ $("fxs").addEventListener("click", e => { const b = e.target.closest(".fxb"); if
 $("themes").addEventListener("click", e => { const b = e.target.closest(".th"); if (b) saveTheme({palette: b.dataset.palette}); });
 document.querySelectorAll('[name="ui_mode"]').forEach(el => el.addEventListener("change", () => saveTheme({mode: el.value})));
 document.querySelectorAll('[name="ui_motion"]').forEach(el => el.addEventListener("change", () => { saveTheme({motion: el.value}); location.reload(); }));
+document.querySelectorAll('[name="ui_sound"]').forEach(el => el.addEventListener("change", () => { saveTheme({sound: el.value}); if (el.value === "on") sfx.play("msg", true); }));
+document.addEventListener("click", e => { const b = e.target.closest("[data-sfx]"); if (b) sfx.play(b.dataset.sfx, true); });
 
 $("sForm").addEventListener("submit", async e => {
   e.preventDefault();

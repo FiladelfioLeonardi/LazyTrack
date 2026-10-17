@@ -300,6 +300,16 @@ def unread() -> int:
     return len(msgs) + len(reqs)
 
 
+def unread_detail() -> dict:
+    """Like unread(), split up, so the app can play the right sound for each."""
+    if not state()["connected"]:
+        return {"count": 0, "messages": 0, "requests": 0}
+    tok, me = _token(), state()["uid"]
+    msgs = _http("GET", f"/rest/v1/messages?receiver=eq.{me}&read_at=is.null&select=id", token=tok) or []
+    reqs = _http("GET", f"/rest/v1/friendships?addressee=eq.{me}&status=eq.pending&select=id", token=tok) or []
+    return {"count": len(msgs) + len(reqs), "messages": len(msgs), "requests": len(reqs)}
+
+
 def _uuid(s: str) -> str:
     s = str(s).strip().lower()
     if len(s) != 36 or any(ch not in "0123456789abcdef-" for ch in s):

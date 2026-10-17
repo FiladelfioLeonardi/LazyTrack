@@ -332,7 +332,7 @@ def make_handler(cfg: dict):
                 if path == "/api/cloud/messages":
                     return self._send(200, cloud.messages(qs.get("with", [""])[0], int(qs.get("after", ["0"])[0] or 0)))
                 if path == "/api/cloud/unread":
-                    return self._send(200, {"count": cloud.unread()})
+                    return self._send(200, cloud.unread_detail())
                 if path == "/api/cloud/ideas":
                     return self._send(200, cloud.ideas())
                 if path == "/api/cloud/admin":
