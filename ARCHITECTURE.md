@@ -358,3 +358,14 @@ How a request is let in (`_authed` in `dashboard.py`): a paired device with the 
 | see what's going on | run `./lt -v run` for detailed logs, or `./lt check` to test permissions and detection |
 
 After changing a `.py` file, restart (close `start.command` and open it again). After changing `dashboard.html`, just reload the page.
+
+## Mochi's life (life.py)
+
+HP carries over from day to day. Every night the finished day is settled: each tracked thing is
+scored against the user's own target (less of: on target = 0, under heals, over hurts; more of:
+last 7 days vs a daily or weekly goal), times its size (small 3 / medium 6 / big 10), plus 2 HP
+for being alive, capped at -25 / +15 a day. At 0 HP the pet dies and a baby (next generation)
+starts at 100. Targets for "less of" get ~10% tighter each week they're met on 5+ days.
+State lives in the kv table: `life` (gen, born, hp, settled, deaths, log, best) and `rules`
+(target/goal, per, size, auto, on). API: GET /api/life, POST /api/life/rules, POST /api/life/seen;
+/api/overview includes `life` (with today's live score) and `life_day` for past days.

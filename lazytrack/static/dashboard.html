@@ -170,6 +170,36 @@
   .tierb { font: 700 12px var(--pixel); background: #ffffff; border: 2px solid #1d1b20; border-radius: 7px; padding: 2px 7px; }
   .petcard[data-tier="legend"] .tierb { background: #f2b705; }
   .hpnext { font: 400 12px var(--pixel); opacity: .75; }
+  .hpday { font: 700 12px var(--pixel); border: 2px solid #1d1b20; border-radius: 7px; padding: 2px 7px; background: #c9f2d4; color: #0f6b34; }
+  .hpday.neg { background: #ffd0cc; color: #8f1d17; }
+  .hpwhy { font: 400 12px var(--pixel); color: inherit; opacity: .7; margin-left: auto; }
+  .lifeline { font: 400 12px var(--pixel); margin: 8px 0 0; opacity: .85; } .lifeline b { font-weight: 700; }
+  .newtargets { display: block; margin: 10px 0 0; padding: 9px 12px; border: 3px solid #1d1b20; border-radius: 12px; background: #fff3c4; color: #1d1b20; text-decoration: none; font-weight: 600; }
+  .critical { margin: 10px 0 0; padding: 9px 12px; border: 3px solid #1d1b20; border-radius: 12px; background: #ffd0cc; color: #1d1b20; font-weight: 700; }
+  /* a baby is smaller for its first days */
+  .petbox.scene .pet.baby0 { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
+  .petbox.scene .pet.baby1 { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
+  @media (max-width: 560px) { .petbox.scene .pet.baby0, .petbox.scene .pet.baby1 { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; } }
+  /* the RIP screen */
+  .ripcard { text-align: center; } .ripcard .tomb { display: grid; grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; margin: 4px auto 10px; width: max-content; }
+  .ripcard .tomb i { display: block; } .ripcard .stats { font: 400 13px var(--pixel); opacity: .8; margin: 6px 0 14px; }
+  /* targets */
+  .tlist { display: grid; gap: 8px; }
+  .trow { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; padding: 10px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--soft); }
+  .trow .te { font-size: 22px; grid-row: span 2; } .trow .tn { font-weight: 800; } .trow .tn small { display: block; font: 400 11px var(--pixel); color: var(--ink-3); margin-top: 2px; }
+  .trow .tc { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-weight: 600; }
+  .trow input[type=number] { width: 74px; padding: 6px 8px; border: 2px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); font: 700 15px var(--body); }
+  .trow select { padding: 6px 8px; border: 2px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); font: 600 14px var(--body); }
+  .trow label { display: inline-flex; align-items: center; gap: 6px; } .trow .off { opacity: .55; }
+  .tgroup { font: 700 12px var(--pixel); margin: 12px 0 4px; opacity: .8; }
+  #welcome .tlist { max-height: min(52vh, 520px); overflow-y: auto; padding: 2px; text-align: left; }
+  /* docs */
+  .docs { display: grid; gap: 14px; } .docs .card { line-height: 1.6; } .docs h2 { margin-top: 0; } .docs h3 { margin: 18px 0 4px; font-size: 17px; }
+  .docs p, .docs li { max-width: 72ch; } .docs code { font: 13px ui-monospace, Menlo, monospace; background: var(--soft); border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
+  .docs table { border-collapse: collapse; margin: 8px 0; font-size: 14px; } .docs th, .docs td { border: 2px solid var(--line); padding: 5px 9px; text-align: left; }
+  .docs th { background: var(--soft); } .docs .toc { display: flex; flex-wrap: wrap; gap: 8px; }
+  .docs .toc a { padding: 6px 10px; border: 2px solid var(--line); border-radius: 9px; background: var(--card); color: var(--ink); text-decoration: none; font-weight: 700; font-size: 14px; }
+  .docs .toc a:hover { background: var(--yellow); color: var(--on-fill); }
   .quests { display: grid; gap: 6px; }
   .quests .ql { font: 700 12px var(--pixel); opacity: .8; }
   .q { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; background: rgba(255,255,255,.6); border: 2px solid #1d1b20; border-radius: 10px; padding: 7px 11px; }
@@ -190,6 +220,7 @@
   .fcard .fpet { flex: none; width: 76px; height: 76px; background: #fff; border: 3px solid #1d1b20; border-radius: 14px; display: grid; place-items: center; }
   .fcard .fpet .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
   .fcard .fname b { font-size: 19px; display: block; line-height: 1.15; } .fcard .fname span { font: 400 12px var(--pixel); opacity: .75; }
+  .fcard .fgen { display: block; font: 400 11px var(--pixel); opacity: .8; margin-top: 2px; }
   .fcard .hpbar i { width: 11px; height: 11px; } .fcard .hprow { gap: 6px 8px; }
   .fstats { display: flex; flex-wrap: wrap; gap: 6px; }
   .fstats span { background: rgba(255,255,255,.65); border: 2px solid #1d1b20; border-radius: 8px; padding: 3px 8px; font: 700 13px var(--body); }
@@ -454,7 +485,7 @@
   .view { display: none; }
   body[data-view="friends"] #friends,
   body[data-view="home"] #home, body[data-view="habits"] #habits, body[data-view="screen"] #screen,
-  body[data-view="school"] #school, body[data-view="detail"] #detail, body[data-view="settings"] #settings { display: block; }
+  body[data-view="school"] #school, body[data-view="detail"] #detail, body[data-view="settings"] #settings, body[data-view="docs"] #docs { display: block; }
 
   /* ------------------------------------------------------------ calm motion (only when a page opens) */
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
@@ -663,7 +694,7 @@ applyTheme();
 
   <!-- setup, step 1: less of -->
   <div class="panel" id="pS1" inert><div class="pbox wide">
-    <div class="steps si" style="--i:0" aria-label="Step 1 of 3"><i class="on"></i><i></i><i></i></div>
+    <div class="steps si" style="--i:0" aria-label="Step 1 of 4"><i class="on"></i><i></i><i></i><i></i></div>
     <h1 class="ptitle si" style="--i:1">What do you want to do <u>less</u>?</h1>
     <p class="psub si" style="--i:2">Tap everything Mochi should keep an eye on. Nothing here is required, and you can change it any time in Settings.</p>
     <div class="hgrid" id="gBad"></div>
@@ -673,7 +704,7 @@ applyTheme();
 
   <!-- step 2: more of -->
   <div class="panel" id="pS2" inert><div class="pbox wide">
-    <div class="steps si" style="--i:0" aria-label="Step 2 of 3"><i class="done"></i><i class="on"></i><i></i></div>
+    <div class="steps si" style="--i:0" aria-label="Step 2 of 4"><i class="done"></i><i class="on"></i><i></i><i></i></div>
     <h1 class="ptitle si" style="--i:1">And what do you want <u>more</u> of?</h1>
     <p class="psub si" style="--i:2">These give Mochi HP. Log them with one tap on Home.</p>
     <div class="hgrid" id="gGood"></div>
@@ -683,12 +714,22 @@ applyTheme();
 
   <!-- step 3: screen stats + extras -->
   <div class="panel" id="pS3" inert><div class="pbox wide">
-    <div class="steps si" style="--i:0" aria-label="Step 3 of 3"><i class="done"></i><i class="done"></i><i class="on"></i></div>
+    <div class="steps si" style="--i:0" aria-label="Step 3 of 4"><i class="done"></i><i class="done"></i><i class="on"></i><i></i></div>
     <h1 class="ptitle si" style="--i:1">What should Mochi show from your <u>screen</u>?</h1>
     <p class="psub si" style="--i:2">Screen time is tracked by itself. Pick what goes next to Mochi.</p>
     <div class="hgrid" id="gScreen"></div>
     <div class="glabel si" style="--i:12">EXTRAS</div>
     <div class="hgrid" id="gMods"></div>
+    <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-next>Next <span aria-hidden="true">→</span></button></div>
+  </div></div>
+
+  <!-- step 4: targets -->
+  <div class="panel" id="pT" inert><div class="pbox wide">
+    <div class="steps si" style="--i:0" aria-label="Step 4 of 4"><i class="done"></i><i class="done"></i><i class="done"></i><i class="on"></i></div>
+    <h1 class="ptitle si" style="--i:1">Set your <u>targets</u>.</h1>
+    <p class="psub si" style="--i:2">Hitting a target is 0 HP for the day. Doing better heals Mochi, worse hurts it. Your normal from the last two weeks is filled in;
+      leave a "less of" one empty and Mochi learns it in your first week. Change them any time in Settings.</p>
+    <div class="si" style="--i:3" id="sTargetsSetup"></div>
     <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-next>Next <span aria-hidden="true">→</span></button></div>
   </div></div>
 
@@ -715,6 +756,16 @@ applyTheme();
     <div class="wrcolors" id="wrColors" hidden></div>
     <div class="wrgrid" id="wrGrid"></div>
     <div class="wrbtm"><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save</button></div>
+  </div>
+</div>
+<!-- when Mochi died: who it was, how long it lived, and the baby -->
+<div class="qmodal" id="ripModal" hidden role="dialog" aria-modal="true" aria-labelledby="ripTitle">
+  <div class="qcard ripcard">
+    <div class="tomb" id="ripTomb" aria-hidden="true"></div>
+    <h2 class="ptitle" id="ripTitle" style="font-size:26px">Rest in pixels, Mochi</h2>
+    <p class="psub" id="ripText"></p>
+    <p class="stats" id="ripStats"></p>
+    <div class="actions" style="justify-content:center"><button type="button" class="btn primary" id="ripGo">Meet the baby 🥚</button></div>
   </div>
 </div>
 <!-- the smoking question, shown on every open LazyTrack page (computer and phone) -->
@@ -883,8 +934,202 @@ applyTheme();
   </main>
 
   <!-- ================================================== SETTINGS -->
+  <!-- ================================================== DOCS: how everything works -->
+  <main id="docs" class="view">
+    <div class="docs">
+    <section class="card pad">
+      <h2>📖 How LazyTrack works</h2>
+      <p>LazyTrack tracks your day by itself (screen time, coding, commits, the webcam for smoking) and lets you log the rest with one tap.
+        Your pet <b>Mochi</b> lives on how you do: keep it alive as long as you can.</p>
+      <div class="toc">
+        <a href="#tab=docs&sec=start">Getting started</a><a href="#tab=docs&sec=hp">HP, life and death</a><a href="#tab=docs&sec=targets">Targets</a>
+        <a href="#tab=docs&sec=home">Home</a><a href="#tab=docs&sec=habits">Habits and logging</a><a href="#tab=docs&sec=screen">Screen time</a>
+        <a href="#tab=docs&sec=mochi">Mochi's looks and moods</a><a href="#tab=docs&sec=camera">Smoking detector</a><a href="#tab=docs&sec=friends">Account and friends</a>
+        <a href="#tab=docs&sec=phone">Your phone</a><a href="#tab=docs&sec=school">42 and GitHub</a><a href="#tab=docs&sec=updates">Updates</a>
+        <a href="#tab=docs&sec=data">Your data</a><a href="#tab=docs&sec=build">How it's built</a><a href="#tab=docs&sec=trouble">Troubleshooting</a>
+      </div>
+    </section>
+
+    <section class="card pad" id="doc-start">
+      <h2>Getting started</h2>
+      <ol>
+        <li><b>Install.</b> Mac: run <code>install.sh</code> once. Windows: install Python 3.12 (tick "Add python.exe to PATH"), then double-click <code>install.bat</code>.</li>
+        <li><b>Start.</b> Mac: <code>start.command</code>. Windows: <code>start.bat</code> (keep the black window open; minimize it). The app opens in your browser at <code>localhost:8042</code>.</li>
+        <li><b>Make your account</b>: name, username, email and password. The same account logs in on your other devices.</li>
+        <li><b>Setup</b>: pick what you want to do less of and more of (or add your own), what to show from your screen, extras (42, GitHub), then set your <a href="#tab=docs&sec=targets">targets</a>.</li>
+      </ol>
+      <p>LazyTrack has to be running to track. Both installers can start it with the computer.</p>
+    </section>
+
+    <section class="card pad" id="doc-hp">
+      <h2>HP, life and death</h2>
+      <p>Mochi has <b>HP from 0 to 100</b> and it <b>carries over from day to day</b>. A new Mochi starts at 100.
+        Every night at midnight the day is added up and HP goes into the next day. <b>If HP reaches 0 at midnight, Mochi dies</b>
+        and a baby hatches: the next generation (Mochi #2, #3…), back at 100 HP, wearing your outfit. The goal is to keep one Mochi alive as long as you can,
+        with as few deaths as possible. Home shows its age, generation, your record and your deaths; friends see them on your card.</p>
+      <h3>How a day is scored</h3>
+      <p>Every tracked thing is compared with <b>your own target</b>, not a fixed number, so it's fair whether you smoke 2 a day or 20.</p>
+      <ul>
+        <li><b>Things to do less of</b> (cigarettes, alcohol, YouTube minutes…): exactly on target = <b>0 HP</b>. Under = heals, over = hurts,
+          by how far you are from the target. The most it can give is its full size, the most it can take is 1.5× its size.
+          A target of 0 means quitting: a clean day gives half its size, each one takes half its size.</li>
+        <li><b>Things to do more of</b> (gym, water, coding…): measured over <b>the last 7 days</b> against your goal, so weekly goals (gym 3× a week) work too.
+          Nothing at all = a small loss (0.4× its size), goal reached = +0.6× its size, a bit more for going past it.</li>
+        <li><b>Size</b> is how much a thing matters: <b>small 3, medium 6, big 10 HP</b>. You pick it per habit.</li>
+        <li><b>+2 HP every day</b> just for being alive.</li>
+        <li><b>Limits:</b> one day can take at most <b>25 HP</b> and give at most <b>15</b>. So a healthy Mochi survives at least 4 terrible days in a row.</li>
+        <li>Days with no data at all (computer off, nothing logged) only get the +2.</li>
+      </ul>
+      <table><tr><th>Cigarettes today (target 10, big = 10 HP)</th><th>HP for cigarettes</th></tr>
+        <tr><td>0</td><td>+10</td></tr><tr><td>6</td><td>+4</td></tr><tr><td>10</td><td>0</td></tr><tr><td>15</td><td>−5</td></tr><tr><td>20</td><td>−10</td></tr><tr><td>25 or more</td><td>−15</td></tr></table>
+      <h3>During the day</h3>
+      <p>Home shows HP <i>with today's score so far</i> and a <b>TODAY +/−</b> badge. "Right now" tells you what the next one is worth: the next gym session, glass of water,
+        or what one more cigarette would cost. Below 20 HP Mochi is <b>critical</b>; if today would end at 0, Home warns you that Mochi dies tonight unless you turn the day around.</p>
+      <h3>Levels</h3>
+      <table><tr><th>HP</th><th>Level</th><th>What you see</th></tr>
+        <tr><td>90+</td><td>LEGENDARY</td><td>crown, sparkles, golden glow</td></tr><tr><td>72–89</td><td>SHINY</td><td>shiny pixels around Mochi</td></tr>
+        <tr><td>50–71</td><td>OKAY</td><td>normal</td></tr><tr><td>20–49</td><td>TIRED</td><td>a bit grey</td></tr><tr><td>0–19</td><td>CRITICAL</td><td>pale, bandage, gloomy</td></tr></table>
+      <h3>Deaths and babies</h3>
+      <p>When Mochi dies you see how long it lived and what hurt most in its last days. The baby is small for its first days and grows up.
+        Your record (longest life) stays forever.</p>
+    </section>
+
+    <section class="card pad" id="doc-targets">
+      <h2>Targets</h2>
+      <p>Set in the last step of the setup and any time in <a href="#tab=settings">Settings → Targets</a>.</p>
+      <ul>
+        <li><b>Less of:</b> "at most N a day" (minutes for screen time). Filled in with your normal from the last 2 weeks.
+          Leave it empty and Mochi <b>learns</b> it: the habit doesn't count for 7 days, then your average becomes the target.</li>
+        <li><b>Tighten 10% a week:</b> every week you stay under a target on 5 or more days, it gets about 10% lower (at least 1 lower, or 5 minutes).
+          That slowly walks you down toward quitting. Turn it off per habit if you'd rather lower it yourself.</li>
+        <li><b>More of:</b> "at least N a day" or "a week".</li>
+        <li><b>Size:</b> small / medium / big, how much it matters for HP.</li>
+        <li><b>Screen stats</b> only count for HP if "counts for HP" is ticked (coding, commits and total screen time are on by default).</li>
+      </ul>
+      <p>Changing a target recalculates today right away. Past days stay as they were.</p>
+    </section>
+
+    <section class="card pad" id="doc-home">
+      <h2>Home</h2>
+      <ul>
+        <li><b>Mochi</b> in its place (tap it to dress it up), the <b>stat sheet</b> next to it and what Mochi says about your day.</li>
+        <li><b>Arrows</b> compare with yesterday at the same time: ▲ = more, ▼ = less. Red = worse, green = better (more cigarettes = red ▲, more coding = green ▲).</li>
+        <li><b>Log buttons</b> for your habits; "More things to log" shows the rest. A wrong tap can be undone from the toast or the Habits tab.</li>
+        <li>The <b>‹ Today ›</b> buttons go back to earlier days.</li>
+      </ul>
+    </section>
+
+    <section class="card pad" id="doc-habits">
+      <h2>Habits and logging</h2>
+      <ul>
+        <li>Built-in habits: cigarettes, joints, vaping, junk food, alcohol, energy drinks, sweets, coffee; gym, walks, water, healthy meals, reading, meditation, stretching.</li>
+        <li><b>Your own</b>: any name and emoji, "less of" or "more of", and a size.</li>
+        <li>Removing a habit only hides it. Its history stays, and adding it back brings it all back.</li>
+        <li>The <b>Habits</b> tab shows charts per habit; tap a row for the details of any day.</li>
+      </ul>
+    </section>
+
+    <section class="card pad" id="doc-screen">
+      <h2>Screen time</h2>
+      <p>LazyTrack checks which app (and which browser tab) is in front every few seconds and puts it in a category: coding, YouTube, social and chat,
+        streaming, gaming, other websites or other apps. Idle time (no mouse or keyboard) and a locked screen don't count.
+        On Mac it reads the browser tab's address; on Windows it reads the tab's title (Windows doesn't allow more), so common sites are recognized by name.
+        Phone screen time comes from the iPhone (see <a href="#tab=docs&sec=phone">Your phone</a>).</p>
+    </section>
+
+    <section class="card pad" id="doc-mochi">
+      <h2>Mochi's looks and moods</h2>
+      <ul>
+        <li><b>Wardrobe</b> (tap Mochi on Home): looks, body, color, eyes, mouth, head, glasses, neck, outfit, something to hold, and the <b>place</b> behind it.
+          Everything is free. Most items can be <b>any color</b> (the color row and the rainbow picker). Friends see your Mochi on your card.</li>
+        <li><b>Places</b>: stadium show, rage show, moon base, neon rooftop, volcano, under the sea, cloud kingdom, arcade, and calm ones (sky, bedroom, park, beach)
+          whose sky follows the time of day.</li>
+        <li><b>Moods</b> follow your day: proud after lots of coding, smoky after more smoking than yesterday, sleepy late at night.</li>
+        <li><b>States</b>: weed makes it high (red eyes, smoke, swaying, for a couple of hours), alcohol makes it drunk (more drinks = dizzier),
+          cigarettes make it cough, especially on heavy days.</li>
+        <li><b>Idle</b>: it breathes, blinks, looks around and hops now and then. With "reduce motion" on in your system it stays still.</li>
+      </ul>
+    </section>
+
+    <section class="card pad" id="doc-camera">
+      <h2>Smoking detector</h2>
+      <p>The webcam looks for a cigarette or joint near your mouth, and for the glowing tip when you take a drag (it ignores lamps and RGB lights).
+        After a couple of drags it asks <b>"Cigarette, joint, already registered or neither?"</b> on the computer and on every open LazyTrack page, phone included.
+        <b>Already registered</b> means you logged it yourself: nothing is logged twice and the camera rests for about 10 minutes.
+        <b>Pictures never leave your computer</b>; only the answer is logged.</p>
+      <p>Settings → Smoking detector turns it on or off and shows the live view. If it misses you (weak webcam, colored light), run <code>train.bat</code> / the training to teach it your room.
+        <code>camtest.bat</code> tests the camera on its own.</p>
+    </section>
+
+    <section class="card pad" id="doc-friends">
+      <h2>Account and friends</h2>
+      <ul>
+        <li><b>One account</b> (email, username, password) works on all your devices. Change any of it in Settings → Edit account.</li>
+        <li><b>Friends</b>: add someone by username. You see each other's card: Mochi, HP, its age and generation, and the stats you choose to share
+          (good stuff is shared by default, bad habits stay private unless you share them). Tap a friend to chat.</li>
+        <li>Only your card and your chat messages go online (to the friends server). Everything else stays on your computer.</li>
+      </ul>
+    </section>
+
+    <section class="card pad" id="doc-phone">
+      <h2>Your phone</h2>
+      <p>The phone opens your LazyTrack from the computer through <b>Tailscale</b> (a free private connection between your own devices):
+        install it on both, log in with the same account, run <code>phone.bat</code> (Windows) or <code>./lt phone</code> (Mac), scan the QR code,
+        then Share → Add to Home Screen. The computer must be on with LazyTrack running.</p>
+    </section>
+
+    <section class="card pad" id="doc-school">
+      <h2>42 and GitHub</h2>
+      <p>Optional extras from the setup. <b>42</b>: blackhole days left, logtime and projects in the School tab. <b>GitHub</b>: commits count on Home and your commit streak shows on your card.</p>
+    </section>
+
+    <section class="card pad" id="doc-updates">
+      <h2>Updates</h2>
+      <p>LazyTrack updates itself from GitHub: it checks a minute after starting and every few hours, installs the new version and restarts.
+        In Settings → Updates, <b>Check for updates</b> looks for a new version; when one is found, <b>Update now</b> installs it
+        (and checking is off until you do). Your data is never touched by an update.</p>
+    </section>
+
+    <section class="card pad" id="doc-data">
+      <h2>Your data</h2>
+      <ul>
+        <li>Everything lives in one folder on your computer: <code>~/.lazytrack</code> (on Windows <code>C:\Users\you\.lazytrack</code>): the database <code>lazytrack.db</code> and <code>config.json</code>.</li>
+        <li>Back it up by copying that folder. Deleting your account (Settings) removes only the login; every log stays.</li>
+        <li>Online: only your friend card and chat messages, on the friends server. Camera pictures and screen details never leave the computer.</li>
+      </ul>
+    </section>
+
+    <section class="card pad" id="doc-build">
+      <h2>How it's built</h2>
+      <ul>
+        <li>A small Python program runs on your computer: a web server on port <b>8042</b> that serves this page, plus background workers
+          (screen tracker, webcam detector, GitHub/42 sync, updater). Data goes into a SQLite database.</li>
+        <li><code>lazytrack/dashboard.py</code> the web server and API · <code>summary.py</code> daily and weekly stats · <code>life.py</code> HP, targets, deaths and babies ·
+          <code>habits.py</code> which habits you track · <code>activity.py</code> screen time · <code>smoke.py</code> the webcam detector ·
+          <code>accounts.py</code> login · <code>cloud.py</code> friends · <code>updater.py</code> updates · <code>macos.py</code> / <code>windows.py</code> the system parts.</li>
+        <li><code>lazytrack/static/dashboard.html</code> is this whole app (Home, tabs, Mochi's pixel art and the wardrobe).</li>
+        <li>Command line: <code>./lt</code> (Mac) or <code>lt.bat</code> (Windows), e.g. <code>lt log cigarette</code> or <code>lt summary</code>.</li>
+      </ul>
+    </section>
+
+    <section class="card pad" id="doc-trouble">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><b>The page won't load:</b> LazyTrack isn't running. Start it again (start.command / start.bat).</li>
+        <li><b>Windows "protected your PC":</b> More info → Run anyway.</li>
+        <li><b>Camera doesn't work:</b> allow camera access for desktop apps in the system settings, close other apps using it, then check the live view in Settings.</li>
+        <li><b>Screen time looks low:</b> idle time and the lock screen don't count; on Windows unknown sites count as "Other websites".</li>
+        <li><b>Friends don't show up:</b> both need to be logged in and online; cards update every couple of minutes.</li>
+        <li><b>Something else:</b> <code>check.bat</code> on Windows shows what LazyTrack sees; send a screenshot of the black window.</li>
+      </ul>
+    </section>
+    </div>
+  </main>
   <main id="settings" class="view">
     <form id="sForm" autocomplete="off">
+      <section class="card pad docsbtn"><h2>How LazyTrack works</h2>
+        <p class="sub">Everything about Mochi, HP and targets, tracking, the camera, friends, your phone, updates and your data.</p>
+        <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a></div></section>
       <section class="card pad" id="sAccount"></section>
 
       <section class="card pad">
@@ -892,6 +1137,14 @@ applyTheme();
         <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.</p>
         <div class="hlist" id="hList"></div>
         <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
+      </section>
+
+      <section class="card pad" id="sTargets">
+        <h2>Targets</h2>
+        <p class="sub">How Mochi's HP is decided. Exactly on target = 0 HP for the day; better heals Mochi, worse hurts it.
+          <a href="#tab=docs&sec=hp">How HP works</a></p>
+        <div id="tEdit"><p class="note">Loading…</p></div>
+        <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="tSave">Save targets</button><span class="note" id="tNote"></span></div>
       </section>
 
       <section class="card pad">
@@ -1089,7 +1342,7 @@ async function loadHabits() {
 }
 const SOURCE = {camera: "noticed by the webcam", manual: "logged by you", phone: "from your phone", dashboard: "logged by you",
                 shortcut: "via Siri or a shortcut", geofence: "logged automatically at the gym", food_photo: "from a food photo"};
-const TABS = {home: "Home", habits: "Habits", screen: "Screen", school: "School", friends: "Friends", settings: "Settings"};
+const TABS = {home: "Home", habits: "Habits", screen: "Screen", school: "School", friends: "Friends", settings: "Settings", docs: "Docs"};
 // which tab a detail page belongs to
 const tabOf = k => SCREEN.some(s => s.k === k) && k !== "coding" ? "screen" : ["coding", "commits", "github"].includes(k) ? "school" : "habits";
 
@@ -1778,59 +2031,43 @@ let PET_LOOK = {...LOOK_DEFAULT};   // what Mochi wears, saved on the account (/
 const PET = {happy: "happy", smoky: "smoky", proud: "proud", sleepy: "sleepy", meh: "meh", legend: "proud", sick: "happy"};
 
 // ---------------------------------------------------------------- HP: how Mochi is doing
-// Every day starts fresh at 70 (OKAY). Bad stuff takes HP, good stuff gives it, and every
-// smoke-free hour heals a bit, so a bad day can always be turned around. Mochi never dies.
-const TIERS = [[90, "legend", "LEGENDARY"], [72, "shiny", "SHINY"], [50, "okay", "OKAY"], [30, "tired", "TIRED"], [0, "sick", "SICK"]];
+// HP lives on the server (life.py): it carries over from day to day, and every tracked thing
+// is scored against your own target (on target = 0, better heals, worse hurts). At 0 HP at
+// midnight Mochi dies and a baby hatches. This turns the server's numbers into what Home shows.
+const TIERS = [[90, "legend", "LEGENDARY"], [72, "shiny", "SHINY"], [50, "okay", "OKAY"], [20, "tired", "TIRED"], [0, "sick", "CRITICAL"]];
+const fmtHp = n => `${n > 0 ? "+" : ""}${Math.round(n * 10) / 10}`;
+const unitTxt = p => p.unit === "min" ? (v => hm(v * 60)) : (v => String(Math.round(v * 10) / 10));
 function health(O) {
-  const t = O.today, v = k => O.val(t, k), min = s => s / 60;
-  const parts = [];
-  const add = (n, why) => { if (Math.round(n)) parts.push([Math.round(n), why]); };
-  // each habit gives or takes its own HP (good ones up to a daily cap)
-  let smokeHp = 0;
-  for (const h of HABITS) {
-    const n = v(h.k); if (!n) continue;
-    if (h.bad) { add(h.hp * n, plural(n, h.one)); if (h.smoke) smokeHp += -h.hp * n; }
-    else add(Math.min(h.cap || h.hp * 3, h.hp * n), h.n.toLowerCase());
-  }
-  // smoke-free hours since the last one heal 3 HP each, up to most of what smoking took
-  let healed = 0, sinceMin = null;
-  const smokeKinds = HABITS.filter(h => h.smoke).map(h => h.k);
-  if (O.is_today && smokeHp) {
-    const last = (O.recent_events || []).filter(e => smokeKinds.includes(e.kind)).map(e => e.ts).sort((a, b) => b - a)[0];
-    if (last) {
-      sinceMin = (Date.now() / 1000 - last) / 60;
-      healed = Math.min(Math.floor(sinceMin / 60) * 3, Math.round(0.75 * smokeHp));
-      add(healed, "smoke-free hours");
-    }
-  }
-  add(Math.min(20, min(v("coding")) / 6), "coding");
-  add(Math.min(8, 2 * v("commits")), "commits");
-  const fun = min(v("youtube") + v("social"));
-  add(-Math.min(20, Math.max(0, fun - 90) / 10), "YouTube and social");
-  add(-Math.min(10, Math.max(0, min(v("screen")) - 600) / 15), "over 10h of screens");
-  const hp = Math.max(5, Math.min(100,   // never below 5: Mochi gets sick, never dies
-    70 + parts.reduce((s, p) => s + p[0], 0)));
+  const L = O.life || {hp: 100, today: {delta: 0, parts: []}, gen: 1, age: 0};
+  const past = !O.is_today;
+  const hp = Math.round(past ? (O.life_day ? O.life_day.hp : L.hp_start) : L.hp);
   const i = TIERS.findIndex(([at]) => hp >= at);
   const [, tier, name] = TIERS[i];
   const next = i > 0 ? TIERS[i - 1] : null;
-
-  // the quickest ways up from here, with how much each one is worth
+  const parts = past ? Object.entries((O.life_day || {}).parts || {}).map(([k, d]) => [Math.round(d), (INFO[k] || {}).n || k])
+    : L.today.parts.filter(p => Math.round(p.d)).map(p => [Math.round(p.d), p.n.toLowerCase()]);
+  // the quickest ways up from here, with what each one is worth right now
   const quests = [];
-  if (O.is_today) {
-    if (smokeHp && healed < Math.round(0.75 * smokeHp) && sinceMin != null)
-      quests.push(["Stay smoke-free", `+3 HP every hour, next one in ${Math.max(1, Math.ceil(60 - sinceMin % 60))}m`]);
-    // good habits not done yet today, biggest boost first
-    for (const h of HABITS.filter(h => !h.bad && !v(h.k)).sort((a, b) => b.hp - a.hp).slice(0, 2))
-      quests.push([`${h.e} ${h.n}`, `+${h.hp} HP${h.main ? `, tap ${h.one} on Home` : ""}`]);
-    if (SHOW_SCREEN.includes("coding") && min(v("coding")) < 120) quests.push(["Code for 30 minutes", "+5 HP"]);
-    if (fun > 90) quests.push(["Close YouTube and socials", "stops the HP drain"]);
+  if (!past) {
+    for (const p of L.today.parts.filter(p => !p.bad && p.gain > 0.2).sort((a, b) => b.gain - a.gain).slice(0, 2)) {
+      const h = HABITS.find(x => x.k === p.k);
+      quests.push([`${p.e} ${p.n}`, `next one: ${fmtHp(p.gain)} HP${h && h.main ? `, tap ${h.one} on Home` : ""}`]);
+    }
+    const over = L.today.parts.filter(p => p.bad && p.v > 0 && p.next < -0.2 && p.target != null).sort((a, b) => a.next - b.next)[0];
+    if (over) quests.push([`${over.e} ${over.n}`, `${unitTxt(over)(over.v)} of ${unitTxt(over)(over.target)} today · next ${over.unit === "min" ? "15 min" : "one"}: ${fmtHp(over.next)} HP`]);
+    const learning = L.today.parts.find(p => p.learning);
+    if (learning && quests.length < 3) quests.push([`${learning.e} ${learning.n}`, "learning your normal, counts after a week"]);
   }
-  return {hp: Math.round(hp), tier, name, next: next && {name: next[2], need: next[0] - Math.round(hp)}, parts, quests: quests.slice(0, 3)};
+  return {hp, tier, name, next: next && {name: next[2], need: next[0] - hp}, parts, quests: quests.slice(0, 3),
+          delta: past ? (O.life_day || {}).delta || 0 : L.today.delta, life: L};
 }
 
 function drawPet(mood, label, tier = "okay", state = {}) {
   $("pet").setAttribute("aria-label", label);
   $("petcard").dataset.mood = mood;
+  const L = (O && O.life) || {};
+  $("pet").classList.toggle("baby0", !!L.baby && L.age === 0);
+  $("pet").classList.toggle("baby1", !!L.baby && L.age > 0);
   petAnim.set({mood, tier, ...state});
 }
 
@@ -2010,16 +2247,24 @@ function renderHome() {
   const fxName = st.drunk ? ", a bit drunk" : st.high ? ", a bit high" : st.coughy >= 2 ? ", coughing" : "";
   drawPet(mood, `Your pet Mochi, feeling ${mood}${fxName}, ${H.name.toLowerCase()} at ${H.hp} HP`, H.tier, st);
   $("petcard").dataset.tier = H.tier;
+  if (isToday && H.life.unseen_death) rip.show(H.life.unseen_death, H.life);
 
   // HP bar + what gets Mochi to the next level (never a guilt trip: always the way up)
-  const seg = Math.round(H.hp / 10);
-  const why = H.parts.length ? H.parts.map(([n, w]) => `${n > 0 ? "+" : ""}${n} ${w}`).join(", ") : "nothing yet today";
-  $("hp").innerHTML = `<div class="hprow" title="Starts at 70 every day: ${esc(why)}">
+  const seg = Math.round(H.hp / 10), L = H.life;
+  const why = H.parts.length ? H.parts.map(([n, w]) => `${n > 0 ? "+" : ""}${n} ${w}`).join(", ") : "nothing yet";
+  const dayTxt = isToday ? `TODAY ${fmtHp(H.delta)}` : `THAT DAY ${fmtHp(H.delta)}`;
+  $("hp").innerHTML = `<div class="hprow" title="${isToday ? "Today so far" : "That day"}: ${esc(why)} (+${(L.limits || {}).regen || 2} for being alive)">
       <span class="hpl">HP</span>
       <span class="hpbar" role="img" aria-label="${H.hp} out of 100">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>
       <span class="hpn">${H.hp}</span><span class="tierb">${H.name}</span>
-      ${H.next && isToday ? `<span class="hpnext">+${H.next.need} to ${H.next.name}</span>` : ""}</div>
-    ${H.quests.length && isToday && H.hp < 90 ? `<div class="quests"><div class="ql">${H.hp < 50 ? "WAYS TO HEAL MOCHI" : "LEVEL UP"}</div>
+      <span class="hpday ${H.delta < 0 ? "neg" : "pos"}">${dayTxt}</span>
+      <a class="hpwhy" href="#tab=docs&sec=hp">How HP works</a></div>
+    <div class="lifeline"><b>MOCHI #${L.gen || 1}</b> · ${L.age ? `${L.age} day${L.age === 1 ? "" : "s"} old` : "born today"}${L.baby ? " · baby" : ""}
+      · record ${Math.max(L.age || 0, (L.best || {}).days || 0)} days${L.deaths ? ` · ${L.deaths} death${L.deaths === 1 ? "" : "s"}` : ""}</div>
+    ${isToday && L.confirmed === false ? `<a class="newtargets" href="#tab=settings">🎯 New: Mochi's HP now carries over day to day and follows <b>your targets</b>. Check them in Settings → Targets.</a>` : ""}
+    ${isToday && L.dying ? `<div class="critical">💀 If today ends like this, Mochi dies tonight. A few good things today can still save it.</div>`
+      : isToday && L.critical ? `<div class="critical">⚠️ Mochi is critical. Stay under your targets today to bring it back up.</div>` : ""}
+    ${H.quests.length && isToday ? `<div class="quests"><div class="ql">${H.hp < 50 ? "WAYS TO HEAL MOCHI" : "RIGHT NOW"}</div>
       ${H.quests.map(([a, b]) => `<div class="q"><span class="qa">${esc(a)}</span><span class="qb">${esc(b)}</span></div>`).join("")}</div>` : ""}`;
 
   // game-style stats vs yesterday at this time. Arrow = what happened (▲ more, ▼ less),
@@ -2539,7 +2784,9 @@ function buildCard() {
   const all = [...HABITS.map(h => ({k: h.k, s: h.s, n: h.n, bad: !!h.bad})),
                ...SHOW_SCREEN.map(k => ({k, s: SCREEN_LABEL[k] || k.toUpperCase(), n: (INFO[k] || {}).n || k, bad: !!(INFO[k] || {}).bad}))];
   const gh = O.github || {};
+  const L = O.life || {};
   return {name: AUTH.user ? AUTH.user.display_name : CLOUD.username, hp: O.health.hp, tier: O.health.tier, tierName: O.health.name,
+          gen: L.gen || 1, age: L.age || 0, best: (L.best || {}).days || 0, deaths: L.deaths || 0,
           palette: themePrefs().palette || "lavender", day: O.day, pet: PET_LOOK,
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
           stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
@@ -2569,7 +2816,7 @@ function fcardHTML(p, opts = {}) {
     ${p.unread ? `<span class="fnew">${p.unread} new</span>` : ""}
     <div class="ftop">${(() => { const fp = c && c.pet || {}, bg = placeURL(fp.place || LOOK_DEFAULT.place, {tier: stale ? "okay" : tier, soft: softColor(fp)});
       return `<div class="fpet scene" style="background-image:url(${bg})"><div class="pet ${calm ? "bob" : ""}">${mochiCells(fp, "happy", stale ? "okay" : tier)}</div></div>`; })()}
-      <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span></div></div>
+      <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span>${c && c.gen ? `<span class="fgen">Mochi #${c.gen} · ${c.age || 0}d old · record ${Math.max(c.best || 0, c.age || 0)}d</span>` : ""}</div></div>
     ${c ? `<div class="hprow"><span class="hpl">HP</span><span class="hpbar">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>
       <span class="hpn">${stale ? "?" : c.hp}</span><span class="tierb">${esc(stale ? "ASLEEP" : c.tierName || tier.toUpperCase())}</span></div>
       ${stats ? `<div class="fstats">${stats}</div>` : ""}` : `<p class="fmeta" style="margin:0">No card yet. It shows up once they open LazyTrack.</p>`}
@@ -2778,6 +3025,89 @@ document.addEventListener("click", async e => {
   updateFound(found);
 });
 
+// ---------------------------------------------------------------- targets: what decides Mochi's HP
+const targets = {
+  html(l) {
+    const parts = Object.fromEntries((l.today.parts || []).map(p => [p.k, p]));
+    const sug = l.suggestions || {};
+    const row = (k, r) => {
+      const p = parts[k] || {k, n: k, e: "", bad: r.target !== undefined}, sg = sug[k] || {}, min = p.unit === "min";
+      const normal = sg.avg != null ? `your normal: ${min ? hm(sg.avg * 60) : sg.avg} a day (last ${sg.days} days)` : "no history yet";
+      const size = `<select class="ts" aria-label="How much it matters">${["small", "medium", "big"].map(z =>
+        `<option value="${z}" ${r.size === z ? "selected" : ""}>${z} (${p.bad ? "−" : "+"}${SIZE_HP[z]} HP)</option>`).join("")}</select>`;
+      const on = p.k in {coding: 1, commits: 1, youtube: 1, social: 1, streaming: 1, gaming: 1, browsing: 1, screen: 1}
+        ? `<label><input type="checkbox" class="ton" ${r.on !== false ? "checked" : ""}> counts for HP</label>` : "";
+      const ctl = p.bad
+        ? `<label>at most <input type="number" class="tt" min="0" step="${min ? 5 : 1}" value="${r.target ?? ""}" placeholder="learn"> ${min ? "min" : ""} a day</label>
+           <label><input type="checkbox" class="ta" ${r.auto !== false ? "checked" : ""}> tighten 10% a week when I make it</label>`
+        : `<label>at least <input type="number" class="tg" min="1" step="${min ? 5 : 1}" value="${r.goal ?? 1}"> ${min ? "min" : ""}</label>
+           <select class="tp" aria-label="Per"><option value="day" ${r.per !== "week" ? "selected" : ""}>a day</option><option value="week" ${r.per === "week" ? "selected" : ""}>a week</option></select>`;
+      return `<div class="trow ${r.on === false ? "isoff" : ""}" data-tk="${esc(k)}"><span class="te" aria-hidden="true">${esc(p.e || "")}</span>
+        <span class="tn">${esc(p.n)}<small>${p.learning ? "learning your normal: counts after a week · " : ""}${esc(normal)}</small></span>
+        <div class="tc">${ctl}${size}${on}</div></div>`;
+    };
+    const rs = l.rules || {}, keys = Object.keys(rs);
+    const bad = keys.filter(k => (parts[k] || {}).bad), good = keys.filter(k => parts[k] && !parts[k].bad);
+    return (bad.length ? `<div class="tgroup">LESS OF</div><div class="tlist">${bad.map(k => row(k, rs[k])).join("")}</div>` : "")
+      + (good.length ? `<div class="tgroup">MORE OF</div><div class="tlist">${good.map(k => row(k, rs[k])).join("")}</div>` : "")
+      || `<p class="note">Nothing tracked yet. Add habits first.</p>`;
+  },
+  read(box) {
+    const out = {};
+    box.querySelectorAll(".trow").forEach(row => {
+      const q = c => row.querySelector(c), r = {size: q(".ts").value};
+      if (q(".tt")) { r.target = q(".tt").value === "" ? null : +q(".tt").value; r.auto = q(".ta").checked; }
+      if (q(".tg")) { r.goal = +q(".tg").value || 1; r.per = q(".tp").value; }
+      if (q(".ton")) r.on = q(".ton").checked;
+      out[row.dataset.tk] = r;
+    });
+    return out;
+  },
+  async load() {
+    try { const l = await (await api("/api/life")).json(); $("tEdit").innerHTML = targets.html(l); }
+    catch (_) { $("tEdit").innerHTML = `<p class="note">Couldn't load targets right now.</p>`; }
+  },
+};
+document.addEventListener("click", async e => {
+  if (!e.target.closest("#tSave")) return;
+  $("tNote").textContent = "Saving…";
+  try {
+    const r = await post("/api/life/rules", {rules: targets.read($("tEdit"))});
+    $("tNote").textContent = r.ok ? "Saved. Today's HP is recalculated with them." : "Couldn't save.";
+    if (r.ok) targets.load();
+  } catch (_) { $("tNote").textContent = "Couldn't save."; }
+});
+
+// ---------------------------------------------------------------- when Mochi dies
+const TOMB = ["................", ".....oooooo.....", "....osssssso....", "...osssssssso...", "...osssSSssso...", "...osSSSSSSso...", "...osssSSssso...", "...osssSSssso...", "...osssSSssso...", "...osssSSssso...", "...osssssssso...", "...osssssssso...", ".EEooooooooooEE.", "EEEEEEEEEEEEEEEE", "................", "................"];
+const rip = {
+  shown: null,
+  show(d, L) {
+    if (this.shown === d.died || !$("ripModal").hidden) return;
+    this.shown = d.died;
+    const col = {o: "#1d1b20", s: "#c4bfce", S: "#5b5370", E: "#5ea852"};
+    $("ripTomb").innerHTML = TOMB.join("").split("").map(c => `<i${col[c] ? ` style="background:${col[c]}"` : ""}></i>`).join("");
+    $("ripTitle").textContent = `Rest in pixels, Mochi #${d.gen}`;
+    $("ripText").textContent = `Mochi #${d.gen} lived ${d.days} day${d.days === 1 ? "" : "s"}. What hurt most at the end: ${d.cause && d.cause.e ? d.cause.e + " " : ""}${(d.cause && d.cause.n || "a few rough days").toLowerCase()}.`
+      + ` A baby just hatched: Mochi #${L.gen}. It keeps your outfit. Keep this one alive longer!`;
+    $("ripStats").textContent = `RECORD ${(L.best || {}).days || d.days} DAYS · ${L.deaths} DEATH${L.deaths === 1 ? "" : "S"} SO FAR`;
+    $("ripModal").hidden = false;
+  },
+};
+$("ripGo").addEventListener("click", async () => {
+  $("ripModal").hidden = true;
+  try { await post("/api/life/seen", {}); } catch (_) {}
+  render();
+});
+
+// ---------------------------------------------------------------- the documentation
+const docs = {
+  show(sec) {
+    if (sec) setTimeout(() => { const el = document.getElementById("doc-" + sec); if (el) el.scrollIntoView({block: "start"}); }, 30);
+    else scrollTo(0, 0);
+  },
+};
+
 function drawAccount() {
   const u = AUTH.user;
   $("sAccount").innerHTML = `<h2>Account</h2>` + (u
@@ -2909,6 +3239,7 @@ const ENTER = {
   detail: ["#detail .back", "#detail .dhero", "#dFacts .fact", "#detail > section"],
   settings: ["#sForm > section", "#sForm > .actions"],
   friends: ["#fConnect > *", "#fMain > *", "#fProfile > *"],
+  docs: ["#docs .card"],
 };
 function entrance(view) {
   if (!calm) return;
@@ -2933,13 +3264,14 @@ async function render() {
   const day = selectedDay();
   $("dayLabel").textContent = dayName(day);
   $("nextDay").disabled = day >= todayISO();
-  document.querySelector(".daynav").style.visibility = view === "settings" || view === "friends" ? "hidden" : "";
+  document.querySelector(".daynav").style.visibility = view === "settings" || view === "friends" || view === "docs" ? "hidden" : "";
   if (view !== "friends") chat.stop();
   if (view !== "settings") camLive.stop();
   updateBadge();
   try {
     if (view === "detail") await loadDetail(r.k);
-    else if (view === "settings") { drawAccount(); drawUpdates(); drawCam(); await loadSettings(); }
+    else if (view === "settings") { drawAccount(); drawUpdates(); drawCam(); targets.load(); await loadSettings(); }
+    else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
       ({home: renderHome, habits: renderHabits, screen: renderScreen, school: renderSchool, friends: renderFriends})[view]();
@@ -3116,7 +3448,7 @@ drawThemePicker();   // needs FX, so it runs after the effects are defined
 // Each step slides in from the right. At the end the whole overlay slides away and the
 // app slides in, like before. The app loads behind it, so Home is ready when it arrives.
 let AUTH = {logged_in: true, has_account: false, user: null};
-const PANELS = ["pHello", "pAuth", "pS1", "pS2", "pS3", "pS4"];
+const PANELS = ["pHello", "pAuth", "pS1", "pS2", "pS3", "pT", "pS4"];
 const flow = {
   cur: "pHello", mode: "new",
   show(id) {
@@ -3349,11 +3681,24 @@ const setup = {
     $("dGo").firstChild.textContent = this.mode === "edit" ? "Back to the app " : "Meet Mochi ";
     $("dPet").innerHTML = mochiCells(PET_LOOK, "proud", "legend");
   },
+  // the habits are saved before the targets step, so the server can suggest targets from your history
+  async toTargets() {
+    $("sTargetsSetup").innerHTML = `<p class="note">Looking at your last two weeks…</p>`;
+    flow.show("pT");
+    try {
+      const r = await post("/api/habits", {habits: this.sel.habits, screen: this.sel.screen, modules: this.sel.modules});
+      if (r.ok) applyHabits(await r.json());
+      const l = await (await api("/api/life")).json();
+      $("sTargetsSetup").innerHTML = targets.html(l);
+    } catch (_) { $("sTargetsSetup").innerHTML = `<p class="note">Couldn't load them right now. You can set them later in Settings.</p>`; }
+  },
   async finish() {
     $("dGo").disabled = true;
     try {
       const r = await post("/api/setup", this.sel);
       if (r.ok) applyHabits(await r.json());
+      const rules = targets.read($("sTargetsSetup"));
+      if (Object.keys(rules).length) await post("/api/life/rules", {rules});
       await refreshAuth();
     } catch (_) {}
     $("dGo").disabled = false;
@@ -3367,6 +3712,7 @@ $("welcome").addEventListener("click", e => {
   const emo = e.target.closest("[data-emo]"); if (emo) { emo.closest(".cform").querySelector(".ce").value = emo.dataset.emo; return; }
   if (e.target.closest("[data-next]")) {
     const i = PANELS.indexOf(flow.cur);
+    if (PANELS[i + 1] === "pT") return setup.toTargets();
     if (PANELS[i + 1] === "pS4") setup.summary();
     return flow.show(PANELS[i + 1]);
   }

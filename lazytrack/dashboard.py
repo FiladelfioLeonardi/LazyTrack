@@ -12,7 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from . import accounts, cloud, config, db, detail, github, habits, settings, summary, updater
+from . import accounts, cloud, config, db, detail, github, habits, life, settings, summary, updater
 from .activity import categorize_phone
 
 log = logging.getLogger(__name__)
@@ -99,6 +99,8 @@ def make_handler(cfg: dict):
                 return self._send(401, {"error": "log in first"})
             if u.path == "/api/habits":
                 return self._send(200, habits.get())
+            if u.path == "/api/life":
+                return self._send(200, {**life.status(), "suggestions": life.suggestions()})
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_get(u.path, qs)
             if u.path == "/api/camera/status":
@@ -155,6 +157,8 @@ def make_handler(cfg: dict):
                     "ft": summary.ft_status(config.load()),
                     "github": github.status(),
                     "summary_text": summary.format_week(summary.weekly(0), summary.weekly(-1), summary.ft_status(config.load())),
+                    "life": life.status(),
+                    "life_day": life.logged_day(sel.isoformat()) if sel != date.today() else None,
                     "recent_events": [dict(r) for r in db.conn().execute(
                         "SELECT id, ts, device, kind, source FROM events ORDER BY ts DESC LIMIT 15")],
                     "now": time.time(),
@@ -186,6 +190,12 @@ def make_handler(cfg: dict):
                 return self._send(200, {"ok": smoke.answer_question(int(b.get("id", 0)), str(b.get("answer", "")))})
             if u.path == "/api/update/check":
                 return self._send(200, updater.check(config.load(), install=bool(b.get("install"))))
+            if u.path == "/api/life/rules":
+                life.save_rules(b.get("rules") or {})
+                return self._send(200, life.status())
+            if u.path == "/api/life/seen":
+                life.mark_seen()
+                return self._send(200, {"ok": True})
             if u.path in ("/api/habits", "/api/setup"):
                 try:
                     out = habits.save(b)
