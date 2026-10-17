@@ -499,6 +499,13 @@
   .inline > * { flex: 1 1 160px; }
   .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   #settings .card { margin-top: 18px; }
+  /* settings categories: a tab row, one category at a time */
+  .setcats { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 2px; }
+  .setcats button { border: 3px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: 800 15px var(--body);
+    padding: 8px 14px; cursor: pointer; box-shadow: 3px 3px 0 var(--line); }
+  .setcats button[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); }
+  #settings [data-cat].offcat { display: none; }
+  @media (max-width: 560px) { .setcats { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; } .setcats button { flex: none; font-size: 14px; padding: 7px 11px; } }
   #settings h2 { font-family: var(--pixel); font-size: 15px; margin: 0 0 4px; }
 
   /* ------------------------------------------------------------ toast + offline */
@@ -855,7 +862,7 @@ applyTheme();
       <div class="hp" id="hp"></div>
     </section>
 
-    <a class="camwarn" id="camWarn" href="#tab=settings" hidden></a>
+    <a class="camwarn" id="camWarn" href="#tab=settings&sc=tracking" hidden></a>
     <div class="logbar" id="logbar" aria-label="Log something"></div>
     <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
 
@@ -1044,7 +1051,7 @@ applyTheme();
 
     <section class="card pad" id="doc-targets">
       <h2>Targets</h2>
-      <p>Set in the last step of the setup and any time in <a href="#tab=settings">Settings → Targets</a>.</p>
+      <p>Set in the last step of the setup and any time in <a href="#tab=settings&sc=habits">Settings → Targets</a>.</p>
       <ul>
         <li><b>Less of:</b> "at most N a day" (minutes for screen time). Filled in with your normal from the last 2 weeks.
           Leave it empty and Mochi <b>learns</b> it: the habit doesn't count for 7 days, then your average becomes the target.</li>
@@ -1105,7 +1112,7 @@ applyTheme();
         After a couple of drags it asks <b>"Cigarette, joint, already registered or neither?"</b> on the computer and on every open LazyTrack page, phone included.
         <b>Already registered</b> means you logged it yourself: nothing is logged twice and the camera rests for about 10 minutes.
         <b>Pictures never leave your computer</b>; only the answer is logged.</p>
-      <p>Settings → Smoking detector turns it on or off and shows the live view. If it misses you (weak webcam, colored light), run <code>train.bat</code> / the training to teach it your room.
+      <p>Settings → Tracking → Smoking detector turns it on or off and shows whether it's watching. If it misses you (weak webcam, colored light), run <code>train.bat</code> / the training to teach it your room.
         <code>camtest.bat</code> tests the camera on its own.</p>
     </section>
 
@@ -1122,7 +1129,7 @@ applyTheme();
     <section class="card pad" id="doc-phone">
       <h2>Your phone</h2>
       <p>The phone opens your LazyTrack from the computer through <b>Tailscale</b> (a free private connection between your own devices).
-        In <a href="#tab=settings">Settings → Your phone</a>: install Tailscale on the computer and the phone with the same account,
+        In <a href="#tab=settings&sc=account">Settings → Your phone</a>: install Tailscale on the computer and the phone with the same account,
         press <b>Connect my phone</b>, scan the QR code, then Share → Add to Home Screen (Android: ⋮ → Add to Home screen).
         The computer must be on with LazyTrack running. It's private: only your own devices on Tailscale can reach it, with a secret code from the QR.</p>
     </section>
@@ -1176,26 +1183,31 @@ applyTheme();
     </div>
   </main>
   <main id="settings" class="view">
+    <nav class="setcats" id="setCats" aria-label="Settings sections">
+      <button type="button" data-sc="account">👤 Account</button><button type="button" data-sc="habits">🎯 Habits</button>
+      <button type="button" data-sc="look">🎨 Look</button><button type="button" data-sc="tracking">📷 Tracking</button>
+      <button type="button" data-sc="app">⚙️ App</button>
+    </nav>
     <form id="sForm" autocomplete="off">
-      <section class="card pad docsbtn"><h2>How LazyTrack works</h2>
+      <section class="card pad docsbtn" data-cat="app"><h2>How LazyTrack works</h2>
         <p class="sub">Everything about Mochi, HP and targets, tracking, the camera, friends, your phone, updates and your data.</p>
         <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a><button type="button" class="btn" data-tour>🧭 Take the guided tour</button></div></section>
-      <section class="card pad" id="sAccount"></section>
+      <section class="card pad" id="sAccount" data-cat="account"></section>
 
-      <section class="card pad">
+      <section class="card pad" data-cat="habits">
         <h2>Habits</h2>
         <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.</p>
         <div class="hlist" id="hList"></div>
         <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
       </section>
 
-      <section class="card pad" id="sPhone" hidden>
+      <section class="card pad" id="sPhone" hidden data-cat="account">
         <h2>📱 Your phone</h2>
         <p class="sub">Use LazyTrack on your phone too: Mochi, your stats, the log buttons, friends and chat, from anywhere.</p>
         <div id="phBox"><p class="note">Loading…</p></div>
       </section>
 
-      <section class="card pad" id="sTargets">
+      <section class="card pad" id="sTargets" data-cat="habits">
         <h2>Targets</h2>
         <p class="sub">How Mochi's HP is decided. Exactly on target = 0 HP for the day; better heals Mochi, worse hurts it.
           <a href="#tab=docs&sec=hp">How HP works</a></p>
@@ -1203,7 +1215,7 @@ applyTheme();
         <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="tSave">Save targets</button><span class="note" id="tNote"></span></div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" data-cat="app">
         <h2>Updates</h2>
         <p class="sub">LazyTrack updates itself: it checks for new versions a minute after starting and every few hours.</p>
         <p class="note" id="uStatus"></p>
@@ -1211,7 +1223,7 @@ applyTheme();
           <button type="button" class="btn primary" id="uInstall" hidden>Update now</button></div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" data-cat="look">
         <h2>Look</h2>
         <p class="sub">Changes right away on this device, no saving needed.</p>
         <div class="form">
@@ -1229,7 +1241,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad" id="sSmoke" data-mod="smoke">
+      <section class="card pad" id="sSmoke" data-mod="smoke" data-cat="tracking">
         <h2>Smoking detector</h2>
         <p class="sub">Watches through the webcam and asks you when it thinks you're smoking.</p>
         <div class="form">
@@ -1252,20 +1264,9 @@ applyTheme();
           <label class="toggle"><input type="checkbox" name="save_training_photos"> Keep the photo it asked about, to train it on you</label>
         </div>
         <div class="camstat" id="camStat" style="margin-top:16px"></div>
-        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="camView">Show what the camera sees</button></div>
-        <div class="camview" id="camBox" hidden>
-          <div class="camimg"><img id="camImg" alt="What the camera sees right now"><p class="note" id="camWait">Starting the camera…</p></div>
-          <div class="camside">
-            <div class="label">SMOKING EVIDENCE</div>
-            <div class="meter"><i id="camEv" style="width:0%"></i></div>
-            <p class="note" id="camNums"></p>
-            <p class="note">Hold a pen like a cigarette near your mouth: the bar fills up. When it's full, LazyTrack asks you.
-              The yellow box is your face. A lit cigarette counts even more: each pull makes the tip flare up, and two pulls are enough.</p>
-          </div>
-        </div>
       </section>
 
-      <section class="card pad" data-mod="school">
+      <section class="card pad" data-mod="school" data-cat="tracking">
         <h2>42 deadlines</h2>
         <p class="sub">Shown as countdowns in the School tab and on Home.</p>
         <div class="form">
@@ -1279,7 +1280,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad" data-mod="school">
+      <section class="card pad" data-mod="school" data-cat="tracking">
         <h2>42 intra</h2>
         <p class="sub">For logtime, projects and the blackhole date. Create an app at
           <a href="https://profile.intra.42.fr/oauth/applications/new" target="_blank" rel="noopener">profile.intra.42.fr</a>
@@ -1291,7 +1292,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad" data-mod="github">
+      <section class="card pad" data-mod="github" data-cat="tracking">
         <h2>GitHub</h2>
         <p class="sub">For contributions, streaks and repos. The username alone shows public activity.
           Add a token to count your private repos too: create one at
@@ -1303,7 +1304,7 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" data-cat="tracking">
         <h2>Weekly summary</h2>
         <p class="sub">A notification with your week, once a week.</p>
         <div class="inline">
@@ -1316,19 +1317,17 @@ applyTheme();
         </div>
       </section>
 
-      <section class="card pad">
+      <section class="card pad" data-cat="tracking">
         <h2>General</h2>
         <div class="form">
           <div class="field"><label for="idl">Count me as away after (minutes)</label>
             <p class="hint">With no key press, click, scroll or mouse move for this long, screen time stops counting, and those minutes are taken off again. While a video or a call is playing you still count as here.</p>
             <input id="idl" type="number" name="idle_minutes" min="1" max="60" style="max-width:140px"></div>
           <label class="toggle"><input type="checkbox" name="open_dashboard_on_start"> Open this page when LazyTrack starts</label>
-          <div class="field"><label for="dn">Name of this computer</label><p class="hint">Shown next to things logged from here.</p>
-            <input id="dn" type="text" name="device_name" style="max-width:260px"></div>
         </div>
       </section>
 
-      <div class="actions" style="margin-top:22px">
+      <div class="actions savebar" data-cat="tracking" style="margin-top:22px">
         <button type="submit" class="btn primary">Save and restart</button>
         <span class="note" id="sNote"></span>
       </div>
@@ -2319,7 +2318,7 @@ function renderHome() {
       <a class="hpwhy" href="#tab=docs&sec=hp">How HP works</a></div>
     <div class="lifeline"><b>MOCHI #${L.gen || 1}</b> · ${L.age ? `${L.age} day${L.age === 1 ? "" : "s"} old` : "born today"}${L.baby ? " · baby" : ""}
       · record ${Math.max(L.age || 0, (L.best || {}).days || 0)} days${L.deaths ? ` · ${L.deaths} death${L.deaths === 1 ? "" : "s"}` : ""}</div>
-    ${isToday && L.confirmed === false ? `<a class="newtargets" href="#tab=settings">🎯 New: Mochi's HP now carries over day to day and follows <b>your targets</b>. Check them in Settings → Targets.</a>` : ""}
+    ${isToday && L.confirmed === false ? `<a class="newtargets" href="#tab=settings&sc=habits">🎯 New: Mochi's HP now carries over day to day and follows <b>your targets</b>. Check them in Settings → Targets.</a>` : ""}
     ${isToday && L.dying ? `<div class="critical">💀 If today ends like this, Mochi dies tonight. A few good things today can still save it.</div>`
       : isToday && L.critical ? `<div class="critical">⚠️ Mochi is critical. Stay under your targets today to bring it back up.</div>` : ""}
     ${H.quests.length && isToday ? `<div class="quests"><div class="ql">${H.hp < 50 ? "WAYS TO HEAL MOCHI" : "RIGHT NOW"}</div>
@@ -2368,7 +2367,7 @@ function renderHome() {
   // coming up: the two deadlines and the commit streak
   const ft = O.ft, gh = O.github || {};
   const chip = (title, days) => {
-    if (days == null) return `<a class="chip plain" href="#tab=settings"><span class="k">${esc(title)}</span><span class="s">Set the date</span></a>`;
+    if (days == null) return `<a class="chip plain" href="#tab=settings&sc=tracking"><span class="k">${esc(title)}</span><span class="s">Set the date</span></a>`;
     const [fill, state] = deadlineLevel(days);
     return `<a class="chip" style="--lvl:var(${fill})" href="#tab=school"><span class="k">${esc(title)}</span>
       <span class="v">${Math.max(0, days)}<small> days</small></span><span class="s">${state.toLowerCase().replace(/^./, c => c.toUpperCase())}</span></a>`;
@@ -2376,7 +2375,7 @@ function renderHome() {
   $("chips").innerHTML = (MODULES.school ? chip("BLACKHOLE", ft.blackhole_days) + chip((ft.milestone_name || "MILESTONE").toUpperCase(), ft.milestone_days) : "")
     + (!MODULES.github ? "" : gh.configured
       ? `<a class="chip" style="--lvl:var(--lilac)" href="#tab=school"><span class="k">COMMIT STREAK</span><span class="v">${gh.streak.current}<small> days</small></span><span class="s">Best ${gh.streak.longest}</span></a>`
-      : `<a class="chip plain" href="#tab=settings"><span class="k">GITHUB</span><span class="s">Connect it to see your streak</span></a>`);
+      : `<a class="chip plain" href="#tab=settings&sc=tracking"><span class="k">GITHUB</span><span class="s">Connect it to see your streak</span></a>`);
 }
 
 // ---------------------------------------------------------------- HABITS
@@ -2438,7 +2437,7 @@ function renderSchool() {
   [ftEl, sub, sub.previousElementSibling].forEach(e => { e.style.display = MODULES.school ? "" : "none"; });
   $("pGh").style.display = MODULES.github ? "" : "none";
   const deadline = (title, days, dateIso) => {
-    if (days == null) return `<div class="dl-box empty-box"><div class="k">${esc(title.toUpperCase())}</div><a class="btn" href="#tab=settings">Set the date</a></div>`;
+    if (days == null) return `<div class="dl-box empty-box"><div class="k">${esc(title.toUpperCase())}</div><a class="btn" href="#tab=settings&sc=tracking">Set the date</a></div>`;
     const [fill, state] = deadlineLevel(days);
     const when = new Date(dateIso + "T12:00:00").toLocaleDateString([], {weekday: "short", day: "numeric", month: "long"});
     const weeks = Math.floor(Math.abs(days) / 7), rest = Math.abs(days) % 7;
@@ -2454,13 +2453,13 @@ function renderSchool() {
   $("pFt").innerHTML = `<div class="deadlines">${deadline("Blackhole", ft.blackhole_days, ft.blackhole_date)}${deadline(ft.milestone_name || "Next milestone", ft.milestone_days, ft.milestone_date)}</div>
     ${ft.connected
       ? `<p class="note" style="margin-top:14px">${esc(ft.login)}, level ${ft.level ? (+ft.level).toFixed(2) : "?"}. ${hm(w.logtime_42)} at school this week.${ft.active.length ? ` Working on ${ft.active.map(p => esc(p.name)).join(", ")}.` : ""}</p>`
-      : `<p class="note" style="margin-top:14px">Connect 42 in <a href="#tab=settings">Settings</a> to fill in the blackhole, logtime and projects by themselves.</p>`}`;
+      : `<p class="note" style="margin-top:14px">Connect 42 in <a href="#tab=settings&sc=tracking">Settings</a> to fill in the blackhole, logtime and projects by themselves.</p>`}`;
 
   const gh = O.github || {};
   const card = $("pGh");
   if (!gh.configured) {
     card.removeAttribute("data-open"); card.classList.remove("clickcard");
-    card.innerHTML = `<div class="label">GITHUB</div><p class="note" style="margin-bottom:14px">See your contributions, streak and repos here.</p><a class="btn" href="#tab=settings">Connect GitHub</a>`;
+    card.innerHTML = `<div class="label">GITHUB</div><p class="note" style="margin-bottom:14px">See your contributions, streak and repos here.</p><a class="btn" href="#tab=settings&sc=tracking">Connect GitHub</a>`;
   } else {
     card.dataset.open = "github"; card.classList.add("clickcard");
     const max = Math.max(1, ...gh.heat.map(x => x.count));
@@ -2791,43 +2790,10 @@ async function drawCam() {
   if (c.status === "cooldown" && c.until) detail += ` Back at ${clock(c.until)}.`;
   if (c.status === "watching" && c.model) detail += ` Using ${c.model}.`;
   $("camStat").innerHTML = `<span class="dot ${cls}" aria-hidden="true"></span><span><b>${esc(title)}</b><span class="note">${esc(detail)}</span></span>`;
-  $("camView").hidden = !c.can_view || !["watching", "paused", "loading"].includes(c.status);
   if (!c.can_view && c.status === "watching") $("camStat").querySelector(".note").textContent += " Open LazyTrack on the computer to see the live camera.";
   return c;
 }
-const camLive = {
-  timer: null, url: null,
-  start() {
-    $("camBox").hidden = false; $("camView").textContent = "Hide the camera";
-    this.timer = setInterval(() => this.tick(), 700); this.tick();
-  },
-  stop() {
-    clearInterval(this.timer); this.timer = null;
-    if ($("camBox")) { $("camBox").hidden = true; $("camView").textContent = "Show what the camera sees"; }
-  },
-  async tick() {
-    if (document.body.dataset.view !== "settings") return this.stop();
-    try {
-      const r = await api("/api/camera/frame.jpg");
-      if (r.status === 200) {
-        const b = await r.blob(), u = URL.createObjectURL(b);
-        $("camImg").src = u; if (this.url) URL.revokeObjectURL(this.url); this.url = u;
-        $("camWait").hidden = true;
-      }
-      const c = await drawCam();
-      if (c) {
-        const pct = c.trigger ? Math.min(100, 100 * c.evidence / c.trigger) : 0;
-        $("camEv").style.width = pct.toFixed(0) + "%";
-        $("camNums").textContent = c.status !== "watching" ? (CAM_TEXT[c.status] || ["", ""])[1] + "."
-          : `${c.face ? "Face found." : "Looking for your face…"} Last score ${c.score.toFixed(2)} (counts from ${c.threshold.toFixed(2)}).`
-            + (c.ember === "pull" ? " 🔥 The tip just flared up: a pull!" : c.ember === "glow" ? " 🔥 Glowing tip seen." : "")
-            + (c.light ? ` Color fix on: ${c.light}.` : "");
-      }
-    } catch (_) {}
-  },
-};
 document.addEventListener("click", e => {
-  if (e.target.closest("#camView")) { camLive.timer ? camLive.stop() : camLive.start(); }
 });
 // on Home: only speak up when something's wrong
 // the camera's state, always visible on Home (when a smoking habit is tracked): is it watching right now?
@@ -3162,6 +3128,20 @@ document.addEventListener("click", async e => {
   } catch (_) { $("tNote").textContent = "Couldn't save."; }
 });
 
+// Settings is split into categories (a tab row at the top); the one shown is in the link (#tab=settings&sc=habits)
+const SET_CATS = ["account", "habits", "look", "tracking", "app"];
+function settingsCat(c) {
+  c = SET_CATS.includes(c) ? c : (() => { try { return localStorage.getItem("lt-setcat"); } catch (_) { return null; } })() || "habits";
+  if (!SET_CATS.includes(c)) c = "habits";
+  try { localStorage.setItem("lt-setcat", c); } catch (_) {}
+  document.querySelectorAll("#setCats [data-sc]").forEach(b => b.setAttribute("aria-pressed", b.dataset.sc === c));
+  document.querySelectorAll("#settings [data-cat]").forEach(s => s.classList.toggle("offcat", s.dataset.cat !== c));
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest("#setCats [data-sc]"); if (!b) return;
+  settingsCat(b.dataset.sc); scrollTo({top: 0});
+});
+
 // Settings only shows what you use: 42 and GitHub when picked in the setup, the camera when you track smoking
 function settingsFor() {
   const on = {school: !!MODULES.school, github: !!MODULES.github, smoke: HABITS.some(h => h.smoke)};
@@ -3262,9 +3242,9 @@ const TOUR = [
   {el: '.tab[data-tab="habits"]', title: "Habits", text: "Charts for every habit: today, this week and the last two weeks."},
   {el: '.tab[data-tab="screen"]', title: "Screen", text: "Your screen time, tracked by itself: coding, YouTube, socials, games and the rest."},
   {el: '.tab[data-tab="friends"]', title: "Friends", text: "Add friends by username, see each other's Mochi and chat. Who keeps theirs alive longest?"},
-  {tab: "settings", el: "#sTargets", title: "Targets", text: "What decides HP. On target is 0; under heals, over hurts. Change them whenever you like; the ones you make get a bit tighter every week."},
-  {tab: "settings", el: "#sSmoke", title: "Smoking detector", text: "Optional: the webcam notices cigarettes and asks you. Pictures never leave your computer."},
-  {tab: "settings", el: ".docsbtn", title: "The full guide", text: "Everything in detail lives in the documentation, and the tour can be started from here too."},
+  {tab: "settings", cat: "habits", el: "#sTargets", title: "Targets", text: "What decides HP. On target is 0; under heals, over hurts. Change them whenever you like; the ones you make get a bit tighter every week."},
+  {tab: "settings", cat: "tracking", el: "#sSmoke", title: "Smoking detector", text: "Optional: the webcam notices cigarettes and asks you. Pictures never leave your computer."},
+  {tab: "settings", cat: "app", el: ".docsbtn", title: "The full guide", text: "Everything in detail lives in the documentation, and the tour can be started from here too."},
   {el: "#tourBtn", title: "That's it! 🎉", text: "Come back to this tour any time with this button. Now go keep Mochi alive.", last: true},
 ];
 const tour = {
@@ -3284,6 +3264,7 @@ const tour = {
     this.i = i;
     const st = this.list[i];
     if (st.tab && currentTab() !== st.tab) { go({tab: st.tab}); await new Promise(r => setTimeout(r, 450)); }
+    if (st.cat) settingsCat(st.cat);
     if (st.tab === "home" && !O) await new Promise(r => setTimeout(r, 600));
     let el = st.el ? document.querySelector(st.el) : null;
     for (let n = 0; st.el && (!el || !el.offsetParent) && n < 10; n++) { await new Promise(r => setTimeout(r, 150)); el = document.querySelector(st.el); }
@@ -3507,11 +3488,10 @@ async function render() {
   $("nextDay").disabled = day >= todayISO();
   document.querySelector(".daynav").style.visibility = view === "settings" || view === "friends" || view === "docs" ? "hidden" : "";
   if (view !== "friends") chat.stop();
-  if (view !== "settings") camLive.stop();
   updateBadge();
   try {
     if (view === "detail") await loadDetail(r.k);
-    else if (view === "settings") { settingsFor(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
+    else if (view === "settings") { settingsCat(r.sc); settingsFor(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
