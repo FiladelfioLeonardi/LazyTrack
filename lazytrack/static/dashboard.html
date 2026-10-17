@@ -2160,7 +2160,7 @@ const SKY = {dawn: ["#ffb3a1", "#ffc6a6", "#ffd9b0", "#ffe9c4"], day: ["#6fb8ff"
              dusk: ["#4b3a9e", "#7a4fb0", "#c56aa8", "#ff9a7a"], night: ["#141230", "#1c1940", "#252150", "#2f2a60"]};
 const dayPart = (h = new Date().getHours()) => h >= 5 && h < 8 ? "dawn" : h >= 8 && h < 18 ? "day" : h >= 18 && h < 21 ? "dusk" : "night";
 const SCENES56 = ["stadium", "rage", "moon", "rooftop", "volcano", "ocean", "heaven", "arcade"];
-const _scenes = new Map();
+const _scenes = new Map(), _sceneCv = new Map();   // the scene pictures (and their canvases, for the device)
 
 /** The calmer places on a 42x42 canvas: sky, bedroom, park, beach, soft, plain. */
 function scene42(place, part, f, soft) {
@@ -2357,9 +2357,32 @@ function placeURL(place, o = {}) {
   if (tier === "sick") { x.globalAlpha = .22; R(0, 0, N, N, "#9aa38a"); x.globalAlpha = 1; }
   if (tier === "legend") for (let i = 0; i < 7; i++) { const a = (i * 17 + 5) % N, b = (i * 11 + 3) % Math.round(N * .7); if ((i + f) % 3) { P(a, b, "#ffe45e"); P(a - 1, b, "#fff6c9"); P(a + 1, b, "#fff6c9"); } }
   const url = cv.toDataURL();
-  if (_scenes.size > 400) _scenes.clear();
+  if (_scenes.size > 400) { _scenes.clear(); _sceneCv.clear(); }
   _scenes.set(key, url);
+  _sceneCv.set(url, cv);   // the device (egg) reads the pixels from here
   return url;
+}
+/**
+ * Mochi's place as plain pixels for the device: {w: 56, p: ["#rrggbb", ...], d: "..."}, one char per
+ * pixel (index into p, 0-9 a-z A-Z - _), the same picture as behind Mochi in the app.
+ */
+const SCENE_CHARS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_";
+function deviceScene(look, tier) {
+  const L = {...LOOK_DEFAULT, ...look};
+  const cv = _sceneCv.get(placeURL(L.place, {tier, soft: softColor(L)}));
+  if (!cv) return null;
+  const N = cv.width, px = cv.getContext("2d").getImageData(0, 0, N, N).data, pal = [], rgbs = [];
+  let d = "";
+  for (let i = 0; i < N * N; i++) {
+    const r = px[i * 4], g = px[i * 4 + 1], b = px[i * 4 + 2];
+    let k = rgbs.findIndex(c => c[0] === r && c[1] === g && c[2] === b);
+    if (k < 0) {
+      if (pal.length < 64) { rgbs.push([r, g, b]); pal.push("#" + [r, g, b].map(v => v.toString(16).padStart(2, "0")).join("")); k = pal.length - 1; }
+      else { let best = 1e9; rgbs.forEach((c, j) => { const e = (c[0] - r) ** 2 + (c[1] - g) ** 2 + (c[2] - b) ** 2; if (e < best) { best = e; k = j; } }); }
+    }
+    d += SCENE_CHARS[k];
+  }
+  return {w: N, p: pal, d};
 }
 /** Puts the scene behind Mochi on an element. */
 function setPlace(el, place, o) {
@@ -3371,7 +3394,8 @@ function buildCard() {
           mood: (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy",
           fx: (({high, drunk, coughy}) => ({high, drunk, coughy}))(petState(O)), built: Math.round(Date.now() / 1000),
           share_now: !shareKeys().includes("!now"),
-          sprite: deviceSprite(PET_LOOK, (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy", O.health.tier),   // LazyTrack adds what you're doing right now (only the category)
+          sprite: deviceSprite(PET_LOOK, (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy", O.health.tier),
+          scene: deviceScene(PET_LOOK, O.health.tier),   // LazyTrack adds what you're doing right now (only the category)
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
           stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
 }

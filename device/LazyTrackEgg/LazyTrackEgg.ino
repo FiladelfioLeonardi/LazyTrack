@@ -68,6 +68,9 @@ struct Card {
   bool sprite = false;
   uint16_t pal[36];
   char fn[257], fb[257];  // normal frame, blinking frame
+  int sceneN = 0;         // Mochi's place, the same picture as in the app (sceneN x sceneN pixels)
+  uint16_t scenePal[64];
+  char scene[56 * 56 + 1];
   String stats[8];
   int nstats = 0;
 } card;
@@ -157,7 +160,7 @@ uint16_t hexColor(const char *s) { return (s && s[0] == '#') ? rgb(strtoul(s + 1
 bool parseCard(const String &body) {
   JsonDocument filter;
   JsonObject f = filter[0]["card"].to<JsonObject>();
-  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "offline"}) f[k] = true;
+  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline"}) f[k] = true;
   f["stats"][0]["s"] = true;
   f["stats"][0]["v"] = true;
   f["stats"][0]["unit"] = true;
@@ -189,6 +192,15 @@ bool parseCard(const String &body) {
     strncpy(card.fb, (b && strlen(b) == 256) ? b : n, 256); card.fb[256] = 0;
     card.sprite = true;
   }
+  JsonObject sc = c["scene"];
+  const char *sd = sc["d"];
+  int sn = sc["w"] | 0;
+  if (sd && sn > 0 && sn <= 56 && (int)strlen(sd) == sn * sn) {
+    int i = 0;
+    for (JsonVariant p : sc["p"].as<JsonArray>()) { if (i < 64) card.scenePal[i++] = hexColor(p.as<const char *>()); }
+    memcpy(card.scene, sd, sn * sn); card.scene[sn * sn] = 0;
+    card.sceneN = sn;
+  }
   card.nstats = 0;
   for (JsonObject s : c["stats"].as<JsonArray>()) {
     if (card.nstats >= 8) break;
@@ -218,8 +230,12 @@ void sync() {
 }
 
 // ---------------------------------------------------------------- drawing
-static const int SX = 32, SY = 52, SW = 176, SH = 176;  // the stage, where Mochi lives
+// The whole screen is Mochi's place (like Home in the app), Mochi stands on the ground in the middle,
+// with your name on top and HP at the bottom. Only the part around Mochi is redrawn when it moves.
+static const int FEET = 232;                            // where Mochi's feet touch the ground (screen y)
 static const int SCALE = 10;                            // 16 px sprite -> 160 px
+static const int PX = 40, PY = FEET + 4 - 16 * SCALE;   // Mochi's top-left when standing still
+static const int SX = PX - 8, SY = PY - 4, SW = 16 * SCALE + 16, SH = 16 * SCALE + 6;   // the part redrawn
 uint16_t *stage;                                        // drawn here, then sent in one go (no flicker)
 
 uint16_t tierBg() {
@@ -227,6 +243,34 @@ uint16_t tierBg() {
   if (card.tier == "tired") return rgb(0xd9d3e6);
   if (card.tier == "sick") return rgb(0xd3dbc4);
   return rgb(0xc9b8ff);
+}
+
+int sceneIndex(char ch) {
+  if (ch >= '0' && ch <= '9') return ch - '0';
+  if (ch >= 'a' && ch <= 'z') return ch - 'a' + 10;
+  if (ch >= 'A' && ch <= 'Z') return ch - 'A' + 36;
+  return ch == '-' ? 62 : ch == '_' ? 63 : 0;
+}
+
+// the background at a screen pixel: the scene scaled up to cover the screen, its ground lined up with FEET
+uint16_t bgAt(int x, int y) {
+  int n = card.sceneN;
+  if (!n) return y > FEET ? rgb(0x7cc97f) : tierBg();
+  int s = (320 + n - 1) / n;                        // 56 -> 6, 42 -> 8: covers the whole screen
+  int offX = (n * s - 240) / 2, offY = (n * 84 / 100) * s - FEET;
+  int sx = (x + offX) / s, sy = (y + offY) / s;
+  if (sx < 0) sx = 0; if (sx >= n) sx = n - 1;
+  if (sy < 0) sy = 0; if (sy >= n) sy = n - 1;
+  return card.scenePal[sceneIndex(card.scene[sy * n + sx])];
+}
+
+void drawBackground() {  // full screen, in strips through the stage buffer
+  int rows = (SW * SH) / 240;
+  for (int y0 = 0; y0 < 320; y0 += rows) {
+    int h = min(rows, 320 - y0);
+    for (int y = 0; y < h; y++) for (int x = 0; x < 240; x++) stage[y * 240 + x] = bgAt(x, y0 + y);
+    gfx->draw16bitRGBBitmap(0, y0, stage, 240, h);
+  }
 }
 
 uint16_t cellColor(char ch, bool fromCard) {
@@ -238,13 +282,12 @@ uint16_t cellColor(char ch, bool fromCard) {
   return i >= 0 && i < 36 ? card.pal[i] : 0;
 }
 
-void drawStage(int dx, int dy, bool blink) {
-  uint16_t bg = tierBg();
-  for (int i = 0; i < SW * SH; i++) stage[i] = bg;
-  // grass strip, like the app's park
-  for (int y = SH - 18; y < SH; y++) for (int x = 0; x < SW; x++) stage[y * SW + x] = rgb((y - (SH - 18)) < 4 ? 0x9be8a9 : 0x7cc97f);
+// Mochi standing on the ground. dx: drunk wobble / coughing shake, sideways only (it never floats)
+void drawStage(int dx, bool blink) {
+  if (view != 0) return;
+  for (int y = 0; y < SH; y++) for (int x = 0; x < SW; x++) stage[y * SW + x] = bgAt(SX + x, SY + y);
   const char *px = card.sprite ? (blink ? card.fb : card.fn) : DEFAULT_N;
-  int ox = (SW - 16 * SCALE) / 2 + dx, oy = SH - 18 - 16 * SCALE + 6 + dy;   // standing on the grass
+  int ox = PX - SX + dx, oy = PY - SY;
   for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) {
     char ch = px[cy * 16 + cx];
     if (ch == '.') continue;
@@ -260,8 +303,6 @@ void drawStage(int dx, int dy, bool blink) {
     }
   }
   gfx->draw16bitRGBBitmap(SX, SY, stage, SW, SH);
-  gfx->drawRect(SX - 3, SY - 3, SW + 6, SH + 6, INK);
-  gfx->drawRect(SX - 2, SY - 2, SW + 4, SH + 4, INK);
 }
 
 String doing() {
@@ -282,40 +323,53 @@ void text(int x, int y, const String &s, uint8_t size, uint16_t col) {
   gfx->print(s);
 }
 
-void drawFrame() {  // everything that isn't the stage
-  gfx->fillScreen(BG);
+void panel(int x, int y, int w, int h) {  // the app's card look: white, thick dark outline, a hard shadow
+  gfx->fillRoundRect(x + 3, y + 3, w, h, 10, INK);
+  gfx->fillRoundRect(x, y, w, h, 10, CARD);
+  gfx->drawRoundRect(x, y, w, h, 10, INK);
+  gfx->drawRoundRect(x + 1, y + 1, w - 2, h - 2, 9, INK);
+}
+
+void drawFrame() {  // the background and everything on it; Mochi itself comes from drawStage
+  drawBackground();
   if (view == 0) {
-    text(14, 14, card.name.substring(0, 16), 2, INK);
-    text(14, 34, "MOCHI #" + String(card.gen) + "  " + String(card.age) + "D OLD", 1, GREY);
-    // HP: 10 boxes, like the app
-    text(14, 248, "HP", 2, INK);
+    String name = card.name.substring(0, 15);
+    panel(8, 8, max(150, (int)name.length() * 12 + 22), 46);
+    text(18, 16, name, 2, INK);
+    text(18, 38, "MOCHI #" + String(card.gen) + " - " + (card.age ? String(card.age) + "D OLD" : String("BORN TODAY")), 1, GREY);
+    panel(8, 246, 221, 66);
+    text(18, 256, "HP", 2, INK);
     int on = (card.hp + 5) / 10;
     for (int i = 0; i < 10; i++) {
-      int x = 46 + i * 15;
-      gfx->drawRect(x, 248, 12, 14, INK);
-      if (i < on) gfx->fillRect(x + 2, 250, 8, 10, card.tier == "sick" ? RED : card.tier == "legend" ? YELLOW : GREEN);
+      int x = 46 + i * 13;
+      gfx->drawRect(x, 256, 11, 14, INK);
+      if (i < on) gfx->fillRect(x + 2, 258, 7, 10, card.tier == "sick" ? RED : card.tier == "legend" ? YELLOW : GREEN);
     }
-    text(200, 248, String(card.hp), 2, INK);
-    gfx->fillRoundRect(14, 272, 12 + card.tierName.length() * 12, 22, 5, YELLOW);
-    gfx->drawRoundRect(14, 272, 12 + card.tierName.length() * 12, 22, 5, INK);
-    text(20, 276, card.tierName, 2, INK);
+    text(182, 256, String(card.hp), 2, INK);
+    int bw = 10 + card.tierName.length() * 6;
+    gfx->fillRoundRect(18, 276, bw, 14, 4, YELLOW);
+    gfx->drawRoundRect(18, 276, bw, 14, 4, INK);
+    text(23, 280, card.tierName, 1, INK);
     String fx = card.drunk ? "DRUNK" : card.high ? "HIGH" : card.coughy ? "COUGHING" : "";
-    if (fx.length()) text(26 + card.tierName.length() * 12, 280, fx, 1, RED);
-    text(14, 304, doing().length() ? doing() : status, 1, GREY);
+    if (fx.length()) text(26 + bw, 280, fx, 1, RED);
+    text(18, 297, (doing().length() ? doing() : status).substring(0, 33), 1, GREY);
+    drawStage(0, false);
   } else if (view == 1) {
-    text(14, 14, "TODAY", 2, INK);
-    for (int i = 0; i < card.nstats; i++) text(14, 48 + i * 30, card.stats[i], 2, INK);
-    if (!card.nstats) text(14, 48, "No stats shared yet", 1, GREY);
-    text(14, 304, "Record " + String(max(card.best, card.age)) + "d  Deaths " + String(card.deaths), 1, GREY);
+    panel(8, 8, 221, 304);
+    text(20, 20, "TODAY", 2, INK);
+    for (int i = 0; i < card.nstats; i++) text(20, 52 + i * 28, card.stats[i], 2, INK);
+    if (!card.nstats) text(20, 52, "No stats shared yet", 1, GREY);
+    text(20, 292, "Record " + String(max(card.best, card.age)) + "d  Deaths " + String(card.deaths), 1, GREY);
   } else {
-    text(14, 14, "INFO", 2, INK);
-    text(14, 48, "WiFi: " + (WiFi.status() == WL_CONNECTED ? WiFi.SSID() : String("not connected")), 1, INK);
-    text(14, 66, "IP: " + WiFi.localIP().toString(), 1, INK);
-    text(14, 84, "Status: " + status, 1, INK);
-    text(14, 102, "Last sync: " + (lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never")), 1, INK);
-    text(14, 140, "A  next screen", 1, GREY);
-    text(14, 156, "B  sync now", 1, GREY);
-    text(14, 172, "C  screen off / on", 1, GREY);
+    panel(8, 8, 221, 304);
+    text(20, 20, "INFO", 2, INK);
+    text(20, 52, "WiFi: " + (WiFi.status() == WL_CONNECTED ? WiFi.SSID() : String("not connected")), 1, INK);
+    text(20, 70, "IP: " + WiFi.localIP().toString(), 1, INK);
+    text(20, 88, "Status: " + status.substring(0, 26), 1, INK);
+    text(20, 106, "Last sync: " + (lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never")), 1, INK);
+    text(20, 144, "A  next screen", 1, GREY);
+    text(20, 160, "B  sync now", 1, GREY);
+    text(20, 176, "C  screen off / on", 1, GREY);
   }
 }
 
@@ -351,7 +405,6 @@ void setup() {
                 "ILI9341",
 #endif
                 PIN_CS, PIN_DC, PIN_RST, PIN_SCK, PIN_MOSI);
-  gfx->fillScreen(rgb(0xff0000)); delay(300); gfx->fillScreen(rgb(0x00ff00)); delay(300); gfx->fillScreen(rgb(0x0000ff)); delay(300);   // test: red, green, blue
   BG = rgb(0xefeaff); CARD = rgb(0xffffff); SOFT = rgb(0xf3f0fb); YELLOW = rgb(0xffe45e); GREEN = rgb(0x3fbf6f); RED = rgb(0xe0303a); GREY = rgb(0x6a6475);
   stage = (uint16_t *)malloc(SW * SH * 2);
   prefs.begin("lazytrack", false);
@@ -361,13 +414,13 @@ void setup() {
   Serial.println("connecting to WiFi...");
   status = "Connecting to WiFi...";
   drawFrame();
-  drawStage(0, 0, false);
+  drawStage(0, false);
   tuneBoot();
   // the last Mochi it saw, so it shows up even without WiFi (outside, no hotspot)
   String saved;
   size_t n = prefs.getBytesLength("card");
   if (n > 0 && n < 16384) { char *buf = (char *)malloc(n + 1); prefs.getBytes("card", buf, n); buf[n] = 0; saved = buf; free(buf); }
-  if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, 0, false); }
+  if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, false); }
   WiFi.mode(WIFI_STA);
   wifi.addAP(WIFI_SSID, WIFI_PASS);
 #ifdef WIFI2_SSID
@@ -393,15 +446,18 @@ void loop() {
   if (millis() - lastTry > 60000) { int before = card.hp; String tb = card.tierName; sync(); if (card.hp != before || card.tierName != tb || view == 2) drawFrame(); }
   if (WiFi.status() != WL_CONNECTED && millis() - lastTry > 15000) { lastTry = millis(); if (wifi.run(3000) == WL_CONNECTED) sync(); }
 
-  if (screenOn && view == 0 && millis() - tick > 120) {  // ~8 fps: bob, blink, wobble when drunk, shake when coughing
+  // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
+  // Only redrawn when something changes, so the screen stays calm.
+  static int lastDx = 99; static bool lastBlink = false;
+  if (screenOn && view == 0 && millis() - tick > 120) {
     tick = millis();
     uint32_t t = millis();
     if (t > nextBlink) { blinkEnd = t + 160; nextBlink = t + 3500 + random(2500); }
-    int dy = (t / 700) % 2 ? -4 : 0;
     int dx = 0;
     if (card.drunk) dx = (int)(sin(t / (500.0 - card.drunk * 100)) * (3 + card.drunk * 2));
-    else if (card.high) dy += (int)(sin(t / 900.0) * 3);
+    else if (card.high) dx = (int)(sin(t / 1100.0) * 3);
     if (card.coughy && (t / 300) % (14 - card.coughy * 3) == 0) dx = ((t / 60) % 2) ? 3 : -3;
-    drawStage(dx, dy, t < blinkEnd);
+    bool blink = t < blinkEnd;
+    if (dx != lastDx || blink != lastBlink) { drawStage(dx, blink); lastDx = dx; lastBlink = blink; }
   }
 }
