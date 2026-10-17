@@ -1,6 +1,11 @@
 # LazyTrack
 
-**On Windows?** See [WINDOWS.md](WINDOWS.md): install Python, double-click `install.bat`, then `start.bat`.
+**Easiest install (Windows and Mac):** run the one-file installer, it does everything (its own Python, packages, shortcuts, start with the computer, auto-updates):
+
+- **Windows:** double-click `LazyTrack-Setup.exe`. If Windows says "protected your PC": More info → Run anyway.
+- **Mac:** unzip `Install-LazyTrack-Mac.zip`, then right-click **Install LazyTrack** → Open (on macOS 15+: try to open it once, then System Settings → Privacy & Security → Open Anyway).
+
+The installers are built with `installer/build.sh` (into `dist/`). The manual way below still works; for Windows by hand see [WINDOWS.md](WINDOWS.md).
 
 Tracks your life on your Mac without you doing anything:
 

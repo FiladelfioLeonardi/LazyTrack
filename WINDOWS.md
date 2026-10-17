@@ -6,21 +6,26 @@ so friends can see you.
 
 ## Install (once, about 10 minutes)
 
-1. **Python 3.12.** Download the "Windows installer (64-bit)" from
-   https://www.python.org/downloads/release/python-3128/ and run it.
-   On the first screen, tick **"Add python.exe to PATH"**, then click Install Now.
-2. **LazyTrack.** Unzip the LazyTrack folder somewhere it can stay, for example `Documents\LazyTrack`.
-3. Double-click **`install.bat`**. It downloads what LazyTrack needs (about 1 GB, mostly the camera AI),
-   so give it a few minutes. At the end it asks if LazyTrack should start with Windows: press **Y**.
-4. Double-click **`start.bat`**. Your browser opens LazyTrack:
-   **Let's go → make your account** (name, username, email, password) → pick your habits → done.
+1. Double-click **`LazyTrack-Setup.exe`**. If Windows says "Windows protected your PC", click **More info → Run anyway**
+   (it's not signed by a big company, that's all).
+2. Click **OK**. A page opens in your browser and shows the progress. It downloads about 1 GB (mostly the camera AI),
+   so give it a few minutes. You don't need to install Python or anything else.
+3. When it's done, LazyTrack opens: **Let's go → make your account** (name, username, email, password) → pick your habits
+   and targets → a short guided tour.
 
-Keep the black start.bat window open (minimize it); closing it stops LazyTrack.
+LazyTrack is now in the **Start menu** and on the **desktop**, starts by itself with Windows, and runs quietly in the
+background (no black window). It **updates itself**: you never need the installer again.
+To remove it: Settings → Apps → LazyTrack → Uninstall (your data stays unless you choose to delete it).
+
+<details><summary>The manual way (without the installer)</summary>
+
+1. Install Python 3.12 from python.org and tick **"Add python.exe to PATH"**.
+2. Unzip the LazyTrack folder somewhere it can stay, double-click **`install.bat`**, then **`start.bat`**
+   (keep that black window open).
+</details>
 
 ## Good to know
 
-- **Windows may warn** "Windows protected your PC" the first time you open a .bat file:
-  click **More info → Run anyway**. That's because the file isn't from a big company, not because it's dangerous.
 - **Camera:** the smoking detector uses the webcam. If Windows asks, allow it. If it can't open the camera,
   turn on Settings → Privacy & security → Camera → "Let desktop apps access your camera". You can turn the
   detector off in Settings → Smoking detector.

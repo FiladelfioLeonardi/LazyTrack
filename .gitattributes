@@ -2,3 +2,4 @@
 *.command text eol=lf
 *.sh text eol=lf
 lt text eol=lf
+*.vbs text eol=crlf
