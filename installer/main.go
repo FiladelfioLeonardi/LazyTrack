@@ -180,7 +180,10 @@ func install(dir string) error {
 
 // 1. unzip LazyTrack's files (an existing install keeps its Python and packages)
 func copyApp(dir string) error {
-	stopRunning(dir) // a repair: stop the running copy so its files can be replaced
+	if fileExists(filepath.Join(dir, ".venv")) { // a repair: stop the running copy so its files can be replaced
+		setStep(0, "run", "stopping the LazyTrack that's running", -1)
+		stopRunning(dir)
+	}
 	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
 	if err != nil {
 		return err
@@ -232,7 +235,12 @@ func getPython(dir string) error {
 	url := fmt.Sprintf("https://github.com/astral-sh/python-build-standalone/releases/download/%s/cpython-%s+%s-%s-install_only.tar.gz",
 		pythonRelease, pythonVersion, pythonRelease, pythonTarget())
 	logLine("Downloading " + url)
-	resp, err := http.Get(url)
+	// no total limit (slow internet is fine), but give up on a dead connection instead of waiting forever
+	client := &http.Client{Transport: &http.Transport{Proxy: http.ProxyFromEnvironment,
+		DialContext:           (&net.Dialer{Timeout: 30 * time.Second}).DialContext,
+		TLSHandshakeTimeout:   30 * time.Second,
+		ResponseHeaderTimeout: 60 * time.Second}}
+	resp, err := client.Get(url)
 	if err != nil {
 		return fmt.Errorf("couldn't download Python (is the internet on?): %v", err)
 	}
