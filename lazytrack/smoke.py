@@ -16,6 +16,7 @@ Cascade, so it stays cheap:
 from __future__ import annotations
 
 import logging
+import os
 import sys
 import random
 import shutil
@@ -32,6 +33,8 @@ log = logging.getLogger(__name__)
 ANSWERS = {"Cigarette": "cigarette", "Joint": "joint"}
 DATASET = config.HOME / "dataset"            # dataset/smoking/*.jpg, dataset/not_smoking/*.jpg
 PERSONAL_MODEL = config.HOME / "smoke-personal.pt"
+# photo-loading helper processes for training: none on Windows (spawning them there is slow and fragile)
+WORKERS = 0 if sys.platform == "win32" else 8
 CLASSES = ("smoking", "not_smoking")
 
 Box = Tuple[int, int, int, int]  # x, y, w, h
@@ -552,13 +555,25 @@ def collect(cfg: dict, label: str, seconds: int) -> None:
         print("Enough to train: ./lt train")
 
 
+def _link(src: Path, dest: Path) -> None:
+    """Put a photo into the training folders without copying it if possible. Symlinks need admin
+    rights on Windows, so: symlink, else hard link (no admin needed on Windows), else a copy."""
+    for make in (lambda: dest.symlink_to(src), lambda: os.link(src, dest), lambda: shutil.copy2(src, dest)):
+        try:
+            make()
+            return
+        except OSError:
+            continue
+    raise OSError(f"couldn't put {src.name} into the training folder")
+
+
 def train(cfg: dict, epochs: int) -> None:
     """Trains your personal smoking classifier from ~/.lazytrack/dataset."""
     files = {c: sorted((DATASET / c).glob("*.jpg")) for c in CLASSES}
     counts = {c: len(v) for c, v in files.items()}
     print(f"Dataset: {counts}")
     if min(counts.values()) < 30:
-        raise SystemExit("Need at least 30 photos of each. Record more with:\n"
+        raise SystemExit("Need at least 30 photos of each. Record more with train.bat (Windows) or:\n"
                          "  ./lt collect smoking\n  ./lt collect not_smoking")
 
     split = config.HOME / "training" / "split"
@@ -572,7 +587,7 @@ def train(cfg: dict, epochs: int) -> None:
             d = split / part / c
             d.mkdir(parents=True, exist_ok=True)
             for p in chunk:
-                (d / p.name).symlink_to(p)
+                _link(p, d / p.name)
 
     from ultralytics import YOLO
     device = pick_device()
@@ -587,21 +602,21 @@ def train(cfg: dict, epochs: int) -> None:
         raise SystemExit("Could not download a base classification model.")
     print(f"Training on {device} for {epochs} epochs (a few minutes)...")
     try:
-        base.train(data=str(split), epochs=epochs, imgsz=224, device=device, batch=32,
+        base.train(data=str(split), epochs=epochs, imgsz=224, device=device, batch=32, workers=WORKERS,
                    project=str(config.HOME / "training"), name="run", exist_ok=True, plots=False, verbose=False)
     except Exception as e:
         if device == "cpu":
             raise
         print(f"GPU training failed ({e}), retrying on CPU...")
         base = YOLO("yolo11n-cls.pt")
-        base.train(data=str(split), epochs=epochs, imgsz=224, device="cpu", batch=32,
+        base.train(data=str(split), epochs=epochs, imgsz=224, device="cpu", batch=32, workers=WORKERS,
                    project=str(config.HOME / "training"), name="run", exist_ok=True, plots=False, verbose=False)
 
     best = Path(base.trainer.best)
     shutil.copy(best, PERSONAL_MODEL)
     acc = None
     try:
-        acc = YOLO(str(PERSONAL_MODEL)).val(data=str(split), imgsz=224, device=device,
+        acc = YOLO(str(PERSONAL_MODEL)).val(data=str(split), imgsz=224, device=device, workers=WORKERS,
                                             verbose=False, plots=False).top1
     except Exception:
         pass

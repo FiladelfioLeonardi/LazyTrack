@@ -11,6 +11,10 @@ echo  Use the same light you usually have on (yes, the RGB light too).
 echo.
 pause
 echo.
+if exist "%USERPROFILE%\.lazytrack\dataset\smoking" (
+  choice /c RT /m " You already recorded photos. R = record new ones too, T = just train on what you have"
+  if errorlevel 2 goto trainonly
+)
 echo  STEP 1 of 3: 60 seconds WITHOUT smoking.
 echo  Sit like you normally do: type, drink, touch your face, hold your phone or a pen.
 pause
@@ -20,6 +24,8 @@ echo  STEP 2 of 3: 60 seconds WITH a cigarette or joint.
 echo  Hold it and smoke like you normally do. Move around, turn your head, use both hands.
 pause
 .venv\Scripts\python -m lazytrack collect smoking --seconds 60 || goto fail
+echo.
+:trainonly
 echo.
 echo  STEP 3 of 3: training. This takes a few minutes, let it run...
 .venv\Scripts\python -m lazytrack train || goto fail
