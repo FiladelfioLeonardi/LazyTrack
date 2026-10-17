@@ -428,6 +428,11 @@ def make_handler(cfg: dict):
                     row = accounts.find(login)
                     if accounts.password_ok(row, pw):
                         tok = accounts.login(login, pw)       # the copy on this computer: works offline too
+                        if row["email"] and not cloud.state()["connected"]:
+                            try:   # friends come back by themselves when you log in
+                                cloud.connect(row["email"], pw, "", "", new=False)
+                            except cloud.CloudError:
+                                pass   # offline or no account there yet: the app still works, friends wait
                     elif "@" in login:
                         # the account on the friends server is the real one: log in there and copy/refresh it here
                         st = cloud.connect(login, pw, "", "", new=False)
@@ -445,6 +450,7 @@ def make_handler(cfg: dict):
                 return self._send(400, {"error": str(e)})
             if path == "/api/auth/logout":
                 accounts.logout(self._session())
+                cloud.disconnect()   # logging out logs out of friends too; logging in connects again
                 return self._send(200, {"ok": True}, cookie="")
             user = self._user()
             if not user:

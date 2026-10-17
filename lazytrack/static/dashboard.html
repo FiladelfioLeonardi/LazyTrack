@@ -3160,8 +3160,7 @@ async function renderFriends() {
   const keys = shareKeys();
   const opts = [...HABITS.map(h => [h.k, `${h.e} ${h.n}`]), ...SHOW_SCREEN.map(k => [k, `${(INFO[k] || {}).e || ""} ${(INFO[k] || {}).n || k}`])];
   $("fShare").innerHTML = `<div class="label">WHAT FRIENDS SEE</div><p class="note" style="margin-bottom:10px">Mochi, HP and your level always show. Green = shared.</p>
-    <div class="sharechips">${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>
-    <div class="actions" style="margin-top:14px"><button type="button" class="btn" id="cOut">Disconnect from friends</button></div>`;
+    <div class="sharechips">${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>`;
   $("fReq").innerHTML = (F.incoming.length ? `<h2 class="sec">Wants to be your friend</h2><div class="card">${F.incoming.map(x =>
       `<div class="reqrow"><b>${esc(x.display_name)} <span class="note">@${esc(x.username)}</span></b>
         <button type="button" class="btn primary" data-accept="${x.id}">Accept</button><button type="button" class="btn" data-decline="${x.id}">No thanks</button></div>`).join("")}</div>` : "")
@@ -3214,11 +3213,6 @@ document.addEventListener("click", async e => {
     pushCard(true);
     $("fMe").innerHTML = fcardHTML({...renderFriends.data.me, card: buildCard(), updated_at: new Date().toISOString()}, {me: true});
     return;
-  }
-  if (e.target.closest("#cOut")) {
-    const b = e.target.closest("#cOut");
-    if (!b.dataset.sure) { b.dataset.sure = 1; b.textContent = "Sure? Tap again"; return; }
-    await post("/api/cloud/disconnect", {}); CLOUD = {connected: false}; updateBadge(); render(); return;
   }
 });
 
