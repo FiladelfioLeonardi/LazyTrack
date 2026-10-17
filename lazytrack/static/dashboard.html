@@ -497,34 +497,48 @@
   .petbox .dress { position: absolute; right: 4px; bottom: 4px; width: 26px; height: 26px; display: grid; place-items: center; font-size: 15px;
                    background: var(--yellow); border: 2px solid var(--line); border-radius: 9px; }
   @media (hover: hover) { .petbox:hover { transform: translate(-1px, -2px) rotate(-2deg); box-shadow: 3px 4px 0 var(--line); } }
-  .wrcard { width: min(760px, 100%); max-height: calc(100dvh - 32px); display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 14px;
-            background: var(--card); border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line); padding: 18px;
-            animation: slideUp .35s cubic-bezier(.2, .8, .2, 1); }
-  .wrtop { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
-  .wrpreview { flex: none; width: 160px; height: 160px; background: var(--soft); border: 3px solid var(--line); border-radius: 18px; display: grid; place-items: center; }
-  .wrpreview .pet { grid-template-columns: repeat(16, 9px); grid-auto-rows: 9px; }
-  .wrhead { flex: 1; min-width: 200px; display: grid; gap: 8px; }
-  .wrtabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-  .wrtabs button { flex: none; border: 2px solid var(--line); border-radius: 10px; background: var(--card); padding: 6px 12px; font-weight: 800; cursor: pointer; }
-  .wrtabs button[aria-selected="true"] { background: var(--yellow); color: var(--on-fill); }
-  .wrgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); overflow-y: auto; padding: 4px 4px 8px; align-content: start; }
-  .wrtile { display: grid; gap: 4px; justify-items: center; padding: 8px 4px; border: 3px solid var(--line); border-radius: 14px; background: var(--card);
-            cursor: pointer; font-weight: 700; font-size: 12px; transition: transform .14s ease, box-shadow .14s ease; }
-  .wrtile .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
-  .wrscene { width: 80px; height: 80px; border: 2px solid var(--line); border-radius: 10px; background-color: #fff; }
-  .wrtile .wrscene .pet { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
-  .wrpreview.scene .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
-  @media (hover: hover) { .wrtile:hover { transform: translate(-1px, -2px); box-shadow: 3px 4px 0 var(--line); } }
-  .wrcolors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 10px; } .wrcolors[hidden] { display: none; }
+  /* the wardrobe: Mochi big on its stage on the left, the categories (then their items) on the right */
+  .wrcard { width: min(980px, 100%); height: min(680px, calc(100dvh - 32px)); display: grid; grid-template-columns: 1.05fr 1fr; background: var(--card);
+            border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line); overflow: hidden; }
+  .wrstage { position: relative; display: grid; place-items: end center; border-right: 3px solid var(--line); background-color: var(--soft);
+             background-size: cover; background-position: center bottom; image-rendering: pixelated; min-height: 0; }
+  .wrstage .pet { grid-template-columns: repeat(16, 16px); grid-auto-rows: 16px; margin-bottom: 7%; filter: drop-shadow(0 6px 0 rgba(0,0,0,.18)); }
+  .wrstage .wrtools { position: absolute; top: 14px; left: 14px; right: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .wrstage .wrtools .btn { height: 38px; padding: 0 12px; font-size: 14px; }
+  .wrplate { position: absolute; left: 14px; bottom: 14px; padding: 6px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 3px 3px 0 var(--line); }
+  .wrplate b { display: block; font: 800 17px var(--body); } .wrplate span { font: 400 11px var(--pixel); color: var(--ink-3); }
+  .wrside { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
+  .wrhead { padding: 18px 20px 10px; border-bottom: 3px solid var(--line); }
+  .wrhead .wrback { border: 0; background: none; padding: 0; color: var(--ink-3); font: 700 13px var(--body); cursor: pointer; }
+  .wrhead h2 { margin: 2px 0 0; font: 800 24px/1.15 var(--body); } .wrhead p { margin: 4px 0 0; font-size: 14px; color: var(--ink-2); }
+  .wrlist { overflow-y: auto; padding: 12px 16px; display: grid; gap: 8px; align-content: start; }
+  .wrrow { display: grid; grid-template-columns: auto 1fr auto auto; gap: 12px; align-items: center; width: 100%; text-align: left; padding: 10px 12px;
+           border: 3px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); font: 800 16px var(--body); cursor: pointer; }
+  .wrrow .ic { font-size: 20px; } .wrrow .now { font: 400 12px var(--pixel); color: var(--ink-3); text-align: right; } .wrrow .go { font-weight: 800; opacity: .5; }
+  .wrrow[aria-current="true"], .wrrow:focus-visible { outline: 3px solid var(--yellow); outline-offset: 1px; }
+  @media (hover: hover) { .wrrow:hover, .writem:hover { transform: translate(-1px, -2px); box-shadow: 3px 4px 0 var(--line); } }
+  .writems { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+  .writem { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; padding: 6px 8px; border: 3px solid var(--line); border-radius: 14px;
+            background: var(--card); color: var(--ink); font: 700 14px/1.15 var(--body); text-align: left; cursor: pointer; }
+  .writem .wrscene { width: 46px; height: 46px; border: 2px solid var(--line); border-radius: 9px; background-color: #fff; background-size: cover; display: grid; place-items: center; }
+  .writem .wrscene .pet { grid-template-columns: repeat(16, 2.5px); grid-auto-rows: 2.5px; }
+  .writem > span:last-child { min-width: 0; overflow-wrap: anywhere; }
+  .writem[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 2px 2px 0 var(--line); }
+  .wrcolors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px 0; } .wrcolors[hidden] { display: none; }
   .wrcolors .lbl { font: 12px Silkscreen, monospace; margin-right: 4px; }
   .wrsw { width: 26px; height: 26px; border: 3px solid var(--line); border-radius: 8px; padding: 0; cursor: pointer; }
   .wrsw[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--yellow); }
   .wrpick { position: relative; display: inline-grid; place-items: center; width: 26px; height: 26px; border: 3px solid var(--line); border-radius: 8px; cursor: pointer;
-    background: conic-gradient(#e0303a, #f2b705, #3fae69, #2a78d6, #6250d6, #e0303a); }
+            background: conic-gradient(#e0303a, #f2b705, #3fae69, #7ad3ff, #6250d6, #ff8fb1, #e0303a); }
   .wrpick input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: 0; padding: 0; }
-  .wrtile[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 2px 2px 0 var(--line); }
-  .wrbtm { display: flex; justify-content: flex-end; gap: 10px; }
-  @media (max-width: 560px) { .wrpreview { width: 120px; height: 120px; } .wrpreview .pet, .wrpreview.scene .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; } }
+  .wrbtm { display: flex; justify-content: flex-end; align-items: center; gap: 10px; padding: 12px 16px; border-top: 3px solid var(--line); }
+  .wrbtm .keys { margin-right: auto; font: 400 11px var(--pixel); color: var(--ink-3); }
+  @media (max-width: 720px) {
+    .wrcard { grid-template-columns: 1fr; grid-template-rows: 40% minmax(0, 1fr); height: calc(100dvh - 24px); }
+    .wrstage { border-right: 0; border-bottom: 3px solid var(--line); } .wrstage .pet { grid-template-columns: repeat(16, 9px); grid-auto-rows: 9px; }
+    .wrplate { display: none; } .wrstage .pet { margin-bottom: 5%; }
+    .wrbtm .keys { display: none; } .writems { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+  }
   .qbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 6px; }
   .qbtns .btn { justify-content: center; height: 52px; }
   .qbtns .btn.wide { grid-column: 1 / -1; }
@@ -900,16 +914,19 @@ applyTheme();
 <!-- the wardrobe: dress Mochi up -->
 <div class="qmodal" id="wardrobe" hidden role="dialog" aria-modal="true" aria-labelledby="wrTitle">
   <div class="wrcard">
-    <div class="wrtop">
-      <div class="wrpreview"><div class="pet bob" id="wrPet" aria-hidden="true"></div></div>
-      <div class="wrhead"><h2 class="ptitle" id="wrTitle" style="font-size:26px">Dress up Mochi</h2>
-        <p class="psub">Everything's free. Your friends see the outfit on your card.</p>
-        <div class="actions"><button type="button" class="btn" id="wrRandom">🎲 Surprise me</button></div></div>
+    <div class="wrstage scene" id="wrStage">
+      <div class="wrtools"><button type="button" class="btn" id="wrRandom">🎲 Surprise me</button><button type="button" class="btn" id="wrUndo" disabled>↺ Undo</button></div>
+      <div class="pet bob" id="wrPet" aria-hidden="true"></div>
+      <div class="wrplate" id="wrPlate"></div>
     </div>
-    <div class="wrtabs" id="wrTabs" role="tablist"></div>
-    <div class="wrcolors" id="wrColors" hidden></div>
-    <div class="wrgrid" id="wrGrid"></div>
-    <div class="wrbtm"><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save</button></div>
+    <div class="wrside">
+      <div class="wrhead" id="wrHead"></div>
+      <div class="wrlist" id="wrList"></div>
+      <div>
+        <div class="wrcolors" id="wrColors" hidden></div>
+        <div class="wrbtm"><span class="keys">↑↓ move · ⏎ choose · esc back</span><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save look</button></div>
+      </div>
+    </div>
   </div>
 </div>
 <!-- ideas: the + button on every page, and the form it opens -->
@@ -2976,13 +2993,17 @@ async function loadSettings() {
   settingsLoaded = true;
 }
 // ---------------------------------------------------------------- the wardrobe
-const WR_TABS = [["looks", "Looks"], ["body", "Body"], ["skin", "Color"], ["eyes", "Eyes"], ["mouth", "Mouth"], ["hat", "Head"], ["glasses", "Glasses"],
-                 ["neck", "Neck"], ["outfit", "Outfit"], ["held", "Holding"], ["place", "Place"]];
+// the categories on the right; the stage on the left always shows the look you're making
+const WR_CATS = [["looks", "✨", "Ready-made looks"], ["body", "🫧", "Body"], ["skin", "🎨", "Color"], ["eyes", "👀", "Eyes"], ["mouth", "👄", "Mouth"],
+                 ["hat", "🎩", "Head"], ["glasses", "🕶️", "Glasses"], ["neck", "📿", "Neck"], ["outfit", "👕", "Outfit"], ["held", "✋", "Holding"], ["place", "🏞️", "Place"]];
+const WR_HINT = {looks: "Whole outfits in one tap. You can change any part after.", body: "Mochi's shape.", skin: "Mochi's color, or pick any color.",
+  eyes: "Pick the eyes, then any color for them.", mouth: "Moods still change it now and then.", hat: "Sits on top without squashing Mochi. Any color.",
+  glasses: "", neck: "", outfit: "", held: "Something to hold.", place: "Where Mochi lives. Friends see it too."};
 const WR_COLORS = ["#1d1b20", "#ffffff", "#8a8f9c", "#e0303a", "#ff8fb1", "#f2b705", "#3fae69", "#7ad3ff", "#2a78d6", "#6250d6", "#c99a6e"];
 const wardrobe = {
-  tab: "looks", look: null, blink: null,
+  tab: null, look: null, blink: null, past: [], focus: 0,
   open() {
-    this.look = {...PET_LOOK};
+    this.look = {...PET_LOOK}; this.past = []; this.tab = null; this.focus = 0;
     $("wardrobe").hidden = false;
     this.draw();
     clearInterval(this.blink);
@@ -2990,25 +3011,42 @@ const wardrobe = {
       setTimeout(() => { if (!$("wardrobe").hidden) $("wrPet").innerHTML = mochiCells(this.look); }, 160); }, 3500);
   },
   close() { clearInterval(this.blink); $("wardrobe").hidden = true; },
-  draw() {
+  nameOf(slot) {
+    if (slot === "looks") { const m = Object.entries(MOCHI.looks).find(([, v]) => { const l = {...LOOK_DEFAULT, ...v.look, place: this.look.place}; return Object.keys(LOOK_DEFAULT).every(s => l[s] === this.look[s]); }); return m ? m[1].n : "Your own"; }
+    if (slot === "skin" && isHex(this.look.skin)) return "Custom";
+    const it = MOCHI[SLOTS[slot]][this.look[slot]]; return it ? it.n : "–";
+  },
+  drawStage() {
     $("wrPet").innerHTML = mochiCells(this.look);
-    setPlace($("wrPet").parentElement, this.look.place, {soft: softColor(this.look)});
-    $("wrTabs").innerHTML = WR_TABS.map(([k, n]) => `<button type="button" role="tab" aria-selected="${k === this.tab}" data-wrtab="${k}">${n}</button>`).join("");
+    setPlace($("wrStage"), this.look.place, {soft: softColor(this.look)});
+    const L = (O && O.life) || {};
+    $("wrPlate").innerHTML = `<b>${esc(AUTH.user ? AUTH.user.display_name + "'s Mochi" : "Mochi")}</b><span>MOCHI #${L.gen || 1} · ${L.age ? `${L.age} DAYS OLD` : "BORN TODAY"}</span>`;
+    $("wrUndo").disabled = !this.past.length;
+  },
+  draw() {
+    this.drawStage();
+    if (!this.tab) {
+      $("wrHead").innerHTML = `<h2 id="wrTitle">Dress up Mochi</h2><p>Everything's free. Your friends see the look on your card.</p>`;
+      $("wrList").innerHTML = WR_CATS.map(([k, ic, n], i) => `<button type="button" class="wrrow" data-wrtab="${k}" aria-current="${i === this.focus}">
+        <span class="ic" aria-hidden="true">${ic}</span><span>${n}</span><span class="now">${esc(this.nameOf(k))}</span><span class="go" aria-hidden="true">›</span></button>`).join("");
+      $("wrColors").hidden = true;
+      return;
+    }
+    const cat = WR_CATS.find(c => c[0] === this.tab);
+    $("wrHead").innerHTML = `<button type="button" class="wrback" data-wrback>‹ All categories</button><h2 id="wrTitle">${cat[1]} ${cat[2]}</h2>${WR_HINT[this.tab] ? `<p>${WR_HINT[this.tab]}</p>` : ""}`;
     let items;
     if (this.tab === "looks") {
-      items = Object.entries(MOCHI.looks).map(([k, v]) => {
-        const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
-        return {k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])};
-      });
+      items = Object.entries(MOCHI.looks).map(([k, v]) => { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
+        return {k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}; });
     } else {
       items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
     }
+    $("wrList").innerHTML = `<div class="writems">${items.map(it => { const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
+      return `<button type="button" class="writem" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
+        <span class="wrscene" style="background-image:url(${bg})"><span class="pet">${mochiCells(it.look)}</span></span><span>${esc(it.n)}</span></button>`; }).join("")}</div>`;
     this.drawColors();
-    $("wrGrid").innerHTML = items.map(it => { const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
-      return `<button type="button" class="wrtile" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
-      <div class="wrscene scene" style="background-image:url(${bg})"><div class="pet">${mochiCells(it.look)}</div></div><span>${esc(it.n)}</span></button>`; }).join("");
   },
-  // the color row: for skin, and for any item whose main color can change
+  // the color row: body color, eyes and head only
   colorNow() {
     if (this.tab === "skin") return skinColor(this.look).startsWith("#") ? skinColor(this.look) : null;
     if (this.tab === "eyes") return isHex(this.look.eyesColor) ? this.look.eyesColor : "#1d1b20";
@@ -3016,25 +3054,27 @@ const wardrobe = {
     return it && it.tint ? (isHex(this.look[this.tab + "Color"]) ? this.look[this.tab + "Color"] : it.tint) : null;
   },
   drawColors() {
-    const box = $("wrColors");
-    const it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
+    const box = $("wrColors"), it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
     const show = this.tab === "skin" || this.tab === "eyes" || (this.tab === "hat" && it && it.tint);
     box.hidden = !show;
     if (!show) return;
     const now = (this.colorNow() || "").toLowerCase();
     const list = this.tab === "skin" ? Object.values(MOCHI.skins).map(v => v.c).filter(Boolean)
       : this.tab === "eyes" ? WR_COLORS : [it.tint, ...WR_COLORS.filter(c => c !== it.tint)];
-    box.innerHTML = `<span class="lbl">Color</span>` + list.map(c => `<button type="button" class="wrsw" style="background:${c}" data-wrcolor="${c}"
+    box.innerHTML = `<span class="lbl">COLOR</span>` + list.map(c => `<button type="button" class="wrsw" style="background:${c}" data-wrcolor="${c}"
       aria-pressed="${c.toLowerCase() === now}" aria-label="Color ${c}"></button>`).join("")
       + `<label class="wrpick" title="Any color"><input type="color" id="wrAny" value="${now || "#b9a7ff"}" aria-label="Pick any color"></label>`;
   },
+  remember() { this.past.push({...this.look}); if (this.past.length > 30) this.past.shift(); },
   setColor(c) {
     if (!isHex(c)) return;
+    this.remember();
     if (this.tab === "skin") this.look = {...this.look, skin: c.toLowerCase()};
     else this.look = {...this.look, [this.tab + "Color"]: c.toLowerCase()};
     this.draw();
   },
   pick(k) {
+    this.remember();
     if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look, place: this.look.place};
     else {
       this.look = {...this.look, [this.tab]: k};
@@ -3042,7 +3082,11 @@ const wardrobe = {
     }
     this.draw();
   },
+  undo() { if (!this.past.length) return; this.look = this.past.pop(); this.draw(); },
+  enter(k) { this.focus = WR_CATS.findIndex(c => c[0] === k); this.tab = k; this.draw(); $("wrList").scrollTop = 0; },
+  back() { this.tab = null; this.draw(); const f = $("wrList").querySelector('[aria-current="true"]'); if (f) f.focus({preventScroll: false}); },
   random() {
+    this.remember();
     const any = slot => { const ks = Object.keys(MOCHI[SLOTS[slot]]); return ks[Math.floor(Math.random() * ks.length)]; };
     const maybe = slot => Math.random() < .45 ? "none" : any(slot);
     this.look = {body: any("body"), skin: any("skin"), eyes: any("eyes"), mouth: Math.random() < .4 ? "smile" : any("mouth"), hat: maybe("hat"), glasses: Math.random() < .7 ? "none" : any("glasses"),
@@ -3062,8 +3106,10 @@ $("petBox").addEventListener("click", () => wardrobe.open());
 $("wrCancel").addEventListener("click", () => wardrobe.close());
 $("wrSave").addEventListener("click", () => wardrobe.save());
 $("wrRandom").addEventListener("click", () => wardrobe.random());
+$("wrUndo").addEventListener("click", () => wardrobe.undo());
 $("wardrobe").addEventListener("click", e => {
-  const t = e.target.closest("[data-wrtab]"); if (t) { wardrobe.tab = t.dataset.wrtab; wardrobe.draw(); return; }
+  const t = e.target.closest("[data-wrtab]"); if (t) { wardrobe.enter(t.dataset.wrtab); return; }
+  if (e.target.closest("[data-wrback]")) { wardrobe.back(); return; }
   const p = e.target.closest("[data-wrpick]"); if (p) { wardrobe.pick(p.dataset.wrpick); return; }
   const c = e.target.closest("[data-wrcolor]"); if (c) { wardrobe.setColor(c.dataset.wrcolor); return; }
   if (e.target.id === "wardrobe") wardrobe.close();   // tap outside the card
@@ -3074,8 +3120,18 @@ $("wardrobe").addEventListener("input", e => {   // live while dragging in the c
   wardrobe.look = slot === "skin" ? {...wardrobe.look, skin: c} : {...wardrobe.look, [slot + "Color"]: c};
   $("wrPet").innerHTML = mochiCells(wardrobe.look);
 });
-$("wardrobe").addEventListener("change", e => { if (e.target.id === "wrAny") wardrobe.setColor(e.target.value); });
-addEventListener("keydown", e => { if (e.key === "Escape" && !$("wardrobe").hidden) wardrobe.close(); });
+$("wardrobe").addEventListener("change", e => { if (e.target.id === "wrAny") { wardrobe.look = {...wardrobe.look}; wardrobe.setColor(e.target.value); } });
+// keyboard: ↑↓ through the list, Enter to open, Esc to go back (or close)
+addEventListener("keydown", e => {
+  if ($("wardrobe").hidden) return;
+  if (e.key === "Escape") { e.preventDefault(); if (wardrobe.tab) wardrobe.back(); else wardrobe.close(); return; }
+  if (e.target.closest && e.target.closest("input")) return;
+  if (!wardrobe.tab && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+    e.preventDefault(); wardrobe.focus = (wardrobe.focus + (e.key === "ArrowDown" ? 1 : -1) + WR_CATS.length) % WR_CATS.length; wardrobe.draw();
+    $("wrList").querySelector('[aria-current="true"]').focus(); return;
+  }
+  if (!wardrobe.tab && e.key === "Enter" && !(e.target.closest && e.target.closest("button"))) { e.preventDefault(); wardrobe.enter(WR_CATS[wardrobe.focus][0]); }
+});
 
 // ---------------------------------------------------------------- the smoking question, on every page
 // When a camera (the computer's or a phone's) thinks you're smoking, LazyTrack opens one question.
