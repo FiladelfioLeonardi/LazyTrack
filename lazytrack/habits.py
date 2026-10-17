@@ -87,6 +87,7 @@ def get() -> dict:
         "screen": _load("screen_stats", LEGACY_SCREEN),
         "modules": {**MODULES, **_load("modules", {})},
         "share": _load("share", None),   # None = the default: good stuff shared, bad habits private
+        "pet": _load("pet", {}),         # what Mochi wears: {"body": "cat", "hat": "beanie", ...}
         "catalog": CATALOG,
         "screen_catalog": SCREEN_STATS,
     }
@@ -164,6 +165,9 @@ def save(body: dict) -> dict:
         db.kv_set("habits", json.dumps(out))
     if "screen" in body:
         db.kv_set("screen_stats", json.dumps([k for k in body["screen"] if k in SCREEN_KEYS]))
+    if "pet" in body and isinstance(body["pet"], dict):
+        slots = ("body", "skin", "eyes", "hat", "glasses", "neck", "outfit", "held")
+        db.kv_set("pet", json.dumps({k: str(v)[:24] for k, v in body["pet"].items() if k in slots}))
     if "share" in body and isinstance(body["share"], list):
         db.kv_set("share", json.dumps([str(k)[:40] for k in body["share"]][:60]))
     if "modules" in body:

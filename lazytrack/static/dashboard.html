@@ -109,7 +109,7 @@
   .petcard[data-mood="smoky"] { background: #d9d2e9; } .petcard[data-mood="proud"] { background: var(--green); }
   .petcard[data-mood="sleepy"] { background: #b9c7f5; } .petcard[data-mood="meh"] { background: var(--orange); }
   .petbox { flex: none; width: 132px; height: 132px; background: #ffffff; border: 3px solid var(--line); border-radius: 16px; display: grid; place-items: center; }
-  .pet { display: grid; grid-template-columns: repeat(10, 10px); grid-auto-rows: 10px; }
+  .pet { display: grid; grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; }
   .pet i { display: block; }
   .pet.bob { animation: bob 3.2s ease-in-out infinite; }
   @keyframes bob { 50% { transform: translateY(-4px); } }
@@ -118,7 +118,7 @@
   .speech .mood { margin: 0; font-weight: 500; }
   @media (max-width: 560px) {
     .pettop { gap: 12px; align-items: flex-start; }
-    .petbox { width: 96px; height: 96px; } .pet { grid-template-columns: repeat(10, 7px); grid-auto-rows: 7px; }
+    .petbox { width: 96px; height: 96px; } .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
     .statsheet { grid-template-columns: 1fr; gap: 0; }
     .stat { padding: 3px 4px; } .stat .sv { font-size: 16px; }
   }
@@ -162,7 +162,7 @@
   button.fcard:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--line); }
   .fcard .ftop { display: flex; gap: 12px; align-items: center; }
   .fcard .fpet { flex: none; width: 76px; height: 76px; background: #fff; border: 3px solid #1d1b20; border-radius: 14px; display: grid; place-items: center; }
-  .fcard .fpet .pet { grid-template-columns: repeat(10, 6px); grid-auto-rows: 6px; }
+  .fcard .fpet .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
   .fcard .fname b { font-size: 19px; display: block; line-height: 1.15; } .fcard .fname span { font: 400 12px var(--pixel); opacity: .75; }
   .fcard .hpbar i { width: 11px; height: 11px; } .fcard .hprow { gap: 6px 8px; }
   .fstats { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -339,7 +339,7 @@
   .hitem button { width: 34px; height: 34px; border: 2px solid var(--line); border-radius: 9px; background: var(--card); cursor: pointer; font: 800 16px var(--body); flex: none; }
   .hitem button:hover { background: var(--red); color: #1d1b20; }
   .acct { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .acct .apet { width: 64px; height: 64px; border-radius: 14px; } .acct .apet .pet { grid-template-columns: repeat(10, 5px); grid-auto-rows: 5px; }
+  .acct .apet { width: 64px; height: 64px; border-radius: 14px; } .acct .apet .pet { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
   .acct .who { flex: 1; min-width: 160px; } .acct .who b { font-size: 18px; display: block; }
   .camstat { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border: 3px solid var(--line); border-radius: 14px; background: var(--soft); }
   .camstat .dot { flex: none; width: 14px; height: 14px; margin-top: 4px; border-radius: 4px; border: 2px solid var(--line); background: var(--ink-3); }
@@ -358,6 +358,28 @@
   .qmodal[hidden] { display: none; }
   .qcard { width: min(420px, 100%); background: var(--card); border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line);
            padding: 22px 20px; display: grid; gap: 12px; justify-items: center; text-align: center; animation: slideUp .35s cubic-bezier(.2, .8, .2, 1); }
+  .petbox { cursor: pointer; padding: 0; position: relative; transition: transform .16s ease, box-shadow .16s ease; }
+  .petbox .dress { position: absolute; right: 4px; bottom: 4px; width: 26px; height: 26px; display: grid; place-items: center; font-size: 15px;
+                   background: var(--yellow); border: 2px solid var(--line); border-radius: 9px; }
+  @media (hover: hover) { .petbox:hover { transform: translate(-1px, -2px) rotate(-2deg); box-shadow: 3px 4px 0 var(--line); } }
+  .wrcard { width: min(760px, 100%); max-height: calc(100dvh - 32px); display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; gap: 14px;
+            background: var(--card); border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line); padding: 18px;
+            animation: slideUp .35s cubic-bezier(.2, .8, .2, 1); }
+  .wrtop { display: flex; gap: 18px; align-items: center; flex-wrap: wrap; }
+  .wrpreview { flex: none; width: 160px; height: 160px; background: var(--soft); border: 3px solid var(--line); border-radius: 18px; display: grid; place-items: center; }
+  .wrpreview .pet { grid-template-columns: repeat(16, 9px); grid-auto-rows: 9px; }
+  .wrhead { flex: 1; min-width: 200px; display: grid; gap: 8px; }
+  .wrtabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .wrtabs button { flex: none; border: 2px solid var(--line); border-radius: 10px; background: var(--card); padding: 6px 12px; font-weight: 800; cursor: pointer; }
+  .wrtabs button[aria-selected="true"] { background: var(--yellow); color: var(--on-fill); }
+  .wrgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); overflow-y: auto; padding: 4px 4px 8px; align-content: start; }
+  .wrtile { display: grid; gap: 4px; justify-items: center; padding: 8px 4px; border: 3px solid var(--line); border-radius: 14px; background: var(--card);
+            cursor: pointer; font-weight: 700; font-size: 12px; transition: transform .14s ease, box-shadow .14s ease; }
+  .wrtile .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
+  @media (hover: hover) { .wrtile:hover { transform: translate(-1px, -2px); box-shadow: 3px 4px 0 var(--line); } }
+  .wrtile[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 2px 2px 0 var(--line); }
+  .wrbtm { display: flex; justify-content: flex-end; gap: 10px; }
+  @media (max-width: 560px) { .wrpreview { width: 120px; height: 120px; } .wrpreview .pet { grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; } }
   .qbtns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-top: 6px; }
   .qbtns .btn { justify-content: center; height: 52px; }
   .qbtns .btn.wide { grid-column: 1 / -1; }
@@ -430,7 +452,7 @@
   .wbox { display: grid; justify-items: center; text-align: center; gap: 18px; max-width: 560px; position: relative; z-index: 1; }
   .wpet { width: 188px; height: 188px; background: #ffffff; border: 3px solid var(--line); border-radius: 26px; box-shadow: 6px 6px 0 var(--line);
           display: grid; place-items: center; animation: slideL .9s cubic-bezier(.2, .8, .2, 1) .15s backwards; }
-  .wpet .pet { grid-template-columns: repeat(10, 14px); grid-auto-rows: 14px; }
+  .wpet .pet { grid-template-columns: repeat(16, 10px); grid-auto-rows: 10px; }
   .wpet .pet.bob { animation: bob 3.2s ease-in-out 1.2s infinite; }
   .wtag { font-family: var(--pixel); font-size: 14px; color: var(--ink-2); letter-spacing: .12em; background: var(--lilac); color: var(--on-fill);
           border: 3px solid var(--line); border-radius: 10px; padding: 4px 10px; box-shadow: 3px 3px 0 var(--line);
@@ -470,7 +492,7 @@
   .acard { width: min(420px, 100%); background: var(--card); border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line);
            padding: 22px 20px; display: grid; gap: 14px; justify-items: center; text-align: center; }
   .apet { width: 96px; height: 96px; background: #ffffff; border: 3px solid var(--line); border-radius: 18px; display: grid; place-items: center; }
-  .apet .pet { grid-template-columns: repeat(10, 7px); grid-auto-rows: 7px; }
+  .apet .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
   .aform { display: grid; gap: 12px; width: 100%; text-align: left; }
   .aform label { font-weight: 800; font-size: 14px; display: block; margin-bottom: 5px; }
   .aform input { width: 100%; height: 48px; border: 3px solid var(--line); border-radius: 12px; padding: 0 14px; background: var(--soft); font-size: 16px; }
@@ -528,7 +550,7 @@
   @keyframes drift   { to { transform: translateY(-14px) rotate(8deg); } }
   @keyframes nudge   { 50% { transform: translateX(4px); } }
   @media (max-width: 560px) {
-    .wpet { width: 150px; height: 150px; } .wpet .pet { grid-template-columns: repeat(10, 11px); grid-auto-rows: 11px; }
+    .wpet { width: 150px; height: 150px; } .wpet .pet { grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; }
   }
 </style>
 <script>
@@ -644,6 +666,20 @@ applyTheme();
   </div>
 </section>
 <canvas id="aura" aria-hidden="true"></canvas>
+<!-- the wardrobe: dress Mochi up -->
+<div class="qmodal" id="wardrobe" hidden role="dialog" aria-modal="true" aria-labelledby="wrTitle">
+  <div class="wrcard">
+    <div class="wrtop">
+      <div class="wrpreview"><div class="pet bob" id="wrPet" aria-hidden="true"></div></div>
+      <div class="wrhead"><h2 class="ptitle" id="wrTitle" style="font-size:26px">Dress up Mochi</h2>
+        <p class="psub">Everything's free. Your friends see the outfit on your card.</p>
+        <div class="actions"><button type="button" class="btn" id="wrRandom">🎲 Surprise me</button></div></div>
+    </div>
+    <div class="wrtabs" id="wrTabs" role="tablist"></div>
+    <div class="wrgrid" id="wrGrid"></div>
+    <div class="wrbtm"><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save</button></div>
+  </div>
+</div>
 <!-- the smoking question, shown on every open LazyTrack page (computer and phone) -->
 <div class="qmodal" id="qModal" hidden role="dialog" aria-modal="true" aria-labelledby="qTitle">
   <div class="qcard">
@@ -677,7 +713,7 @@ applyTheme();
   <main id="home" class="view">
     <section class="card petcard" id="petcard">
       <div class="pettop">
-        <div class="petbox"><div class="pet" id="pet" role="img" aria-label="Your pet"></div></div>
+        <button type="button" class="petbox" id="petBox" aria-label="Dress up Mochi"><div class="pet" id="pet" role="img" aria-label="Your pet"></div><span class="dress" aria-hidden="true">👕</span></button>
         <div class="statsheet" id="statsheet" aria-label="Today's stats"></div>
       </div>
       <div class="speech">
@@ -1003,6 +1039,7 @@ function applyHabits(cfg) {
   for (const h of HABITS) INFO[h.k] = h;
   SHOW_SCREEN = cfg.screen || SHOW_SCREEN;
   if ("share" in cfg) SHARE = cfg.share;
+  if (cfg.pet) PET_LOOK = {...LOOK_DEFAULT, ...cfg.pet};
   MODULES = {...MODULES, ...(cfg.modules || {})};
   drawLogbar();
   const st = document.querySelector('.tab[data-tab="school"]');
@@ -1172,24 +1209,155 @@ const CAT = {coding: ["#1baf7a", "#199e70"], youtube: ["#e34948", "#e66767"], so
 const dark = () => css("color-scheme") === "dark";
 const catColor = c => (CAT[c] || CAT.other)[dark() ? 1 : 0];
 
-// ---------------------------------------------------------------- the pet
-// 10x10 pixel art, one per mood: . empty, o outline, b body, c cheeks, s smoke, z sleep, * sparkle, m mouth
-const PET = {
-  happy:  ["..........", "..........", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmbbmbbo", ".obbmmbbo.", "..oo..oo.."],
-  smoky:  ["......ss..", ".....s..s.", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbbmmbbbo", ".obbbbbbo.", "..oo..oo.."],
-  proud:  ["*........*", "....**....", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmbbmbbo", ".obbmmbbo.", "..oo..oo.."],
-  sleepy: [".......zz.", "........z.", "..oooooo..", ".obbbbbbo.", "obbbbbbbbo", "obboobbobo", "obcbbbbcbo", "obbbmmbbbo", ".obbbbbbo.", "..oo..oo.."],
-  meh:    ["..........", "..........", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmmmmbbo", ".obbbbbbo.", "..oo..oo.."],
+// ---------------------------------------------------------------- Mochi: 16x16 pixel pet, drawn in layers
+// Every layer is rows of 16 characters; "." is see-through, the other letters are colors (MOCHI_COL).
+// Order: body -> outfit (only on the body) -> cheeks/eyes/mouth -> neck -> glasses -> hat -> held item -> effects.
+// The face sits at the same place on every body: eyes rows 6-7 (columns 5 and 10), cheeks row 8, mouth rows 9-10.
+const MOCHI_COL = {
+  o: "#1d1b20", k: "#1d1b20", w: "#ffffff", c: "#ff8fb1", g: "#f2b705", G: "#b88a00", s: "#dfe3ea", S: "#8a8f9c",
+  r: "#e0303a", R: "#9b1c24", l: "#2b2733", L: "#4f4860", p: "#ff8fb1", P: "#d9467a", y: "#ffe45e", u: "#7ad3ff",
+  U: "#2a78d6", e: "#9be8a9", E: "#3fae69", n: "#c99a6e", N: "#8a5a36", v: "#c9b8ff", V: "#6250d6", x: "#c4bfce",
+  z: "#5b5370", m: "#1d1b20", t: "#f4ecd9",
 };
-const PET_COL = {".": "transparent", o: "#1d1b20", b: "var(--pet)", c: "#ff8fb1", s: "#a8a3b3", z: "#5b5370", "*": "#e0b100", m: "#1d1b20"};
-// two extra looks that come from HP instead of the day's mood: y gold crown, g bandage, d droopy eye
-PET.legend = ["..y.yy.y..", "..yyyyyy..", "..oooooo..", ".obbbbbbo.", "obbobbobbo", "obbbbbbbbo", "obcbbbbcbo", "obbmbbmbbo", ".obbmmbbo.", "..oo..oo.."];
-PET.sick   = ["..........", "..........", "..oooooo..", ".obbbggbo.", "obbbbggbbo", "obddbbddbo", "obbobbobbo", "obbbbbbbbo", ".obbmmmbo.", "..oo..oo.."];
-const PET_TINT = {legend: {}, shiny: {}, okay: {}, tired: {b: "#a89fc4", c: "#e3a3b8"}, sick: {b: "#b4c29a", c: "#c9b29a"}};
-function petCells(art, tier) {
-  const col = {...PET_COL, y: "#f2b705", g: "#f4ecd9", d: "#5b5370", ...(PET_TINT[tier] || {})};
-  return art.join("").split("").map(ch => `<i style="background:${col[ch]}"></i>`).join("");
+const blob = [
+  "................", "................", "................", "................",
+  ".....oooooo.....", "...oobbbbbboo...", "..obbbbbbbbbbo..", ".obbbbbbbbbbbbo.",
+  ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.", ".obbbbbbbbbbbbo.",
+  ".oBbbbbbbbbbbBo.", "..oBbbbbbbbbBo..", "...obbo..obbo...", "...oooo..oooo...",
+];
+const withRows = (base, rows) => base.map((r, i) => rows[i] !== undefined ? rows[i] : r);
+const MOCHI = {
+  bodies: {
+    blob: {n: "Blob", rows: blob},
+    cat: {n: "Cat", rows: withRows(blob, {1: "..o..........o..", 2: "..oo........oo..", 3: "..obo......obo..", 4: "..obboooooobbo..", 5: "..obbbbbbbbbbo.."})},
+    bunny: {n: "Bunny", rows: withRows(blob, {0: "....oo....oo....", 1: "...obbo..obbo...", 2: "...obco..ocbo...", 3: "...obco..ocbo...", 4: "....oooooooo...."})},
+    bear: {n: "Bear", rows: withRows(blob, {2: "..ooo......ooo..", 3: ".obbbo....obbbo.", 4: ".obcboooooobcbo.", 5: "..oobbbbbbbboo.."})},
+    ghost: {n: "Ghost", rows: withRows(blob, {12: ".obbbbbbbbbbbbo.", 13: ".obbbbbbbbbbbbo.", 14: ".obbobbbbobbbbo.", 15: ".oo.oo..oo.oo.o."})},
+    alien: {n: "Alien", rows: withRows(blob, {0: "....y......y....", 1: "....o......o....", 2: ".....o....o.....", 3: "......o..o......"})},
+  },
+  skins: {
+    theme: {n: "Theme", c: null}, lilac: {n: "Lilac", c: "#b9a7ff"}, mint: {n: "Mint", c: "#9be3bf"}, peach: {n: "Peach", c: "#ffb3a1"},
+    pink: {n: "Pink", c: "#ffa6cf"}, sky: {n: "Sky", c: "#93c4ff"}, sun: {n: "Sun", c: "#ffd36e"}, lime: {n: "Lime", c: "#c6e05a"},
+    cherry: {n: "Cherry", c: "#ff7a7a"}, cloud: {n: "Cloud", c: "#f1eef8"}, choco: {n: "Choco", c: "#b07d58"}, void: {n: "Void", c: "#4a4356"},
+  },
+  eyes: {   // rows 6-7
+    normal: {n: "Normal", rows: [".....k....k.....", ".....k....k....."]},
+    dot: {n: "Dots", rows: ["................", ".....k....k....."]},
+    happy: {n: "Happy", rows: [".....k....k.....", "....k.k..k.k...."]},
+    star: {n: "Stars", rows: [".....y....y.....", "....yyy..yyy...."]},
+    heart: {n: "Hearts", rows: ["....p.p..p.p....", ".....p....p....."]},
+    red: {n: "Red", rows: [".....r....r.....", ".....R....R....."]},
+    wink: {n: "Wink", rows: [".....k..........", ".....k...kkk...."]},
+  },
+  hats: {   // from the top
+    none: {n: "None", rows: []},
+    beanie: {n: "Beanie", rows: ["................", "......llll......", "....llllllll....", "...llllllllll...", "..llllllllllll..", "..LlLlLlLlLlLl.."]},
+    pinkbeanie: {n: "Pink beanie", rows: ["................", "......pppp......", "....pppppppp....", "...pppppppppp...", "..pppppppppppp..", "..PpPpPpPpPpPp.."]},
+    cap: {n: "Cap", rows: ["................", "................", ".....uuuuuu.....", "....uuuuuuuu....", "...uuuuuuuuuu...", "..UUUUUUUUUUUUUU"]},
+    bucket: {n: "Bucket hat", rows: ["................", "................", "................", ".....nnnnnn.....", "....nnnnnnnn....", "..NNNNNNNNNNNN.."]},
+    spiky: {n: "Spiky hair", rows: ["................", "...k..k..k..k...", "...kk.kk.kk.kk..", "..kkkkkkkkkkkk..", "..kkkkkkkkkkkk..", "..kk.kk..kk.kk.."]},
+    crown: {n: "Crown", rows: ["................", "....g..gg..g....", "....gg.gg.gg....", "....gggggggg....", "....GrGgGuGG...."]},
+    halo: {n: "Halo", rows: ["....yyyyyyyy....", "...y........y...", "....yyyyyyyy...."]},
+    horns: {n: "Devil horns", rows: ["................", "................", "..R..........R..", "..rR........Rr..", "...rr......rr..."]},
+    headphones: {n: "Headphones", rows: ["................", "................", "................", ".....kkkkkk.....", "....k......k....", "...k........k...", "...k........k...", ".rk..........kr.", ".rk..........kr.", "..k..........k.."]},
+    bandana: {n: "Bandana", rows: ["................", "................", "................", ".....rrrrrr.....", "...rrrrrrrrrr...", "..rwrrrwrrrwrrrr", "..............rr"]},
+  },
+  glasses: {   // rows 5-7
+    none: {n: "None", rows: []},
+    shades: {n: "Shades", rows: ["................", "...kwkkkkkwkkk..", "....kkk..kkk...."]},
+    night: {n: "Night shades", rows: ["................", "...kRkkkkkRkkk..", "....kkk..kkk...."]},
+    round: {n: "Round glasses", rows: ["....sss..sss....", "...s...ss...s...", "....sss..sss...."]},
+    patch: {n: "Eye patch", rows: ["...kkkkkkkkkkk..", "....kkk.........", "....kkk........."]},
+  },
+  necks: {   // rows 10-13
+    none: {n: "None", rows: []},
+    gold: {n: "Gold chain", rows: ["....g......g....", ".....g....g.....", "......gggg......"]},
+    silver: {n: "Silver chains", rows: ["....s......s....", ".....s.SS.s.....", "......ssss......", ".......SS......."]},
+    cross: {n: "Cross", rows: ["....S......S....", ".....S.ss.S.....", "......ssss......", ".......ss......."]},
+    choker: {n: "Spike choker", rows: ["................", "..lslslslslsls.."]},
+    bowtie: {n: "Bow tie", rows: ["................", "......rRRr......"]},
+  },
+  outfits: {   // rows 11-13, only drawn where the body is
+    none: {n: "None", rows: []},
+    hoodie: {n: "Hoodie", rows: ["VvvvvvwvvwvvvvvV", "vvvvvvwvvwvvvvvv", "vvvvVVVVVVVVvvvv"]},
+    blackhoodie: {n: "Black hoodie", rows: ["LllllllllllllllL", "llllllwllwllllll", "llllLLLLLLLLllll"]},
+    leather: {n: "Leather jacket", rows: ["llsllllbbllllsll", "lllllLlbblLlllll", "lllsllbbbbllslll"]},
+    puffer: {n: "Puffer", rows: ["rrrrrrrrrrrrrrrr", "RRRRRRRRRRRRRRRR", "rrrrrrrrrrrrrrrr"]},
+    tee: {n: "Tee", rows: ["wwwwwwwwwwwwwwww", "wwwwwwwrrwwwwwww", "wwwwwwwwwwwwwwww"]},
+    jersey: {n: "Jersey", rows: ["uuuuuuuuuuuuuuuu", "uuuuuuuwwuuuuuuu", "UUUUUUUUUUUUUUUU"]},
+  },
+  held: {   // right side
+    none: {n: "None", rows: []},
+    coffee: {n: "Coffee", rows: {9: "............NNN.", 10: "............wwwk", 11: "............wwwk", 12: "............www."}},
+    balloon: {n: "Balloon", rows: {1: "............rr..", 2: "...........rrrr.", 3: "...........rrrr.", 4: "............rr..", 5: ".............k..", 6: "............k...", 7: ".............k..", 8: "............k...", 9: ".............k.."}},
+    controller: {n: "Controller", rows: {11: "..........SSSSS.", 12: "..........SkSuS.", 13: "..........SS.SS."}},
+    phone: {n: "Phone", rows: {9: "............kkk.", 10: "............kuk.", 11: "............kuk.", 12: "............kkk."}},
+    skate: {n: "Skateboard", rows: {15: ".NnnnnnnnnnnnnN.", 14: "...obbo..obbo..."}},
+    flower: {n: "Flower", rows: {8: "............p.p.", 9: ".............y..", 10: "............p.p.", 11: ".............E..", 12: ".............E.."}},
+  },
+  mouths: {   // rows 9-10, by mood
+    happy: ["......k..k......", ".......kk......."], proud: ["......kkkk......", ".......rr......."],
+    meh: ["................", "......kkkk......"], smoky: [".......kk.......", ".......kk......."],
+    sick: ["......k.k.k.....", ".......k.k......"], sleepy: ["................", ".......kk......."],
+  },
+  looks: {
+    classic: {n: "Classic", look: {}},
+    vamp: {n: "Vamp", look: {body: "blob", skin: "void", eyes: "red", hat: "spiky", glasses: "none", neck: "cross", outfit: "leather", held: "none"}},
+    drip: {n: "Drip", look: {body: "cat", skin: "sun", eyes: "normal", hat: "beanie", glasses: "shades", neck: "gold", outfit: "puffer", held: "phone"}},
+    angel: {n: "Angel", look: {body: "bunny", skin: "cloud", eyes: "star", hat: "halo", glasses: "none", neck: "none", outfit: "tee", held: "flower"}},
+    gamer: {n: "Gamer", look: {body: "bear", skin: "choco", eyes: "normal", hat: "headphones", glasses: "round", neck: "none", outfit: "hoodie", held: "controller"}},
+    night: {n: "Night out", look: {body: "blob", skin: "lilac", eyes: "normal", hat: "none", glasses: "night", neck: "choker", outfit: "blackhoodie", held: "none"}},
+  },
+};
+const LOOK_DEFAULT = {body: "blob", skin: "theme", eyes: "normal", hat: "none", glasses: "none", neck: "none", outfit: "none", held: "none"};
+const SLOTS = {body: "bodies", skin: "skins", eyes: "eyes", hat: "hats", glasses: "glasses", neck: "necks", outfit: "outfits", held: "held"};
+
+/** Draws Mochi: returns the 256 pixel cells. mood: happy/proud/meh/smoky/sleepy; tier: legend/shiny/okay/tired/sick. */
+function mochiCells(look, mood = "happy", tier = "okay", blink = false) {
+  const L = {...LOOK_DEFAULT, ...(look || {})};
+  const pick = (slot) => MOCHI[SLOTS[slot]][L[slot]] || MOCHI[SLOTS[slot]][LOOK_DEFAULT[slot]];
+  const skin = pick("skin").c || "var(--pet)";
+  const sick = tier === "sick", tired = tier === "tired";
+  const bodyCol = sick ? "#b4c29a" : tired ? `color-mix(in srgb, ${skin} 75%, #8a8178)` : skin;
+  const col = {...MOCHI_COL, b: bodyCol, B: `color-mix(in srgb, ${bodyCol} 80%, #000)`};
+  const g = Array.from({length: 16}, () => Array(16).fill(null));
+  const body = pick("body").rows;
+  const put = (rows, y0 = 0, onlyBody = false) => {
+    const list = Array.isArray(rows) ? rows.map((r, i) => [y0 + i, r]) : Object.entries(rows).map(([y, r]) => [+y, r]);
+    for (const [y, r] of list) for (let x = 0; x < 16; x++) {
+      const ch = r[x];
+      if (!ch || ch === "." || y < 0 || y > 15) continue;
+      if (onlyBody && !"bB".includes(body[y][x])) continue;
+      g[y][x] = col[ch] || ch;
+    }
+  };
+  put(body);
+  put(pick("outfit").rows, 11, true);
+  // face: closed eyes when asleep or blinking, droopy when sick, the chosen eyes otherwise
+  const eyes = blink || mood === "sleepy" ? ["................", "....kk....kk...."]
+    : sick ? ["....zz....zz....", ".....k....k....."] : pick("eyes").rows;
+  put(["...cc......cc..."], 8);
+  put(eyes, 6);
+  put(MOCHI.mouths[sick ? "sick" : MOCHI.mouths[mood] ? mood : "happy"], 9);
+  put(pick("neck").rows, 10);
+  put(pick("glasses").rows, 5);
+  const hat = pick("hat");
+  put(hat.rows, 0);
+  put(pick("held").rows);
+  // mood + HP effects
+  if (tier === "legend") {
+    if (L.hat === "none") put(MOCHI.hats.crown.rows, 0);
+    put({0: "y..............y", 1: ".y............y."});
+  }
+  if (sick && L.hat === "none") put({3: "........tt......", 4: "........tt......"});
+  if (mood === "smoky") put({0: "............x...", 1: "...........x.x..", 2: "............x..."});
+  if (mood === "sleepy") put({0: "...........zz...", 1: "............z...", 2: "...........zz..."});
+  return g.flat().map(c => `<i${c ? ` style="background:${c}"` : ""}></i>`).join("");
 }
+
+let PET_LOOK = {...LOOK_DEFAULT};   // what Mochi wears, saved on the account (/api/habits "pet")
+// kept so older bits that ask for PET.smoky etc. still work: they now just mean a mood
+const PET = {happy: "happy", smoky: "smoky", proud: "proud", sleepy: "sleepy", meh: "meh", legend: "proud", sick: "happy"};
 
 // ---------------------------------------------------------------- HP: how Mochi is doing
 // Every day starts fresh at 70 (OKAY). Bad stuff takes HP, good stuff gives it, and every
@@ -1243,8 +1411,7 @@ function health(O) {
 }
 
 function drawPet(mood, label, tier = "okay") {
-  const art = tier === "legend" ? PET.legend : tier === "sick" && mood !== "sleepy" ? PET.sick : PET[mood] || PET.happy;
-  $("pet").innerHTML = petCells(art, tier);
+  $("pet").innerHTML = mochiCells(PET_LOOK, mood, tier);
   $("pet").setAttribute("aria-label", label);
   $("pet").classList.toggle("bob", calm);
   $("petcard").dataset.mood = mood;
@@ -1638,6 +1805,67 @@ async function loadSettings() {
   }
   settingsLoaded = true;
 }
+// ---------------------------------------------------------------- the wardrobe
+const WR_TABS = [["looks", "Looks"], ["body", "Body"], ["skin", "Color"], ["eyes", "Eyes"], ["hat", "Head"], ["glasses", "Glasses"],
+                 ["neck", "Neck"], ["outfit", "Outfit"], ["held", "Holding"]];
+const wardrobe = {
+  tab: "looks", look: null, blink: null,
+  open() {
+    this.look = {...PET_LOOK};
+    $("wardrobe").hidden = false;
+    this.draw();
+    clearInterval(this.blink);
+    if (calm) this.blink = setInterval(() => { $("wrPet").innerHTML = mochiCells(this.look, "happy", "okay", true);
+      setTimeout(() => { if (!$("wardrobe").hidden) $("wrPet").innerHTML = mochiCells(this.look); }, 160); }, 3500);
+  },
+  close() { clearInterval(this.blink); $("wardrobe").hidden = true; },
+  draw() {
+    $("wrPet").innerHTML = mochiCells(this.look);
+    $("wrTabs").innerHTML = WR_TABS.map(([k, n]) => `<button type="button" role="tab" aria-selected="${k === this.tab}" data-wrtab="${k}">${n}</button>`).join("");
+    let items;
+    if (this.tab === "looks") {
+      items = Object.entries(MOCHI.looks).map(([k, v]) => {
+        const look = {...LOOK_DEFAULT, ...v.look};
+        return {k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])};
+      });
+    } else {
+      items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
+    }
+    $("wrGrid").innerHTML = items.map(it => `<button type="button" class="wrtile" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
+      <div class="pet">${mochiCells(it.look)}</div><span>${esc(it.n)}</span></button>`).join("");
+  },
+  pick(k) {
+    if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look};
+    else this.look = {...this.look, [this.tab]: k};
+    this.draw();
+  },
+  random() {
+    const any = slot => { const ks = Object.keys(MOCHI[SLOTS[slot]]); return ks[Math.floor(Math.random() * ks.length)]; };
+    const maybe = slot => Math.random() < .45 ? "none" : any(slot);
+    this.look = {body: any("body"), skin: any("skin"), eyes: any("eyes"), hat: maybe("hat"), glasses: Math.random() < .7 ? "none" : any("glasses"),
+                 neck: maybe("neck"), outfit: maybe("outfit"), held: Math.random() < .6 ? "none" : any("held")};
+    this.draw();
+  },
+  async save() {
+    PET_LOOK = {...this.look};
+    this.close();
+    try { await post("/api/habits", {pet: PET_LOOK}); } catch (_) {}
+    if (O) { renderHome(); pushCard(true); }
+    welcome.drawPet(false);
+    toast("Looking good, Mochi ✨", null);
+  },
+};
+$("petBox").addEventListener("click", () => wardrobe.open());
+$("wrCancel").addEventListener("click", () => wardrobe.close());
+$("wrSave").addEventListener("click", () => wardrobe.save());
+$("wrRandom").addEventListener("click", () => wardrobe.random());
+$("wardrobe").addEventListener("click", e => {
+  const t = e.target.closest("[data-wrtab]"); if (t) { wardrobe.tab = t.dataset.wrtab; wardrobe.draw(); return; }
+  const p = e.target.closest("[data-wrpick]"); if (p) { wardrobe.pick(p.dataset.wrpick); return; }
+  if (e.target.id === "wardrobe") wardrobe.close();   // tap outside the card
+});
+addEventListener("keydown", e => { if (e.key === "Escape" && !$("wardrobe").hidden) wardrobe.close(); });
+
 // ---------------------------------------------------------------- the smoking question, on every page
 // When a camera (the computer's or a phone's) thinks you're smoking, LazyTrack opens one question.
 // Every open page shows it; the first answer wins and closes it everywhere (the PC popup too).
@@ -1655,7 +1883,7 @@ const question = {
   show(q) {
     if (this.shown === q.id) return;
     this.shown = q.id;
-    $("qPet").innerHTML = petCells(PET.smoky, "okay");
+    $("qPet").innerHTML = mochiCells(PET_LOOK, "smoky", "okay");
     $("qSub").textContent = "Is that a cigarette or a joint?";
     $("qBtns").innerHTML = q.buttons.map(b => `<button type="button" class="btn ${b === "Cigarette" ? "primary" : ""}" data-qa="${esc(b)}" data-qid="${q.id}">${esc(Q_LABEL[b] || b)}</button>`).join("");
     $("qModal").hidden = false;
@@ -1758,7 +1986,7 @@ function buildCard() {
                ...SHOW_SCREEN.map(k => ({k, s: SCREEN_LABEL[k] || k.toUpperCase(), n: (INFO[k] || {}).n || k, bad: !!(INFO[k] || {}).bad}))];
   const gh = O.github || {};
   return {name: AUTH.user ? AUTH.user.display_name : CLOUD.username, hp: O.health.hp, tier: O.health.tier, tierName: O.health.name,
-          palette: themePrefs().palette || "lavender", day: O.day,
+          palette: themePrefs().palette || "lavender", day: O.day, pet: PET_LOOK,
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
           stats: all.filter(x => keys.includes(x.k)).map(x => ({...x, unit: unitOf(x.k), v: Math.round(O.val(t, x.k) || 0)}))};
 }
@@ -1777,7 +2005,6 @@ function fcardHTML(p, opts = {}) {
   const c = p.card;
   const pal = (THEMES[c && c.palette] || THEMES.lavender).light;
   const tier = c ? c.tier : "okay";
-  const art = tier === "legend" ? PET.legend : tier === "sick" ? PET.sick : PET.happy;
   const bg = TIER_BG[tier] || pal["--lilac"] || "#c9b8ff";
   const seg = c ? Math.round(c.hp / 10) : 0;
   const stale = c && c.day && c.day !== todayISO();
@@ -1786,7 +2013,7 @@ function fcardHTML(p, opts = {}) {
   const tag = opts.me ? "div" : "button";
   return `<${tag} ${opts.me ? "" : `type="button" data-friend="${esc(p.uid)}"`} class="fcard ${opts.me ? "me" : ""}" style="--fbg:${bg};--pet:${pal["--pet"] || "#b9a7ff"};--hpc:${tier === "legend" ? "#f2b705" : tier === "sick" ? "#e0735a" : tier === "tired" ? "#e8a23c" : "#3fbf6f"}">
     ${p.unread ? `<span class="fnew">${p.unread} new</span>` : ""}
-    <div class="ftop"><div class="fpet"><div class="pet ${calm ? "bob" : ""}">${petCells(art, tier)}</div></div>
+    <div class="ftop"><div class="fpet"><div class="pet ${calm ? "bob" : ""}">${mochiCells(c && c.pet || {}, "happy", stale ? "okay" : tier)}</div></div>
       <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span></div></div>
     ${c ? `<div class="hprow"><span class="hpl">HP</span><span class="hpbar">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>
       <span class="hpn">${stale ? "?" : c.hp}</span><span class="tierb">${esc(stale ? "ASLEEP" : c.tierName || tier.toUpperCase())}</span></div>
@@ -1797,7 +2024,7 @@ function fcardHTML(p, opts = {}) {
 function drawConnect() {
   $("fMain").hidden = true; $("fProfile").innerHTML = "";
   $("fConnect").innerHTML = `<div class="card pad connect">
-    <div class="apet"><div class="pet bob">${petCells(PET.happy, "okay")}</div></div>
+    <div class="apet"><div class="pet bob">${mochiCells(PET_LOOK)}</div></div>
     <h2 class="ptitle" style="font-size:28px">Add an email to use friends</h2>
     <p class="psub">Your account doesn't have an email yet. Add one and friends can find you as <b>@${esc(AUTH.user ? AUTH.user.username : "you")}</b>,
       and you can log into your account on your other devices.</p>
@@ -1985,7 +2212,7 @@ document.addEventListener("click", async e => {
 function drawAccount() {
   const u = AUTH.user;
   $("sAccount").innerHTML = `<h2>Account</h2>` + (u
-    ? `<div class="acct"><div class="apet"><div class="pet">${petCells(PET.happy, (O && O.health || {}).tier || "okay")}</div></div>
+    ? `<div class="acct"><div class="apet"><div class="pet">${mochiCells(PET_LOOK, "happy", (O && O.health || {}).tier || "okay")}</div></div>
         <div class="who"><b>${esc(u.display_name)}</b><span class="note">@${esc(u.username)} · ${u.email ? esc(u.email) : "no email yet"}</span></div></div>
        ${editAccount.open ? editAccount.html(u) : ""}
        <div class="actions" style="margin-top:14px;flex-wrap:wrap">
@@ -2380,10 +2607,7 @@ const welcome = {
     $("wTitle").innerHTML = hello.split(" ").map((w, i) => `<span class="wl" style="--d:${700 + i * 140}ms">${esc(w)}</span>`).join(" ");
   },
   drawPet(closed) {
-    const base = this.tier === "legend" ? PET.legend : this.tier === "sick" ? PET.sick : PET.happy;
-    const eyes = this.tier === "sick" ? 6 : 4;
-    const art = base.map((row, y) => closed && y === eyes ? "obbbbbbbbo" : row);
-    $("wPet").innerHTML = petCells(art, this.tier);
+    $("wPet").innerHTML = mochiCells(PET_LOOK, "happy", this.tier, closed);
     $("wPet").classList.toggle("bob", calm);
   },
   /** the sentence that fades in, made from today's numbers once they've loaded */
@@ -2423,7 +2647,7 @@ const auth = {
     $("aPass").autocomplete = this.signup ? "new-password" : "current-password";
     $("aGo").firstChild.textContent = this.signup ? "Create account " : "Log in ";
     $("aErr").textContent = "";
-    $("aPet").innerHTML = petCells(PET.happy, "okay");
+    $("aPet").innerHTML = mochiCells(PET_LOOK);
     $("aSwitch").textContent = this.signup ? "Already have an account? Log in" : "New here? Make an account";
     flow.show("pAuth");
   },
@@ -2554,7 +2778,7 @@ const setup = {
       + (this.mode === "edit" ? " Anything you removed keeps its history, in case you add it back." : "")
       + (hs.some(h => h.smoke) ? " The webcam notices cigarettes by itself: check it in Settings → Smoking detector." : "");
     $("dGo").firstChild.textContent = this.mode === "edit" ? "Back to the app " : "Meet Mochi ";
-    $("dPet").innerHTML = petCells(PET.legend, "legend");
+    $("dPet").innerHTML = mochiCells(PET_LOOK, "proud", "legend");
   },
   async finish() {
     $("dGo").disabled = true;
