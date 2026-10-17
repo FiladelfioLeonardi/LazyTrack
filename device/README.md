@@ -27,9 +27,9 @@ It logs into your LazyTrack account over WiFi and reads your friend card every m
 
 | Part | ESP32 pin |
 |---|---|
-| Button A (menu / next) | GPIO 32, other leg to GND |
-| Button B (OK / pet Mochi) | GPIO 33, other leg to GND |
-| Button C (back / screen off) | GPIO 25, other leg to GND |
+| Button A (pet / back) | GPIO 32, other leg to GND |
+| Button B (menu / OK) | GPIO 33, other leg to GND |
+| Button C (next / screen off) | GPIO 25, other leg to GND |
 | Buzzer + | GPIO 26 (buzzer - to GND) |
 
 Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the screen (T_CLK, T_CS...) and the SD card pins stay unconnected.
@@ -52,10 +52,11 @@ Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the 
 
 | | A | B | C |
 |---|---|---|---|
-| **Home** (your Mochi) | menu | pet Mochi (hearts) | screen off (any button wakes it) |
-| **Menu** | next | open | back |
-| **Log** | next | log it (Mochi reacts right away) | back. Right after logging, C = undo |
-| **Friends** | next friend | poke them (their egg buzzes, their app plays a sound) | back |
+| **Home** (your Mochi) | pet Mochi (hearts) | menu | screen off (any button wakes it). Right after logging: undo |
+| **Menu** | back | open | next |
+| **Log** | back | log it (Mochi reacts right away) | next |
+| **Friends** | back | poke them (their egg buzzes, their app plays a sound) | next friend |
+| **Today** | back | | next page |
 
 - **Log** lists the habits you track in LazyTrack. A log reaches LazyTrack within a minute, while LazyTrack runs on
   your computer. Without WiFi, logs wait on the egg and go out once it's back online.

@@ -6,8 +6,8 @@
   doing right now (drunk, high, coughing) and what you're up to. It reads your friend card from
   the friends server every minute, so it works anywhere with WiFi (a phone hotspot too).
 
-  Buttons (like a Tamagotchi):  A = next / menu   B = OK / pet Mochi   C = back / screen off
-    Home:     A opens the menu, B pets Mochi (hearts!), C turns the screen off (any button wakes it)
+  Buttons (like a Tamagotchi):  A = pet / back   B = menu / OK   C = next
+    Home:     B opens the menu, A pets Mochi (hearts!), C turns the screen off (any button wakes it)
     Menu:     Log something (cigarette, water, gym... whatever you track), Friends (see their Mochi,
               poke them), Today's stats, Info
   Friends poking you make the egg buzz. Logs go to LazyTrack within a minute (needs supabase/egg.sql).
@@ -789,7 +789,7 @@ void drawMenu() {
     text(58, y + 32, subs[i], 1, on ? INK : GREY);
     if (on) gfx->fillTriangle(W - 22, y + 18, W - 22, y + 32, W - 14, y + 25, INK);
   }
-  text(16, 300, "A next  B open  C back", 1, GREY);
+  text(16, 300, "C next  B open  A back", 1, GREY);
 }
 
 // ---------------------------------------------------------------- today: everything you track, in pages
@@ -801,7 +801,7 @@ void drawToday() {
     for (int i = 0; i < card.nstats; i++) text(20, 52 + i * 28, card.stats[i], 2, INK);
     text(20, 256, "Only what friends see. For all of", 1, GREY);
     text(20, 270, "it: update LazyTrack + run egg.sql", 1, GREY);
-    text(20, 296, "C  back", 1, GREY);
+    text(20, 296, "A  back", 1, GREY);
     return;
   }
   const int per = 10;
@@ -815,7 +815,7 @@ void drawToday() {
     text(34, y, today[i].s.substring(0, 11), 2, INK);
     text(215 - today[i].v.length() * 12, y, today[i].v, 2, INK);
   }
-  text(20, 296, pages > 1 ? "A next page   C back" : "C  back", 1, GREY);
+  text(20, 296, pages > 1 ? "C next page   A back" : "A  back", 1, GREY);
 }
 
 uint16_t tierColor(const String &t) {
@@ -830,7 +830,7 @@ void drawFriend() {
     text(20, 52, WiFi.status() == WL_CONNECTED ? "No friends yet." : "No WiFi right now.", 1, INK);
     text(20, 70, "Add some in the LazyTrack app", 1, GREY);
     text(20, 86, "(Friends tab).", 1, GREY);
-    text(20, 110, "C  back", 1, GREY);
+    text(20, 110, "A  back", 1, GREY);
     return;
   }
   Friend &f = friends[friendSel];
@@ -873,7 +873,7 @@ void drawFriend() {
     gfx->fillCircle(22, 281, 4, GREY);
   }
   text(32, 278, line.substring(0, 31), 1, INK);
-  text(18, 296, status.startsWith("Poked") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes") ? status.substring(0, 33) : "A next   B poke   C back", 1, GREY);
+  text(18, 296, status.startsWith("Poked") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes") ? status.substring(0, 33) : "C next   B poke   A back", 1, GREY);
 }
 
 void drawScreen();
@@ -901,12 +901,12 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
       text(20, 52, "Nothing to log yet.", 1, INK);
       text(20, 70, "Update LazyTrack on your computer,", 1, GREY);
       text(20, 86, "and run supabase/egg.sql once.", 1, GREY);
-      text(20, 140, "C  back", 1, GREY);
+      text(20, 140, "A  back", 1, GREY);
       return;
     }
     String names[16]; bool dots[16], bad[16];
     for (int i = 0; i < nhabits; i++) { names[i] = habits[i].n; names[i].setCharAt(0, toupper(names[i][0])); bad[i] = habits[i].bad; dots[i] = true; }
-    drawList("LOG", names, dots, bad, nhabits, logSel, "A down   B log it   C back");
+    drawList("LOG", names, dots, bad, nhabits, logSel, "C next   B log it   A back");
     return;
   }
   if (view == V_FRIENDS) { drawFriend(); return; }
@@ -957,8 +957,8 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     String q = prefs.getString("queue", "");
     int waiting = 0; for (char ch : q) if (ch == '\n') waiting++;
     text(20, 124, "Pets today: " + String(loveToday()) + (waiting ? "   Logs waiting: " + String(waiting) : ""), 1, INK);
-    text(20, 160, "HOME:  A menu   B pet   C screen off", 1, GREY);
-    text(20, 176, "MENUS: A next   B ok    C back", 1, GREY);
+    text(20, 160, "HOME:  B menu   A pet   C screen off", 1, GREY);
+    text(20, 176, "MENUS: C next   B ok    A back", 1, GREY);
     text(20, 200, "B here  sync now", 1, GREY);
   }
 }
@@ -1099,9 +1099,17 @@ void transition(int to, bool up) {
   hwScroll(0);
 }
 
-void onButton(int b) {
+// Physical buttons: A = pet / back, B = menu / OK, C = next (and on Home: undo a log, or screen off).
+// Below, the code works with roles: 0 = next / menu, 1 = OK / pet, 2 = back / screen off.
+int role(int phys) {
+  if (view == V_HOME) return phys == 1 ? 0 : phys == 0 ? 1 : 2;   // B menu, A pet, C off/undo
+  return phys == 2 ? 0 : phys == 1 ? 1 : 2;                         // C next, B ok, A back
+}
+
+void onButton(int phys) {
   if (!screenOn) { setScreen(true); drawFrame(); return; }   // any button wakes it up
-  tuneClick();
+  int b = role(phys);
+  if (!(view == V_HOME && b == 1)) tuneClick();               // petting has its own chirp
   switch (view) {
     case V_HOME:
       if (b == 0) { menuSel = 0; transition(V_MENU, true); }
