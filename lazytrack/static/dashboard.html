@@ -81,7 +81,7 @@
   #tour .tcard { position: fixed; width: min(380px, calc(100vw - 32px)); background: var(--card); color: var(--ink); border: 3px solid var(--line); border-radius: 20px;
     box-shadow: 6px 6px 0 var(--line); padding: 16px 16px 14px; pointer-events: auto; transition: left .32s cubic-bezier(.3, .7, .2, 1), top .32s cubic-bezier(.3, .7, .2, 1); }
   #tour .tcount { font: 400 12px var(--pixel); opacity: .7; } #tour h3 { margin: 4px 0 6px; font: 800 20px/1.2 var(--body); }
-  #tour p { margin: 0 0 12px; line-height: 1.5; }
+  #tour p { margin: 0 0 12px; line-height: 1.5; white-space: pre-line; }
   #tour .tdots { display: flex; flex-wrap: wrap; gap: 5px; margin: 0 0 12px; }
   #tour .tdots button { width: 14px; height: 14px; padding: 0; border: 2px solid var(--line); border-radius: 4px; background: var(--card); cursor: pointer; }
   #tour .tdots button.done { background: var(--lilac); } #tour .tdots button.on { background: var(--yellow); transform: scale(1.2); }
@@ -547,7 +547,7 @@
 
   /* ------------------------------------------------------------ views */
   /* ---- admin page */
-  @media (max-width: 560px) { .hidesm { display: none; } }
+  .showsm { display: none; } @media (max-width: 560px) { .hidesm { display: none; } .showsm { display: inline; } }
   .admin-only { display: none; text-decoration: none; } body.is-admin .admin-only { display: inline-flex; align-items: center; }
   #admin > .card { margin-top: 16px; } #admin [data-as].offcat { display: none; }
   .admtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
@@ -582,9 +582,13 @@
   .labbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
   .labflag { margin-top: 16px; padding: 8px 12px; border: 3px dashed var(--line); border-radius: 12px; font-weight: 700; display: flex; gap: 10px; align-items: center; }
   .view { display: none; }
+  /* Bad habits / Good habits share one page: each shows only its own half */
+  #habits.only .grid2 { grid-template-columns: 1fr; }
+  #habits[data-mode="bad"] .goodside, #habits[data-mode="good"] #hBad { display: none; }
+  #school .monhead { margin-top: 34px; }
   body[data-view="friends"] #friends,
-  body[data-view="home"] #home, body[data-view="habits"] #habits, body[data-view="screen"] #screen,
-  body[data-view="school"] #school, body[data-view="detail"] #detail, body[data-view="settings"] #settings, body[data-view="docs"] #docs, body[data-view="admin"] #admin { display: block; }
+  body[data-view="home"] #home, body[data-view="bad"] #habits, body[data-view="good"] #habits,
+  body[data-view="monitor"] #screen, body[data-view="monitor"] #school, body[data-view="detail"] #detail, body[data-view="settings"] #settings, body[data-view="docs"] #docs, body[data-view="admin"] #admin { display: block; }
 
   /* ------------------------------------------------------------ calm motion (only when a page opens) */
   @keyframes rise { from { opacity: 0; transform: translateY(10px); } }
@@ -922,9 +926,9 @@ applyTheme();
 
   <nav class="tabs" aria-label="Sections">
     <a class="tab" data-tab="home" href="#tab=home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"/><path d="M9 20v-6h6v6"/></svg>Home</a>
-    <a class="tab" data-tab="habits" href="#tab=habits"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M4 6h3M4 12h3M4 18h3M10 6h10M10 12h10M10 18h10"/></svg>Habits</a>
-    <a class="tab" data-tab="screen" href="#tab=screen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>Screen</a>
-    <a class="tab" data-tab="school" href="#tab=school"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11v5c3 2 9 2 12 0v-5"/></svg>School</a>
+    <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-4.6-8-10.2C4 6.9 6 5 8.4 5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2C18 5 20 6.9 20 9.8 20 15.4 12 20 12 20z"/><path d="M12 7l-1.5 4 3 2-1.5 4"/></svg><span class="hidesm">Bad habits</span><span class="showsm">Bad</span></a>
+    <a class="tab" data-tab="good" href="#tab=good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-4.6-8-10.2C4 6.9 6 5 8.4 5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2C18 5 20 6.9 20 9.8 20 15.4 12 20 12 20z"/><path d="M12 9v6M9 12h6"/></svg><span class="hidesm">Good habits</span><span class="showsm">Good</span></a>
+    <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 12l3-3 2 2 4-4"/></svg><span class="hidesm">Monitoring</span><span class="showsm">Monitor</span></a>
     <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.8 3.2-6 6.5-6s5.9 2.2 6.5 6"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14c2.7.2 4.6 2.2 5 5.5"/></svg>Friends<span class="tbadge" id="fBadge" hidden></span></a>
     <a class="tab" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</a>
   </nav>
@@ -964,7 +968,7 @@ applyTheme();
     <p class="sub" id="habitsSub">Compared with yesterday at this time. Tap one for its timeline.</p>
     <div class="grid2">
       <div class="card rows" id="hBad"></div>
-      <div class="stack">
+      <div class="stack goodside">
         <div class="card rows" id="hGood"></div>
         <div class="card rows" id="hBody"></div>
       </div>
@@ -975,7 +979,7 @@ applyTheme();
     <div class="card"><ul class="plain" id="recent"></ul></div>
     <div style="margin-top:12px"><button class="btn" id="moreRecent">Show more</button></div>
 
-    <h2 class="sec">Last two weeks</h2>
+    <h2 class="sec" id="cHabitsHead">Last two weeks</h2>
     <p class="sub">Tap a bar to open that day.</p>
     <div class="card pad"><div class="chartbox"><canvas id="cHabits"></canvas></div></div>
 
@@ -986,8 +990,8 @@ applyTheme();
 
   <!-- ================================================== SCREEN -->
   <main id="screen" class="view">
-    <h2 class="sec" style="margin-top:22px">Today</h2>
-    <p class="sub">Compared with yesterday at this time. Tap one to see when you used it.</p>
+    <h2 class="sec" style="margin-top:22px">Screen time today</h2>
+    <p class="sub">Tracked by itself, nothing to log. Compared with yesterday at this time. Tap one to see when you used it.</p>
     <div class="grid2">
       <div class="card rows" id="sToday"></div>
       <div class="card"><div class="label" style="margin:14px 16px 4px">TOP APPS THIS WEEK</div><ul class="plain" id="apps"></ul></div>
@@ -1004,11 +1008,12 @@ applyTheme();
 
   <!-- ================================================== SCHOOL: 42 + code -->
   <main id="school" class="view">
-    <h2 class="sec" style="margin-top:22px">42 deadlines</h2>
+    <h2 class="sec monhead">42 deadlines</h2>
     <p class="sub">Green while there's plenty of time, red for the last two weeks.</p>
     <div class="card pad" id="pFt"></div>
 
-    <div class="grid2" style="margin-top:18px">
+    <h2 class="sec monhead" id="codeHead">Coding</h2>
+    <div class="grid2" style="margin-top:12px">
       <div class="card pad clickcard" id="pGh" tabindex="0"></div>
       <div class="card rows" id="codeRows"></div>
     </div>
@@ -1153,7 +1158,7 @@ applyTheme();
       <ul>
         <li><b>Mochi</b> in its place (tap it to dress it up), the <b>stat sheet</b> next to it and what Mochi says about your day.</li>
         <li><b>Arrows</b> compare with yesterday at the same time: ▲ = more, ▼ = less. Red = worse, green = better (more cigarettes = red ▲, more coding = green ▲).</li>
-        <li><b>Log buttons</b> for your habits; "More things to log" shows the rest. A wrong tap can be undone from the toast or the Habits tab.</li>
+        <li><b>Log buttons</b> for your habits; "More things to log" shows the rest. A wrong tap can be undone from the toast or the Bad habits and Good habits tabs.</li>
         <li>The <b>‹ Today ›</b> buttons go back to earlier days.</li>
       </ul>
     </section>
@@ -1164,7 +1169,7 @@ applyTheme();
         <li>Built-in habits: cigarettes, joints, vaping, junk food, alcohol, energy drinks, sweets, coffee; gym, walks, water, healthy meals, reading, meditation, stretching.</li>
         <li><b>Your own</b>: any name and emoji, "less of" or "more of", and a size.</li>
         <li>Removing a habit only hides it. Its history stays, and adding it back brings it all back.</li>
-        <li>The <b>Habits</b> tab shows charts per habit; tap a row for the details of any day.</li>
+        <li>The <b>Bad habits</b> and <b>Good habits</b> tabs show charts per habit; tap a row for the details of any day.</li>
       </ul>
     </section>
 
@@ -1220,7 +1225,7 @@ applyTheme();
 
     <section class="card pad" id="doc-school">
       <h2>42 and GitHub</h2>
-      <p>Optional extras from the setup. <b>42</b>: blackhole days left, logtime and projects in the School tab. <b>GitHub</b>: commits count on Home and your commit streak shows on your card.</p>
+      <p>Optional extras from the setup. <b>42</b>: blackhole days left, logtime and projects in the Monitoring tab. <b>GitHub</b>: commits count on Home and your commit streak shows on your card.</p>
     </section>
 
     <section class="card pad" id="doc-updates">
@@ -1428,7 +1433,7 @@ applyTheme();
 
       <section class="card pad" data-mod="school" data-cat="tracking">
         <h2>42 deadlines</h2>
-        <p class="sub">Shown as countdowns in the School tab and on Home.</p>
+        <p class="sub">Shown as countdowns in the Monitoring tab and on Home.</p>
         <div class="form">
           <div class="field"><label for="fbh">Blackhole date</label>
             <p class="hint">Filled in automatically once 42 is connected. Set it here if it isn't, or to correct it.</p>
@@ -1548,8 +1553,6 @@ function applyHabits(cfg) {
   if (cfg.pet) PET_LOOK = {...LOOK_DEFAULT, ...cfg.pet};
   MODULES = {...MODULES, ...(cfg.modules || {})};
   drawLogbar();
-  const st = document.querySelector('.tab[data-tab="school"]');
-  if (st) st.lastChild.textContent = MODULES.school ? "School" : "Coding";
   if (O) O.health = health(O);
 }
 async function loadHabits() {
@@ -1557,9 +1560,12 @@ async function loadHabits() {
 }
 const SOURCE = {camera: "noticed by the webcam", manual: "logged by you", phone: "from your phone", dashboard: "logged by you",
                 shortcut: "via Siri or a shortcut", geofence: "logged automatically at the gym", food_photo: "from a food photo"};
-const TABS = {home: "Home", habits: "Habits", screen: "Screen", school: "School", friends: "Friends", settings: "Settings", docs: "Docs", admin: "Admin"};
+const TABS = {home: "Home", bad: "Bad habits", good: "Good habits", monitor: "Monitoring", friends: "Friends", settings: "Settings", docs: "Docs", admin: "Admin"};
+// old links (#tab=habits, #tab=screen, #tab=school) still land somewhere sensible
+const TAB_ALIAS = {habits: "bad", screen: "monitor", school: "monitor"};
 // which tab a detail page belongs to
-const tabOf = k => SCREEN.some(s => s.k === k) && k !== "coding" ? "screen" : ["coding", "commits", "github"].includes(k) ? "school" : "habits";
+const tabOf = k => SCREEN.some(s => s.k === k) || ["coding", "commits", "github"].includes(k) ? "monitor"
+  : (HABITS.find(h => h.k === k) || {}).bad ? "bad" : "good";
 
 // ---------------------------------------------------------------- helpers
 const $ = id => document.getElementById(id);
@@ -1596,7 +1602,7 @@ const shiftDay = (s, n) => { const d = new Date(s + "T12:00:00"); d.setDate(d.ge
 const dayName = s => s === todayISO() ? "Today" : s === shiftDay(todayISO(), -1) ? "Yesterday"
   : new Date(s + "T12:00:00").toLocaleDateString([], {weekday: "long", day: "numeric", month: "short"});
 const selectedDay = () => route().day || todayISO();
-const currentTab = () => TABS[route().tab] ? route().tab : "home";
+const currentTab = () => { const t = TAB_ALIAS[route().tab] || route().tab; return TABS[t] ? t : "home"; };
 function openDetail(k, day) {
   const tab = route().view === "detail" ? currentTab() : currentTab() === "home" ? tabOf(k) : currentTab();
   go({tab, day: day === undefined ? route().day : day < todayISO() ? day : "", view: "detail", k});
@@ -2534,19 +2540,22 @@ function renderHome() {
   const chip = (title, days) => {
     if (days == null) return `<a class="chip plain" href="#tab=settings&sc=tracking"><span class="k">${esc(title)}</span><span class="s">Set the date</span></a>`;
     const [fill, state] = deadlineLevel(days);
-    return `<a class="chip" style="--lvl:var(${fill})" href="#tab=school"><span class="k">${esc(title)}</span>
+    return `<a class="chip" style="--lvl:var(${fill})" href="#tab=monitor"><span class="k">${esc(title)}</span>
       <span class="v">${Math.max(0, days)}<small> days</small></span><span class="s">${state.toLowerCase().replace(/^./, c => c.toUpperCase())}</span></a>`;
   };
   $("chips").innerHTML = (MODULES.school ? chip("BLACKHOLE", ft.blackhole_days) + chip((ft.milestone_name || "MILESTONE").toUpperCase(), ft.milestone_days) : "")
     + (!MODULES.github ? "" : gh.configured
-      ? `<a class="chip" style="--lvl:var(--lilac)" href="#tab=school"><span class="k">COMMIT STREAK</span><span class="v">${gh.streak.current}<small> days</small></span><span class="s">Best ${gh.streak.longest}</span></a>`
+      ? `<a class="chip" style="--lvl:var(--lilac)" href="#tab=monitor"><span class="k">COMMIT STREAK</span><span class="v">${gh.streak.current}<small> days</small></span><span class="s">Best ${gh.streak.longest}</span></a>`
       : `<a class="chip plain" href="#tab=settings&sc=tracking"><span class="k">GITHUB</span><span class="s">Connect it to see your streak</span></a>`);
 }
 
 // ---------------------------------------------------------------- HABITS
-function renderHabits() {
+function renderHabits(mode = "bad") {
   const t = O.today, ref = O.ref, val = O.val, against = O.against, isToday = O.is_today;
-  $("habitsSub").textContent = isToday ? "Compared with yesterday at this time. Tap one for its timeline." : "Compared with the day before. Tap one for its timeline.";
+  const bad = mode === "bad", mine = h => !!h.bad === bad;
+  $("habits").dataset.mode = mode; $("habits").classList.add("only");
+  $("habitsSub").textContent = (bad ? "These take HP from Mochi. Less is better. " : "These give Mochi HP. More is better. ")
+    + (isToday ? "Compared with yesterday at this time; tap one for its timeline." : "Compared with the day before; tap one for its timeline.");
   const show = () => true;   // you picked them, so they all show
   $("hBad").innerHTML = `<div class="label">BAD HABITS</div>` + HABITS.filter(h => h.bad && show(h))
     .map(h => rowHTML(h.k, val(t, h.k), compare(h.k, val(t, h.k), val(ref, h.k), against))).join("");
@@ -2557,20 +2566,21 @@ function renderHabits() {
     + rowHTML("sleep", sl ? hm(sl) : "–", sl ? compare("sleep", sl, val(O.yesterday, "sleep"), isToday ? "the night before" : "the day before") : {text: "Comes from the iPhone app", cls: ""}, isToday ? "Sleep last night" : "Sleep")
     + rowHTML("steps", st ? fmt("count", st) : "–", st ? compare("steps", st, val(ref, "steps"), against) : {text: "Comes from the iPhone app", cls: ""});
 
-  const rec = O.recent_events.filter(e => INFO[e.kind]);
+  const rec = O.recent_events.filter(e => INFO[e.kind] && !!INFO[e.kind].bad === bad);
   $("moreRecent").style.display = rec.length > 5 && !showAllRecent ? "" : "none";
   $("recent").innerHTML = rec.slice(0, showAllRecent ? 15 : 5).map(e => `<li>
       <span>${INFO[e.kind].e} <b>${esc(INFO[e.kind].one)}</b> <span class="meta">${new Date(e.ts * 1000).toLocaleString([], {weekday: "short", hour: "2-digit", minute: "2-digit"})}, ${esc(SOURCE[e.source] || e.source)}</span></span>
       <button class="del" data-del="${e.id}">Remove</button></li>`).join("")
     || `<li class="empty">Nothing logged yet. Use the buttons on Home.</li>`;
+  $("cHabitsHead").textContent = bad ? "Bad habits, last two weeks" : "Good habits, last two weeks";
 
-  const charted = HABITS.filter(h => h.bad).slice(0, 3), cols = ["--today", "--prev", "--avg"];
-  chart("cHabits", "bar", {labels: labels14(), datasets: (charted.length ? charted : HABITS.slice(0, 2)).map((h, i) =>
+  const charted = HABITS.filter(mine).slice(0, 3), cols = ["--today", "--prev", "--avg"];
+  chart("cHabits", "bar", {labels: labels14(), datasets: charted.map((h, i) =>
     ({label: h.n, backgroundColor: css(cols[i]), ...BAR(), data: O.daily.map(d => d.events[h.k] || 0)}))}, {labels: true, onClick: openDay});
 
   const w = O.week, lw = O.last_week;
-  const rows = HABITS.filter(h => w.events[h.k] || lw.events[h.k]).map(h => rowHTML(h.k, w.events[h.k] || 0, compare(h.k, w.events[h.k] || 0, lw.events[h.k] || 0, "last week")));
-  if (w.sleep_nights) rows.push(rowHTML("sleep", hm(w.sleep_avg), compare("sleep", w.sleep_avg, lw.sleep_avg, "last week"), "Sleep per night"));
+  const rows = HABITS.filter(h => mine(h) && (w.events[h.k] || lw.events[h.k])).map(h => rowHTML(h.k, w.events[h.k] || 0, compare(h.k, w.events[h.k] || 0, lw.events[h.k] || 0, "last week")));
+  if (!bad && w.sleep_nights) rows.push(rowHTML("sleep", hm(w.sleep_avg), compare("sleep", w.sleep_avg, lw.sleep_avg, "last week"), "Sleep per night"));
   $("hWeek").innerHTML = rows.join("") || `<p class="empty">Nothing logged this week yet.</p>`;
 }
 
@@ -3720,25 +3730,16 @@ document.addEventListener("click", e => {
 // Steps point at parts of the app (switching tabs when needed). Skip any step with the dots,
 // skip the whole thing, or come back any time with the Tour button. Starts by itself after the first setup.
 const TOUR = [
-  {title: "Hey 👋 Quick tutorial?", text: "About a minute: what everything is and how Mochi's HP works. Use the dots to jump around or skip the whole thing. The 🧭 Tutorial button at the top brings it back any time."},
-  {tab: "home", el: "#petBox", title: "This is Mochi", text: "Your pet lives on how your day goes. Tap it to dress it up: bodies, hats, colors, outfits and the place it lives in. Everything is free."},
-  {tab: "home", el: "#hp .hprow", title: "HP", text: "Mochi's health, 0 to 100. It carries over from day to day. TODAY shows how today is going so far: green means you're doing better than your targets."},
-  {tab: "home", el: "#hp .lifeline", title: "Keep it alive", text: "If HP hits 0 at midnight, Mochi dies and a baby hatches. The game: keep one Mochi alive as long as you can. Its age, generation and your record are here (and on your friend card)."},
-  {tab: "home", el: "#hp .quests", title: "Right now", text: "The quickest ways to help: what the next gym session or glass of water is worth, or what one more cigarette costs."},
-  {tab: "home", el: "#statsheet", title: "Your stats", text: "Today next to yesterday at this time. ▲ more, ▼ less; green is better, red is worse. Tap one for its details."},
-  {tab: "home", el: "#logbar", title: "Log in one tap", text: "Tap a button when it happens. Tapped by mistake? Undo it from the little message that pops up. \"More things to log\" shows the rest."},
-  {el: '.tab[data-tab="habits"]', title: "Habits", text: "Charts for every habit: today, this week and the last two weeks."},
-  {el: '.tab[data-tab="screen"]', title: "Screen", text: "Your screen time, tracked by itself: coding, YouTube, socials, games and the rest."},
-  {el: '.tab[data-tab="friends"]', title: "Friends", text: "Add friends by username, see each other's Mochi and chat. Who keeps theirs alive longest?"},
-  {tab: "settings", cat: "habits", el: "#sTargets", title: "Targets", text: "What decides HP. On target is 0; under heals, over hurts. Change them whenever you like; the ones you make get a bit tighter every week."},
-  {tab: "settings", cat: "tracking", el: "#sSmoke", title: "Smoking detector", text: "Optional: the webcam notices cigarettes and asks you. Pictures never leave your computer."},
-  {tab: "settings", cat: "app", el: ".docsbtn", title: "The full guide", text: "Everything in detail lives in the documentation, and the tutorial can be started from here too."},
-  {el: "#tourBtn", title: "That's it! 🎉", text: "Come back to this tutorial any time with this button. Now go keep Mochi alive.", last: true},
+  {tab: "home", el: "#petBox", title: "Meet Mochi 👋", text: "Your little pet. It lives on how your day goes. Tap it any time to dress it up."},
+  {tab: "home", el: "#hp .hprow", title: "Keep its HP up", text: "💚 Good habits give Mochi HP.\n💔 Bad habits take it away.\nIf HP hits 0, a new baby Mochi hatches. Keep yours alive as long as you can!"},
+  {tab: "home", el: "#logbar", title: "Did something? Tap it", text: "One tap when it happens. Screen time and coding are tracked by themselves."},
+  {el: ".tabs", title: "Everything else", text: "Your bad habits, your good habits, what's tracked for you, and friends to compare Mochis with."},
+  {el: "#tourBtn", title: "That's it! 🎉", text: "Tap here to see this again. Now go keep Mochi happy.", last: true},
 ];
 const tour = {
   i: 0, on: false, list: [],
   start(from = 0) {
-    this.list = TOUR.filter(st => !st.el || !st.el.includes('data-tab="school"') || MODULES.school);
+    this.list = TOUR;
     this.on = true; $("tour").hidden = false;
     $("tourDots").innerHTML = this.list.map((st, i) => `<button type="button" data-tstep="${i}" aria-label="Step ${i + 1}: ${esc(st.title)}"></button>`).join("");
     this.show(from);
@@ -3763,7 +3764,7 @@ const tour = {
     $("tourTitle").textContent = st.title;
     $("tourText").textContent = st.text;
     $("tourBack").hidden = i === 0;
-    $("tourNext").textContent = st.last ? "Done ✓" : i === 0 ? "Show me →" : "Next →";
+    $("tourNext").textContent = st.last ? "Done ✓" : "Next →";
     $("tourSkip").hidden = !!st.last;
     $("tourDots").querySelectorAll("button").forEach((b, n) => { b.classList.toggle("on", n === i); b.classList.toggle("done", n < i); });
     // tall sections (like Targets): show their top part, with the card under it
@@ -3949,9 +3950,9 @@ function wordsIn(el, start = 120) {
 }
 const ENTER = {
   home: ["#petcard", "#logbar .logbtn:not([hidden])", "#home > .logmore", "#home > h2", "#home > .sub", "#home > .card", "#chips > *"],
-  habits: ["#habits > h2", "#habits > .sub", "#habits > .grid2", "#habits > .card", "#habits > div"],
-  screen: ["#screen > h2", "#screen > .sub", "#screen > .grid2", "#screen > .card"],
-  school: ["#school > h2", "#school > .sub", "#school > .card", "#school > .grid2"],
+  bad: ["#habits > h2", "#habits > .sub", "#habits > .grid2", "#habits > .card", "#habits > div"],
+  good: ["#habits > h2", "#habits > .sub", "#habits > .grid2", "#habits > .card", "#habits > div"],
+  monitor: ["#screen > h2", "#screen > .sub", "#screen > .grid2", "#screen > .card", "#school > h2:not([style*='none'])", "#school > .card", "#school > .grid2"],
   detail: ["#detail .back", "#detail .dhero", "#dFacts .fact", "#detail > section"],
   settings: ["#sForm > section", "#sForm > .actions"],
   friends: ["#fConnect > *", "#fMain > *", "#fProfile > *"],
@@ -3992,7 +3993,8 @@ async function render() {
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
-      ({home: renderHome, habits: renderHabits, screen: renderScreen, school: renderSchool, friends: renderFriends})[view]();
+      ({home: renderHome, bad: () => renderHabits("bad"), good: () => renderHabits("good"),
+        monitor: () => { renderScreen(); renderSchool(); }, friends: renderFriends})[view]();
       if (view === "home") { camWarn(); news.draw(); }
     }
     $("offline").style.display = "none";
