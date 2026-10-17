@@ -107,6 +107,8 @@ struct Card {
   String tier = "okay", tierName = "OKAY", name = "Mochi", nowWhat = "", nowLabel = "";
   uint32_t nowSince = 0, built = 0;
   bool offline = false;
+  String mood = "happy";
+  int tzo = 60;             // your time zone, minutes from UTC (the app sends it)
   int drunk = 0, high = 0, coughy = 0;
   bool sprite = false;
   uint16_t pal[36];
@@ -224,7 +226,7 @@ uint16_t hexColor(const char *s) { return (s && s[0] == '#') ? rgb(strtoul(s + 1
 bool parseCard(const String &body) {
   JsonDocument filter;
   JsonObject f = filter[0]["card"].to<JsonObject>();
-  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built"}) f[k] = true;
+  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built", "mood", "tzo"}) f[k] = true;
   f["stats"][0]["s"] = true;
   f["stats"][0]["v"] = true;
   f["stats"][0]["unit"] = true;
@@ -250,6 +252,8 @@ bool parseCard(const String &body) {
   card.nowLabel = c["now"]["label"] | "";
   card.offline = c["offline"] | false;
   card.built = c["built"] | 0;
+  card.mood = c["mood"] | "happy";
+  card.tzo = c["tzo"] | 60;
   JsonObject sp = c["sprite"];
   const char *n = sp["n"], *b = sp["b"];
   if (n && strlen(n) == 256) {
@@ -627,6 +631,38 @@ uint16_t cellColor(char ch, bool fromCard) {
   return i >= 0 && i < 36 ? card.pal[i] : 0;
 }
 
+// Asleep: late at night where you are (1 to 7), or when the app says Mochi is sleepy
+bool asleep() {
+  if (card.mood == "sleepy") return true;
+  if (!clockOk()) return false;
+  long local = (long)(time(nullptr) % 86400) + card.tzo * 60L;
+  int h = (int)(((local % 86400) + 86400) % 86400 / 3600);
+  return h >= 1 && h < 7;
+}
+
+// Z's floating up from Mochi's head while he sleeps: drawn in their own little box above his head
+// (sent on its own, so nothing else on the screen moves)
+static const int ZX = 150, ZY = 58, ZW = 84, ZH = 64;
+void drawZs(uint32_t t) {
+  if (gfx != lcd || !banded) return;
+  uint16_t *buf = band.fb;   // free between screens: used as scratch
+  for (int y = 0; y < ZH; y++) for (int x = 0; x < ZW; x++) buf[y * ZW + x] = bgAt(ZX + x, ZY + y);
+  static const char *Z5 = "XXXXX...X...X...X...XXXXX";   // a 5x5 Z
+  for (int k = 0; k < 3; k++) {
+    uint32_t life = (t + k * 1100) % 3300;                   // each Z: 3.3 s from his head up and away
+    int sc = 2 + (int)(life * 3 / 3300);                      // grows as it rises: 2, 3, 4 px per dot
+    int zy = ZH - 12 - (int)(life * (ZH - 6) / 3300);
+    int zx = 4 + (int)(life * 40 / 3300) + (int)(sin((t + k * 700) / 380.0) * 5);
+    uint16_t col = life > 2600 ? rgb(0x8c84a6) : rgb(0x3d3650);   // fades a little at the top
+    for (int i = 0; i < 25; i++) if (Z5[i] == 'X')
+      for (int y = 0; y < sc; y++) for (int x = 0; x < sc; x++) {
+        int yy = zy + (i / 5) * sc + y, xx = zx + (i % 5) * sc + x;
+        if (yy >= 0 && yy < ZH && xx >= 0 && xx < ZW) buf[yy * ZW + xx] = col;
+      }
+  }
+  lcd->draw16bitRGBBitmap(ZX, ZY, buf, ZW, ZH);
+}
+
 // Mochi standing on the ground, with the face that fits right now (high, drunk, coughing) like in the app.
 // dx: drunk wobble / coughing shake, sideways only (it never floats)
 void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) {
@@ -635,7 +671,7 @@ void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) 
   const char *px = DEFAULT_N;
   bool petting = millis() < petUntil;
   if (card.sprite) {
-    px = blink || petting ? card.fb : card.fn;   // eyes closed while being petted: happy
+    px = blink || petting || asleep() ? card.fb : card.fn;   // eyes closed: petted (happy) or asleep
     if (card.fxFrames) {
       if (coughing) px = card.fc;
       else if (card.drunk) px = card.fd[constrain(card.drunk, 1, 3) - 1];
@@ -1177,6 +1213,8 @@ void loop() {
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
   // Only redrawn when something changes, so the screen stays calm.
+  static uint32_t zTick = 0;
+  if (screenOn && view == V_HOME && millis() > msgUntil && asleep() && millis() - zTick > 90) { zTick = millis(); drawZs(zTick); }
   static int lastDx = 99; static bool lastBlink = false;
   if (screenOn && view == 0 && millis() - tick > 120) {
     tick = millis();

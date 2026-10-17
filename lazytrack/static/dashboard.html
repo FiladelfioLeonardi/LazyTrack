@@ -2129,6 +2129,9 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   put(drunk ? ["..PPP......PPP.."] : high ? ["...rc......cr..."] : ["...cc......cc..."], 8);   // flushed cheeks when drunk
   if (isHex(L.eyesColor)) { col["\u0002"] = L.eyesColor; col["\u0001"] = shade(L.eyesColor); }
   put(eyes, eyeY);
+  if (blink || mood === "sleepy") {   // eyes shut: the body's little shine next to them would read as one eye open
+    for (const y of [eyeY, eyeY + 1]) for (let x = 0; x < 16; x++) if (y >= 0 && y < 16 && body[y][x] === "w" && g[y][x] === col.w) g[y][x] = col.b;
+  }
   put(mouth, 9);
   put(pick("neck").rows, 10, false, tintOf("neck"));
   put(pick("glasses").rows, 5, false, tintOf("glasses"));
@@ -2157,7 +2160,7 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   }
   // cough: a puff of smoke out of the mouth
   if (fx.cough) put({9: "..x.............", 10: ".x.x............", 11: "..x............."});
-  if (mood === "sleepy") put({0: "...........zz...", 1: "............z...", 2: "...........zz..."});
+  if (mood === "sleepy" && !fx.noZ) put({0: "...........zz...", 1: "............z...", 2: "...........zz..."});   // the egg animates its own
   // breathing out: everything above the belly sinks one pixel, the feet stay on the ground
   if (fx.breath) { for (let y = 10; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
   return g.flat().map(c => `<i${c ? ` style="background:${c}"` : ""}></i>`).join("");
@@ -3413,6 +3416,7 @@ function buildCard() {
           mood: (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy",
           fx: (({high, drunk, coughy}) => ({high, drunk, coughy}))(petState(O)), built: Math.round(Date.now() / 1000),
           share_now: !shareKeys().includes("!now"), share_detail: !shareKeys().includes("!detail"),
+          tzo: -new Date().getTimezoneOffset(),   // minutes from UTC: the egg knows when it's night for you
           sprite: deviceSprite(PET_LOOK, (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy", O.health.tier),
           scene: deviceScene(PET_LOOK, O.health.tier),   // LazyTrack adds what you're doing right now ("playing LoL")
           streak: MODULES.github && gh.configured ? gh.streak.current : null,
@@ -3433,7 +3437,7 @@ function deviceSprite(look, mood, tier) {
   box.className = "pet";
   document.body.appendChild(box);
   const pal = [], frame = (blink, fx = {}) => {
-    box.innerHTML = mochiCells(look, mood, tier, blink, fx);
+    box.innerHTML = mochiCells(look, mood, tier, blink, {...fx, noZ: true});
     return [...box.children].map(i => {
       const c = getComputedStyle(i).backgroundColor;
       let rgb = null, m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/);
