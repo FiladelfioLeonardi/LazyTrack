@@ -68,8 +68,8 @@ USB_W, USB_H = 13.2, 7.2           # opening for the USB-C plug body
 SCREWS = [(-30.5, 84.0), (30.5, 84.0), (-28.5, 20.0), (28.5, 20.0)]
 BOSS_R, PILOT_R, SCREW_R, HEAD_R, HEAD_DEPTH = 3.2, 1.25, 1.7, 3.1, 1.8
 
-# Passive buzzer (12 mm) behind a little grille
-BUZ_X, BUZ_Y, BUZ_D = 24.0, 30.0, 12.4
+# Passive buzzer (10 mm) behind a little grille
+BUZ_X, BUZ_Y, BUZ_D = 24.0, 30.0, 10.4          # measured 10 mm buzzer
 
 STEP = 0.25                        # scanline spacing (mm)
 

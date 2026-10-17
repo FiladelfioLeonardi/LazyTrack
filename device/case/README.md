@@ -2,7 +2,7 @@
 
 ![Preview](preview.png)
 
-An egg-shaped case (80 × 142 × 31 mm) for the 2.8" red-board screen, a 38-pin ESP32 (USB-C), three 12 × 12 mm buttons and a 12 mm buzzer.
+An egg-shaped case (80 × 142 × 31 mm) for the 2.8" red-board screen, a 38-pin ESP32 (USB-C), three 12 × 12 mm buttons and a 10 mm buzzer.
 It's powered over USB-C for now. There's room behind the screen for a battery later.
 
 ## Files
