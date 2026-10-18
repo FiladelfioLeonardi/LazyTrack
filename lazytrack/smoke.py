@@ -162,13 +162,16 @@ def app_in_use() -> bool:
     return time.time() - APP_FOCUS["t"] < 7
 
 
+ASK_TIMEOUT = 30 * 60   # the smoking question waits up to 30 minutes for an answer
+
+
 def _nudge(again: bool = False) -> None:
     """The notification, plus a sound LazyTrack plays itself, so you hear it even when the system
     hides notifications (Do Not Disturb / Focus, a game in full screen, notifications not allowed)."""
     line = last_line()
     msg = ("Still waiting: was that a cigarette or a joint? Open LazyTrack to say." if again
            else "Looks like you're smoking. Open LazyTrack to say what it was.")
-    system.notify("LazyTrack 👀", msg + (f" {line}" if line else ""), sound=False)
+    system.notify("LazyTrack 👀", msg + (f" {line}" if line else ""), sound=False, sticky=True)
     system.chime()
     log.info("smoke question: notification%s sent", " (reminder)" if again else "")
 
@@ -782,12 +785,18 @@ class SmokeDetector(threading.Thread):
             _nudge()
             t0 = time.time()
 
-            def remind():   # still not answered after 90 s (in a game, say): once more
-                time.sleep(90)
-                if QUESTION["open"] and QUESTION["asked_at"] >= t0 - 1 and not app_in_use():
+            def remind():
+                # keeps reminding every minute until you answer (in LazyTrack, on the phone or the egg).
+                # Not while you're in LazyTrack, and not while you're away from the computer.
+                while True:
+                    time.sleep(60)
+                    if not (QUESTION["open"] and QUESTION["asked_at"] >= t0 - 1):
+                        return
+                    if app_in_use() or system.idle_seconds() > 90:
+                        continue
                     _nudge(again=True)
             threading.Thread(target=remind, name="ask-remind", daemon=True).start()
-        ans = ask_everywhere("computer", timeout=300)   # 5 minutes to open LazyTrack and answer
+        ans = ask_everywhere("computer", timeout=ASK_TIMEOUT)
         return handle_answer(ans, crop, self.scfg, self.device_name, "camera")
 
 

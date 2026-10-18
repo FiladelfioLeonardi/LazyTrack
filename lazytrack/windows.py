@@ -210,7 +210,7 @@ $ErrorActionPreference = 'Stop'
 [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
 [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
 $x = New-Object Windows.Data.Xml.Dom.XmlDocument
-$x.LoadXml("<toast><visual><binding template='ToastGeneric'><text>$($env:LT_TITLE)</text><text>$($env:LT_MSG)</text></binding></visual>$($env:LT_AUDIO)</toast>")
+$x.LoadXml("<toast$($env:LT_SCENARIO)><visual><binding template='ToastGeneric'><text>$($env:LT_TITLE)</text><text>$($env:LT_MSG)</text></binding></visual>$($env:LT_ACTIONS)$($env:LT_AUDIO)</toast>")
 $app = '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($x))
 """
@@ -220,10 +220,13 @@ def _xml(s: str) -> str:
     return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&apos;").replace('"', "&quot;")
 
 
-def notify(title: str, message: str, sound: bool = True) -> None:
-    """A Windows notification (the ones that slide in at the bottom right)."""
+def notify(title: str, message: str, sound: bool = True, sticky: bool = False) -> None:
+    """A Windows notification (the ones that slide in at the bottom right).
+    sticky: it stays on screen until you click it away (a "reminder" toast needs a button for that)."""
     env = {**os.environ, "LT_TITLE": _xml(title), "LT_MSG": _xml(message),
-           "LT_AUDIO": "" if sound else "<audio silent='true'/>"}
+           "LT_AUDIO": "" if sound else "<audio silent='true'/>",
+           "LT_SCENARIO": " scenario='reminder'" if sticky else "",
+           "LT_ACTIONS": "<actions><action content='OK' arguments='dismiss' activationType='system'/></actions>" if sticky else ""}
     try:
         r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", _TOAST],
                            env=env, capture_output=True, text=True, timeout=15, creationflags=NO_WINDOW)

@@ -143,7 +143,8 @@ def _esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def notify(title: str, message: str, sound: bool = True) -> None:
+def notify(title: str, message: str, sound: bool = True, sticky: bool = False) -> None:
+    # sticky: macOS decides how long a notification stays (Script Editor > Persistent in System Settings)
     snd = ' sound name "Pop"' if sound else ""
     if osascript(f'display notification "{_esc(message)}" with title "{_esc(title)}"{snd}') is None:
         log.info("[notification] %s: %s", title, message)
