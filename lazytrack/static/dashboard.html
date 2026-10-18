@@ -95,7 +95,22 @@
   .ideabtn { position: fixed; right: 22px; bottom: 22px; z-index: 30; width: 56px; height: 56px; border-radius: 18px; border: 3px solid var(--line);
     background: var(--yellow); color: var(--on-fill); font: 800 30px/1 var(--body); box-shadow: 4px 4px 0 var(--line); cursor: pointer; }
   .ideabtn:hover { transform: translate(-1px, -2px); box-shadow: 5px 6px 0 var(--line); }
-  body.welcoming .ideabtn { display: none; }
+  body.welcoming .ideabtn, body.welcoming .ideahint { display: none; }
+  /* what the + is for: a label slides out on hover, and a bubble explains it the first few times */
+  .ideabtn::after { content: "Ideas & bugs"; position: absolute; right: calc(100% + 10px); top: 50%; translate: 6px -50%; white-space: nowrap;
+    background: var(--card); color: var(--text); border: 3px solid var(--line); border-radius: 12px; padding: 6px 10px; font: 800 14px/1 var(--body);
+    box-shadow: 3px 3px 0 var(--line); opacity: 0; pointer-events: none; transition: opacity .15s, translate .15s; }
+  .ideabtn:hover::after, .ideabtn:focus-visible::after { opacity: 1; translate: 0 -50%; }
+  .ideahint { position: fixed; right: 22px; bottom: 92px; z-index: 30; max-width: 240px; background: var(--card); color: var(--text);
+    border: 3px solid var(--line); border-radius: 14px; padding: 10px 34px 10px 12px; box-shadow: 4px 4px 0 var(--line); font-weight: 700; font-size: 14px; line-height: 1.35; }
+  .ideahint::after { content: ""; position: absolute; right: 20px; bottom: -11px; width: 16px; height: 16px; background: var(--card);
+    border-right: 3px solid var(--line); border-bottom: 3px solid var(--line); rotate: 45deg; }
+  .ideahint button { position: absolute; top: 4px; right: 6px; border: 0; background: none; font: 800 18px/1 var(--body); cursor: pointer; color: var(--text); }
+  @media (max-width: 820px) { .ideahint { right: 14px; bottom: 164px; } }
+  .itabs { display: flex; gap: 8px; margin-bottom: 10px; width: 100%; align-self: stretch; }
+  .itabs button { flex: 1; white-space: nowrap; border: 3px solid var(--line); border-radius: 12px; background: var(--card); color: var(--text); padding: 8px 10px; font: 800 15px/1 var(--body); cursor: pointer; }
+  .itabs button[aria-selected="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 3px 3px 0 var(--line); }
+  .it .kind { font-weight: 800; }
   @media (max-width: 820px) { .ideabtn { bottom: 100px; right: 14px; width: 50px; height: 50px; font-size: 26px; } }
   .ideacard { width: min(520px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; text-align: left; }
   .ideacard input[type=text], .ideacard textarea { width: 100%; padding: 10px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--card);
@@ -958,15 +973,18 @@ applyTheme();
   </div>
 </div>
 <!-- ideas: the + button on every page, and the form it opens -->
-<button type="button" class="ideabtn" id="ideaBtn" title="Suggest an idea for LazyTrack" aria-label="Suggest an idea for LazyTrack">+</button>
+<button type="button" class="ideabtn" id="ideaBtn" aria-label="Send an idea or report a bug">+</button>
+<div class="ideahint" id="ideaHint" hidden>💡 Got an idea, or 🐞 found a bug? Tap the <b>+</b> and tell us!<button type="button" id="ideaHintX" aria-label="Got it">×</button></div>
 <div class="qmodal" id="ideaModal" hidden role="dialog" aria-modal="true" aria-labelledby="ideaTitle">
   <div class="qcard ideacard">
+    <div class="itabs" role="tablist"><button type="button" role="tab" data-ikind="idea" aria-selected="true">💡 Idea</button><button type="button" role="tab" data-ikind="bug" aria-selected="false">🐞 Bug</button></div>
     <h2 class="ptitle" id="ideaTitle" style="font-size:24px">💡 Got an idea?</h2>
-    <p class="psub" style="margin-top:4px">Something you'd love LazyTrack or Mochi to do? Tell us. Every idea gets read.</p>
-    <div class="field"><label class="lab" for="iT">Your idea in a few words</label><input type="text" id="iT" maxlength="120" placeholder="e.g. Mochi can have a pet dog"></div>
-    <div class="field"><label class="lab" for="iB">Tell us more (optional)</label><textarea id="iB" maxlength="2000" placeholder="How would it work? Why would it help you?"></textarea></div>
-    <div class="field"><label class="lab">It's about</label><div class="ichips" id="iArea"></div></div>
-    <div class="field"><label class="lab">How much do you want it?</label><div class="ichips" id="iWant"></div></div>
+    <p class="psub" style="margin-top:4px" id="iSub">Something you'd love LazyTrack or Mochi to do? Tell us. Every idea gets read.</p>
+    <div class="field"><label class="lab" for="iT" id="iTLab">Your idea in a few words</label><input type="text" id="iT" maxlength="120" placeholder="e.g. Mochi can have a pet dog"></div>
+    <div class="field"><label class="lab" for="iB" id="iBLab">Tell us more (optional)</label><textarea id="iB" maxlength="2000" placeholder="How would it work? Why would it help you?"></textarea></div>
+    <div class="field"><label class="lab" id="iALab">It's about</label><div class="ichips" id="iArea"></div></div>
+    <div class="field"><label class="lab" id="iWLab">How much do you want it?</label><div class="ichips" id="iWant"></div></div>
+    <p class="note" id="iTech" hidden style="margin-top:8px">Your LazyTrack version and computer type (Mac/Windows) are added, so we can find it.</p>
     <p class="note" id="iNote" style="margin-top:10px"></p>
     <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="iCancel">Cancel</button><button type="button" class="btn primary" id="iSend">Send idea</button></div>
     <div class="mine" id="iMine" hidden></div>
@@ -4074,48 +4092,72 @@ $("ripGo").addEventListener("click", async () => {
 const IDEA_AREAS = [["mochi", "🐣 Mochi & looks"], ["habits", "🎯 Habits & HP"], ["tracking", "📊 Tracking"], ["friends", "👥 Friends"], ["other", "✨ Something else"]];
 const IDEA_WANT = [[1, "Nice to have"], [2, "I want it"], [3, "I need it!"]];
 const IDEA_STATUS = {new: "NEW", planned: "PLANNED", done: "DONE ✓", no: "NOT NOW"};
+// bugs go in the same box: area "bug-<where>", and "want" is how bad it is
+const BUG_AREAS = [["app", "🖥️ The app"], ["mochi", "🐣 Mochi"], ["tracking", "📊 Tracking"], ["friends", "👥 Friends"], ["egg", "🥚 The egg"], ["other", "✨ Something else"]];
+const BUG_BAD = [[1, "Small glitch"], [2, "Annoying"], [3, "Can't use it"]];
+const BUG_STATUS = {new: "NEW", planned: "FIXING", done: "FIXED ✓", no: "CAN'T REPRODUCE"};
+const isBug = i => String(i.area || "").startsWith("bug-");
+const IDEA_TEXT = {
+  idea: {title: "💡 Got an idea?", sub: "Something you'd love LazyTrack or Mochi to do? Tell us. Every idea gets read.", t: "Your idea in a few words",
+         tp: "e.g. Mochi can have a pet dog", b: "Tell us more (optional)", bp: "How would it work? Why would it help you?", a: "It's about", w: "How much do you want it?", send: "Send idea"},
+  bug: {title: "🐞 Found a bug?", sub: "Something broken or weird? Tell us what happened and we'll fix it.", t: "What went wrong?",
+        tp: "e.g. Mochi disappears when I open the menu", b: "What were you doing when it happened? (optional)", bp: "1. I opened…\n2. I pressed…\n3. Then…", a: "Where?", w: "How bad is it?", send: "Send bug report"},
+};
 const ideaBox = {
-  area: "mochi", want: 2,
-  open() {
+  kind: "idea", area: "mochi", want: 2,
+  open(kind = "idea") {
     $("iT").value = ""; $("iB").value = ""; $("iNote").textContent = ""; $("iSend").disabled = false;
-    this.area = "mochi"; this.want = 2; this.chips();
+    this.setKind(kind);
     $("ideaModal").hidden = false;
+    ideaHint.done();
     setTimeout(() => $("iT").focus(), 50);
     this.mine();
   },
+  setKind(kind) {
+    this.kind = kind; this.area = kind === "bug" ? "app" : "mochi"; this.want = 2;
+    const T = IDEA_TEXT[kind];
+    document.querySelectorAll("[data-ikind]").forEach(b => b.setAttribute("aria-selected", b.dataset.ikind === kind));
+    $("ideaTitle").textContent = T.title; $("iSub").textContent = T.sub; $("iTLab").textContent = T.t; $("iT").placeholder = T.tp;
+    $("iBLab").textContent = T.b; $("iB").placeholder = T.bp; $("iALab").textContent = T.a; $("iWLab").textContent = T.w;
+    $("iSend").textContent = T.send; $("iTech").hidden = kind !== "bug";
+    this.chips();
+  },
   close() { $("ideaModal").hidden = true; },
   chips() {
-    $("iArea").innerHTML = IDEA_AREAS.map(([k, n]) => `<button type="button" data-iarea="${k}" aria-pressed="${k === this.area}">${n}</button>`).join("");
-    $("iWant").innerHTML = IDEA_WANT.map(([k, n]) => `<button type="button" data-iwant="${k}" aria-pressed="${k === this.want}">${n}</button>`).join("");
+    const areas = this.kind === "bug" ? BUG_AREAS : IDEA_AREAS, want = this.kind === "bug" ? BUG_BAD : IDEA_WANT;
+    $("iArea").innerHTML = areas.map(([k, n]) => `<button type="button" data-iarea="${k}" aria-pressed="${k === this.area}">${n}</button>`).join("");
+    $("iWant").innerHTML = want.map(([k, n]) => `<button type="button" data-iwant="${k}" aria-pressed="${k === this.want}">${n}</button>`).join("");
   },
   item(i, admin) {
     const when = new Date(i.created_at).toLocaleDateString([], {day: "numeric", month: "short"});
-    const area = (IDEA_AREAS.find(a => a[0] === i.area) || ["", i.area])[1];
-    return `<div class="it"><span class="t">${esc(i.title)}</span>${i.body ? `<span class="b">${esc(i.body)}</span>` : ""}
-      <span class="row"><span class="m">${admin ? `@${esc(i.username || "?")} · ` : ""}${esc(area)} · ${esc((IDEA_WANT.find(w => w[0] === i.want) || ["", ""])[1])} · ${when}</span>
-      ${admin ? `<select data-istatus="${i.id}" aria-label="Status">${Object.entries(IDEA_STATUS).map(([k, n]) => `<option value="${k}" ${i.status === k ? "selected" : ""}>${n}</option>`).join("")}</select>
-        <button type="button" class="st" data-idel="${i.id}" style="cursor:pointer" title="Delete this idea">🗑</button>${i.platform ? `<span class="m">${esc(OS_NAME[i.platform] || i.platform)}${i.version ? " · " + esc(i.version) : ""}</span>` : ""}`
-              : `<span class="st ${esc(i.status)}">${IDEA_STATUS[i.status] || i.status}</span>`}</span></div>`;
+    const bug = isBug(i), STATUS = bug ? BUG_STATUS : IDEA_STATUS;
+    const area = bug ? (BUG_AREAS.find(a => "bug-" + a[0] === i.area) || ["", i.area.slice(4)])[1] : (IDEA_AREAS.find(a => a[0] === i.area) || ["", i.area])[1];
+    const want = ((bug ? BUG_BAD : IDEA_WANT).find(w => w[0] === i.want) || ["", ""])[1];
+    return `<div class="it"><span class="t"><span class="kind">${bug ? "🐞" : "💡"}</span> ${esc(i.title)}</span>${i.body ? `<span class="b">${esc(i.body)}</span>` : ""}
+      <span class="row"><span class="m">${admin ? `@${esc(i.username || "?")} · ` : ""}${esc(area)} · ${esc(want)} · ${when}</span>
+      ${admin ? `<select data-istatus="${i.id}" aria-label="Status">${Object.entries(STATUS).map(([k, n]) => `<option value="${k}" ${i.status === k ? "selected" : ""}>${n}</option>`).join("")}</select>
+        <button type="button" class="st" data-idel="${i.id}" style="cursor:pointer" title="Delete">🗑</button>${i.platform ? `<span class="m">${esc(OS_NAME[i.platform] || i.platform)}${i.version ? " · " + esc(i.version) : ""}</span>` : ""}`
+              : `<span class="st ${esc(i.status)}">${STATUS[i.status] || i.status}</span>`}</span></div>`;
   },
   async mine() {
     try {
       const r = await (await api("/api/cloud/ideas")).json();
       const mine = (r.ideas || []).filter(i => i.mine);
       $("iMine").hidden = !mine.length && !r.waiting;
-      $("iMine").innerHTML = `<div class="label">YOUR IDEAS</div>` + mine.slice(0, 8).map(i => this.item(i, false)).join("")
+      $("iMine").innerHTML = `<div class="label">YOUR IDEAS & BUG REPORTS</div>` + mine.slice(0, 8).map(i => this.item(i, false)).join("")
         + (r.waiting ? `<p class="note" style="margin-top:6px">${r.waiting} waiting to be sent.</p>` : "");
     } catch (_) {}
   },
   async send() {
     const title = $("iT").value.trim();
-    if (title.length < 3) { $("iNote").textContent = "Give your idea a short title first."; $("iT").focus(); return; }
+    if (title.length < 3) { $("iNote").textContent = this.kind === "bug" ? "Say in a few words what went wrong." : "Give your idea a short title first."; $("iT").focus(); return; }
     $("iSend").disabled = true; $("iNote").textContent = "Sending…";
     try {
-      const r = await post("/api/cloud/idea", {title, body: $("iB").value, area: this.area, want: this.want});
+      const r = await post("/api/cloud/idea", {title, body: $("iB").value, area: (this.kind === "bug" ? "bug-" : "") + this.area, want: this.want});
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "failed");
       this.close();
-      toast(j.sent ? "Thanks! Your idea was sent 💡" : "Saved. It'll be sent as soon as LazyTrack can reach the server.", null);
+      toast(j.sent ? (this.kind === "bug" ? "Thanks! Bug report sent 🐞 We'll look into it." : "Thanks! Your idea was sent 💡") : "Saved. It'll be sent as soon as LazyTrack can reach the server.", null);
     } catch (e) { $("iNote").textContent = String(e.message || "Couldn't send it right now."); $("iSend").disabled = false; }
   },
   async inbox() {
@@ -4125,14 +4167,32 @@ const ideaBox = {
     if (!r.admin) return;
     const all = r.ideas || [], by = s => all.filter(i => i.status === s).length;
     const sort = this.sort || "new";
-    const list = [...all].filter(i => this.only ? i.status === this.only : true)
+    const nb = all.filter(isBug).length;
+    const list = [...all].filter(i => this.only ? i.status === this.only : true).filter(i => !this.kindOnly || (this.kindOnly === "bug") === isBug(i))
       .sort((a, b) => sort === "want" ? b.want - a.want || b.id - a.id : b.id - a.id);
     $("ideaInbox").innerHTML = `<div class="sum">${Object.entries(IDEA_STATUS).map(([k, n]) => `<button type="button" class="st ${k}" data-ionly="${k}" style="cursor:pointer;${this.only === k ? "outline:3px solid var(--yellow)" : ""}">${n} ${by(k)}</button>`).join("")}
-        <button type="button" class="st" data-isort="${sort === "new" ? "want" : "new"}" style="cursor:pointer">SORT: ${sort === "new" ? "NEWEST" : "MOST WANTED"}</button></div>`
+        <button type="button" class="st" data-isort="${sort === "new" ? "want" : "new"}" style="cursor:pointer">SORT: ${sort === "new" ? "NEWEST" : "MOST WANTED"}</button>
+        <button type="button" class="st" data-ikindonly="idea" style="cursor:pointer;${this.kindOnly === "idea" ? "outline:3px solid var(--yellow)" : ""}">💡 IDEAS ${all.length - nb}</button>
+        <button type="button" class="st" data-ikindonly="bug" style="cursor:pointer;${this.kindOnly === "bug" ? "outline:3px solid var(--yellow)" : ""}">🐞 BUGS ${nb}</button></div>`
       + (list.map(i => this.item(i, true)).join("") || `<p class="note">No ideas ${this.only ? "with this status " : ""}yet.</p>`);
   },
 };
 $("ideaBtn").addEventListener("click", () => ideaBox.open());
+// the first few times: a bubble next to the + saying what it's for (gone once you've opened it, or after 3 showings)
+const ideaHint = {
+  key: "lt_ideahint",
+  get n() { try { return +(localStorage.getItem(this.key) || 0); } catch (_) { return 99; } },
+  set n(v) { try { localStorage.setItem(this.key, v); } catch (_) {} },
+  show() {
+    if (this.n >= 3 || document.body.classList.contains("welcoming")) return;
+    this.n = this.n + 1;
+    $("ideaHint").hidden = false;
+    setTimeout(() => { $("ideaHint").hidden = true; }, 12000);
+  },
+  done() { this.n = 99; $("ideaHint").hidden = true; },
+};
+$("ideaHintX").addEventListener("click", () => ideaHint.done());
+setTimeout(() => ideaHint.show(), 4000);
 $("iCancel").addEventListener("click", () => ideaBox.close());
 $("iSend").addEventListener("click", () => ideaBox.send());
 $("ideaModal").addEventListener("click", e => {
@@ -4143,6 +4203,8 @@ $("ideaModal").addEventListener("click", e => {
 addEventListener("keydown", e => { if (e.key === "Escape" && !$("ideaModal").hidden) ideaBox.close(); });
 document.addEventListener("click", e => {
   const o = e.target.closest("[data-ionly]"); if (o) { ideaBox.only = ideaBox.only === o.dataset.ionly ? "" : o.dataset.ionly; ideaBox.inbox(); return; }
+  const ko = e.target.closest("[data-ikindonly]"); if (ko) { ideaBox.kindOnly = ideaBox.kindOnly === ko.dataset.ikindonly ? "" : ko.dataset.ikindonly; ideaBox.inbox(); return; }
+  const kt = e.target.closest("[data-ikind]"); if (kt) { ideaBox.setKind(kt.dataset.ikind); return; }
   const so = e.target.closest("[data-isort]"); if (so) { ideaBox.sort = so.dataset.isort; ideaBox.inbox(); }
 });
 document.addEventListener("change", async e => {

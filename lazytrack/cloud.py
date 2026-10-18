@@ -435,7 +435,9 @@ def _uuid(s: str) -> str:
 # ---------------------------------------------------------------- ideas box (the + button)
 # Ideas go to the "ideas" table (supabase/ideas.sql). If they can't be sent right now (offline, not
 # connected, the table isn't set up yet) they wait in the local outbox and go out with the next one.
-IDEA_AREAS = {"mochi", "habits", "tracking", "friends", "other"}
+IDEA_AREAS = {"mochi", "habits", "tracking", "friends", "other",
+              # bug reports share the box: "bug-<where>"
+              "bug-app", "bug-mochi", "bug-tracking", "bug-friends", "bug-egg", "bug-other"}
 IDEA_STATUS = {"new", "planned", "done", "no"}
 
 
@@ -450,7 +452,7 @@ def submit_idea(title: str, body: str, area: str, want: int, platform: str, vers
     """Sends an idea (and any waiting ones). Returns {"sent": n, "waiting": n}."""
     title, body = str(title).strip()[:120], str(body).strip()[:2000]
     if len(title) < 3:
-        raise CloudError("Give your idea a short title (at least 3 letters).")
+        raise CloudError("Write at least 3 letters in the first box.")
     idea = {"title": title, "body": body, "area": area if area in IDEA_AREAS else "other",
             "want": max(1, min(3, int(want or 2))), "platform": str(platform)[:20], "version": str(version)[:12]}
     waiting = _outbox() + [idea]
