@@ -1473,7 +1473,9 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
   } else {
     panel(8, 8, 221, 304);
     text(20, 20, "INFO", 2, INK);
-    text(20, 52, "Online via: " + netName() + (bleLinked && bleSeen ? "  (" + String((millis() - bleSeen) / 1000) + "s)" : ""), 1, INK);
+    text(20, 52, "WiFi: " + (WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 20) : String("not connected")), 1, INK);
+    text(20, 138, "Phone: " + String(bleLinked ? "paired, backs up WiFi" : bleConnected ? "pairing..." : "not connected")
+                  + (bleSeen ? " " + String((millis() - bleSeen) / 1000) + "s" : ""), 1, INK);
     text(20, 70, "IP: " + WiFi.localIP().toString() + "   mem " + String(ESP.getFreeHeap() / 1024) + "K", 1, INK);
     text(20, 88, "Status: " + status.substring(0, 26), 1, INK);
     text(20, 106, "Last sync: " + (lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never")), 1, INK);

@@ -3772,7 +3772,10 @@ function pushCard(force) {
   if (!CLOUD.connected || !O || !O.is_today) return;
   if (!force && Date.now() - lastPush < 150000) return;
   lastPush = Date.now();
-  post("/api/cloud/card", {card: buildCard()}).catch(() => {});
+  // on the phone, building the card (Mochi's pixels for friends and the egg) waits until the app is idle,
+  // so taps answer right away after opening; the computer does it right away
+  const send = () => post("/api/cloud/card", {card: buildCard()}).catch(() => {});
+  if (AUTH.local) send(); else (window.requestIdleCallback || (f => setTimeout(f, 2500)))(send, {timeout: 6000});
 }
 
 const ago = iso => { if (!iso) return "never"; const m = Math.round((Date.now() - new Date(iso)) / 60000);
