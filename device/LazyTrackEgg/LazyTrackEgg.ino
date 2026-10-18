@@ -2035,7 +2035,10 @@ void setup() {
   esp_task_wdt_config_t wdt = {.timeout_ms = 20000, .idle_core_mask = 1 << 0, .trigger_panic = true};
   esp_task_wdt_reconfigure(&wdt);
 #endif
-  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 0, nullptr, 0);
+  // Core 1, next to the screen (like before the network had its own task). The watchdog only watches core 0:
+  // there, a slow server answer kept the core busy long enough to restart the egg. Same priority as the screen,
+  // so they take turns.
+  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 1);
 }
 
 // ---------------------------------------------------------------- the network task (core 0)
