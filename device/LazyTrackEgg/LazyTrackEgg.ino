@@ -2012,7 +2012,8 @@ void setup() {
   esp_task_wdt_config_t wdt = {.timeout_ms = 20000, .idle_core_mask = 1 << 0, .trigger_panic = true};
   esp_task_wdt_reconfigure(&wdt);
 #endif
-  xTaskCreatePinnedToCore(netTask, "net", 16384, nullptr, 0, nullptr, 0);   // a secure connection needs a deep stack
+  // Core 1, next to the screen: the watchdog only watches core 0, where a slow connection restarted the egg.
+  xTaskCreatePinnedToCore(netTask, "net", 16384, nullptr, 1, nullptr, 1);
 }
 
 // ---------------------------------------------------------------- the network task (core 0)
