@@ -83,11 +83,24 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
         if enabled { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.start() } }
     }
 
+    private var attempt = 0
     private func connect(_ p: CBPeripheral) {
         egg = p
         p.delegate = self
         status = "Connecting to your egg…"
         central.connect(p)
+        // Not connected 15 s later: the remembered egg may be stale (after "Forget This Device", iOS can hand back an
+        // old identity that never connects). Drop it and look for the egg fresh.
+        attempt += 1
+        let mine = attempt
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+            guard let self, self.enabled, mine == self.attempt, p.state != .connected else { return }
+            self.central.cancelPeripheralConnection(p)
+            self.savedEgg = nil
+            self.egg = nil
+            self.status = "Looking for your egg…"
+            self.central.scanForPeripherals(withServices: [Self.service])
+        }
     }
 
     func centralManagerDidUpdateState(_ c: CBCentralManager) {
@@ -112,6 +125,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
     }
 
     func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
+        attempt += 1   // connected: the 15 s check above stands down
         savedEgg = p.identifier
         connectedAt = Date()
         status = "Connected, setting up…"

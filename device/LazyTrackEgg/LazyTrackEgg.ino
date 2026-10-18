@@ -456,6 +456,8 @@ void bleCheck() {
 void blePairMode() {   // B on the Phone screen: new phones can pair for 2 minutes
   blePairUntil = millis() + 120000;
   if (bleSrv && bleSrv->getConnectedCount() == 0) NimBLEDevice::startAdvertising();
+  Serial.printf("Bluetooth: pairing mode on for 2 min (findable: %s, phones connected: %d, free memory %u)\n",
+                NimBLEDevice::getAdvertising()->isAdvertising() ? "yes" : "NO", bleSrv ? bleSrv->getConnectedCount() : -1, (unsigned)ESP.getFreeHeap());
 }
 
 void bleAnswer(bool yes) {   // the code on the screen: same as on the phone?
@@ -571,8 +573,11 @@ int httpOnce(const String &method, const String &path, const String &payload, St
 
 bool takeSession(const String &body) {
   JsonDocument d;
-  if (deserializeJson(d, body)) return false;
-  if (!d["access_token"].is<const char *>()) return false;
+  DeserializationError e = deserializeJson(d, body);
+  if (e || !d["access_token"].is<const char *>()) {
+    Serial.printf("login: the server's answer didn't have a session (%s, %u bytes)\n", e.c_str(), (unsigned)body.length());
+    return false;
+  }
   token = d["access_token"].as<String>();
   refresh = d["refresh_token"].as<String>();
   uid = d["user"]["id"].as<String>();
