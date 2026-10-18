@@ -56,7 +56,8 @@ Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the 
 | **Menu** | back | open | next |
 | **Log** | back | log it (Mochi reacts right away) | next |
 | **Friends** | back | poke them (their egg buzzes, their app plays a sound) | next friend |
-| **Today** | back | | next page |
+| **Today** | back | yesterday vs today for the highlighted stat | next stat |
+| **Yesterday vs today** | back | back | next stat |
 
 - **Log** lists the habits you track in LazyTrack. A log reaches LazyTrack within a minute, while LazyTrack runs on
   your computer. Without WiFi, logs wait on the egg and go out once it's back online.

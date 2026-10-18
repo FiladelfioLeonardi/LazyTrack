@@ -653,10 +653,20 @@ def egg_sync() -> int:
 
 def _egg_today(all_h: list) -> list:
     """Everything about today for the egg's Today screen (private, unlike the friend card):
-    every habit you track, plus screen time. Seconds are rounded to minutes so it doesn't re-upload
-    every 30 seconds."""
-    from . import summary, habits as _habits
-    t = summary.today()
+    every habit you track, plus screen time, each with yesterday's value ("y") for the egg's
+    Yesterday vs today screen. Seconds are rounded to minutes so it doesn't re-upload every 30 seconds."""
+    from datetime import date, timedelta
+    from . import summary
+    s0 = summary.day_start(date.today())
+    today = _egg_stats(all_h, summary.today())
+    yday = {e["s"]: e["v"] for e in _egg_stats(all_h, summary.compute(s0 - timedelta(days=1), s0))}
+    for e in today:
+        e["y"] = yday.get(e["s"], 0)
+    return today
+
+
+def _egg_stats(all_h: list, t: dict) -> list:
+    from . import habits as _habits
     ev, cats = t["events"], t["categories"]
     out = []
     for h in all_h:
@@ -678,7 +688,7 @@ def _egg_today(all_h: list) -> list:
         elif k == "screen":
             out.append({"s": names[k], "v": mins(t["screen_total"]), "u": "s"})
         else:
-            out.append({"s": names[k], "v": mins(cats.get(k, 0)), "u": "s"})
+            out.append({"s": names[k], "v": mins(cats.get(k, 0)), "u": "s", "bad": k in ("youtube", "social", "streaming")})
     if got["modules"].get("school"):
         out.append({"s": "42 logtime", "v": mins(t["logtime_42"]), "u": "s"})
     if t["steps_total"]:

@@ -127,7 +127,8 @@ struct Card {
 
 // (Arduino IDE declares every function near the top of the sketch, so no function takes these as a parameter)
 struct Habit { String k, n; bool bad = false; };
-struct Stat { String s, v; bool bad = false, good = false; };   // a line on the Today screen
+struct Stat { String s, v; bool bad = false, good = false; long tv = 0, yv = 0; bool secs = false, hasY = false; int8_t sign = 0; };   // a line on the Today screen
+// (sign: 1 = more is better, -1 = less is better, 0 = neither)
 struct Friend {
   String id, name, user, tier = "okay", what, label;
   int hp = 0, drunk = 0, high = 0, coughy = 0;
@@ -142,7 +143,7 @@ WiFiMulti wifi;   // tries every network in secrets.h and joins whichever is aro
 String token, refresh, uid;
 uint32_t tokenUntil = 0, lastSync = 0, lastTry = 0;
 String status = "Starting...";
-enum { V_HOME, V_STATS, V_INFO, V_MENU, V_LOG, V_FRIENDS };
+enum { V_HOME, V_STATS, V_INFO, V_MENU, V_LOG, V_FRIENDS, V_CMP };
 int view = V_HOME, menuSel = 0;
 bool screenOn = true;
 
@@ -363,7 +364,12 @@ int nhabits = 0, logSel = 0;
 uint32_t habitsAt = 0;
 
 Stat today[24];
-int ntoday = 0, todayPage = 0;
+int ntoday = 0, todayPage = 0, todaySel = 0;
+
+String fmtVal(long v, bool secs) {   // 3h20m / 45m for times, plain numbers otherwise
+  if (!secs) return String(v);
+  return v >= 3600 ? String(v / 3600) + "h" + String((v % 3600) / 60) + "m" : String(v / 60) + "m";
+}
 
 // egg_setup holds {"list": [your habits], "today": [today's numbers]} (older LazyTrack: just the list)
 void parseSetup(const String &body) {
@@ -383,7 +389,12 @@ void parseSetup(const String &body) {
     if (t >= 24) break;
     long v = x["v"] | 0;
     today[t].s = x["s"] | "";
-    today[t].v = String(x["u"] | "") == "s" ? (v >= 3600 ? String(v / 3600) + "h" + String((v % 3600) / 60) + "m" : String(v / 60) + "m") : String(v);
+    today[t].secs = String(x["u"] | "") == "s";
+    today[t].tv = v;
+    today[t].v = fmtVal(v, today[t].secs);
+    today[t].hasY = !x["y"].isNull();
+    today[t].yv = x["y"] | 0;
+    today[t].sign = x["bad"].isNull() ? 0 : (x["bad"].as<bool>() ? -1 : 1);
     today[t].bad = (x["bad"] | false) && v > 0;
     today[t].good = !(x["bad"] | true) && v > 0;
     t++;
@@ -964,16 +975,61 @@ void drawToday() {
   }
   const int per = 10;
   int pages = (ntoday + per - 1) / per;
-  if (todayPage >= pages) todayPage = 0;
+  if (todaySel >= ntoday) todaySel = 0;
+  todayPage = todaySel / per;
   if (pages > 1) text(180, 24, String(todayPage + 1) + "/" + String(pages), 1, GREY);
   for (int i = todayPage * per, r = 0; i < ntoday && r < per; i++, r++) {
     int y = 50 + r * 24;
-    if (r % 2 == 0) gfx->fillRoundRect(14, y - 4, 209, 22, 5, SOFT);
+    if (i == todaySel) { gfx->fillRoundRect(14, y - 4, 209, 22, 5, YELLOW); gfx->drawRoundRect(14, y - 4, 209, 22, 5, INK); }
+    else if (r % 2 == 0) gfx->fillRoundRect(14, y - 4, 209, 22, 5, SOFT);
     if (today[i].bad || today[i].good) gfx->fillCircle(24, y + 7, 4, today[i].bad ? RED : GREEN);
     text(34, y, today[i].s.substring(0, 11), 2, INK);
     text(215 - today[i].v.length() * 12, y, today[i].v, 2, INK);
   }
-  text(20, 296, pages > 1 ? "C next page   A back" : "A  back", 1, GREY);
+  text(20, 296, "C next  B vs yesterday  A back", 1, GREY);
+}
+
+// ---------------------------------------------------------------- yesterday vs today, for one stat
+void cmpBar(int y, const String &label, const String &val, long v, long top, uint16_t col) {
+  text(20, y, label, 1, GREY);
+  text(215 - val.length() * 18, y + 12, val, 3, INK);
+  int w = top > 0 ? (int)(186L * v / top) : 0;
+  gfx->fillRoundRect(20, y + 44, 196, 18, 5, SOFT); gfx->drawRoundRect(20, y + 44, 196, 18, 5, INK);
+  if (w > 0) { gfx->fillRoundRect(25, y + 48, max(w, 6), 10, 3, col); }
+}
+
+void drawCompare() {
+  drawBackground();
+  panel(8, 8, 221, 304);
+  if (!ntoday) { text(20, 20, "NOTHING YET", 2, INK); text(20, 296, "A  back", 1, GREY); return; }
+  Stat &st = today[todaySel % ntoday];
+  text(20, 18, "VS YESTERDAY", 1, GREY);
+  String name = st.s; if (name.length()) name.setCharAt(0, toupper(name[0]));
+  text(20, 32, name.substring(0, 12), 3, INK);
+  if (!st.hasY) {
+    text(20, 90, "Update LazyTrack on", 2, INK);
+    text(20, 112, "your computer to see", 2, INK);
+    text(20, 134, "yesterday here.", 2, INK);
+    text(20, 296, "C next  A back", 1, GREY);
+    return;
+  }
+  long top = max(st.tv, st.yv);
+  cmpBar(70, "YESTERDAY", fmtVal(st.yv, st.secs), st.yv, top, rgb(0xc9b8ff));
+  cmpBar(148, "TODAY SO FAR", fmtVal(st.tv, st.secs), st.tv, top, YELLOW);
+  long d = st.tv - st.yv;
+  String verdict; uint16_t col = INK;
+  if (d == 0) verdict = "Same as yesterday";
+  else {
+    verdict = fmtVal(d > 0 ? d : -d, st.secs) + (d > 0 ? " more" : " less");
+    if (st.sign) {
+      bool better = (d > 0) == (st.sign > 0);
+      col = better ? GREEN : RED;
+      verdict += better ? " nice!" : "";
+    }
+  }
+  gfx->fillRoundRect(14, 232, 209, 34, 8, col == INK ? SOFT : col); gfx->drawRoundRect(14, 232, 209, 34, 8, INK);
+  text(24, 242, verdict.substring(0, 16), 2, col == INK ? INK : CARD);
+  text(20, 296, "C next stat  A back", 1, GREY);
 }
 
 uint16_t tierColor(const String &t) {
@@ -1051,6 +1107,7 @@ void drawFrame() {   // a whole screen, without flicker: built band by band in m
 void drawScreen() {  // the background and everything on it; Mochi itself comes from drawStage
   if (view == V_MENU) { drawMenu(); return; }
   if (view == V_STATS) { drawToday(); return; }
+  if (view == V_CMP) { drawCompare(); return; }
   if (view == V_LOG) {
     if (!nhabits) {
       drawBackground();
@@ -1288,7 +1345,7 @@ void onButton(int phys) {
         status = ""; transition(V_FRIENDS, true);
       } else if (menuSel == 2) {
         if (millis() - habitsAt > 30000) loadHabits();   // fresh numbers
-        todayPage = 0; transition(V_STATS, true);
+        todaySel = 0; transition(V_STATS, true);
       } else transition(V_INFO, true);
       break;
     case V_LOG:
@@ -1307,8 +1364,13 @@ void onButton(int phys) {
       if (b == 2 || b == 0) transition(V_MENU, false);
       break;
     case V_STATS:
-      if (b == 0 && ntoday > 10) { todayPage++; drawFrame(); }
+      if (b == 0 && ntoday) { todaySel = (todaySel + 1) % ntoday; drawFrame(); }
+      else if (b == 1 && ntoday) transition(V_CMP, true);
       else if (b == 2 || b == 0) transition(V_MENU, false);
+      break;
+    case V_CMP:
+      if (b == 0 && ntoday) { todaySel = (todaySel + 1) % ntoday; drawFrame(); }
+      else if (b == 2 || b == 1) transition(V_STATS, false);
       break;
     default:
       if (b == 2 || b == 0) { view = V_MENU; drawFrame(); }
