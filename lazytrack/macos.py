@@ -143,9 +143,20 @@ def _esc(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def notify(title: str, message: str) -> None:
-    if osascript(f'display notification "{_esc(message)}" with title "{_esc(title)}" sound name "Pop"') is None:
+def notify(title: str, message: str, sound: bool = True) -> None:
+    snd = ' sound name "Pop"' if sound else ""
+    if osascript(f'display notification "{_esc(message)}" with title "{_esc(title)}"{snd}') is None:
         log.info("[notification] %s: %s", title, message)
+
+
+def chime() -> None:
+    """A sound played by LazyTrack itself: you hear it even when macOS hides the notification
+    (Do Not Disturb, a game in full screen, notifications turned off for Script Editor)."""
+    try:
+        subprocess.Popen(["afplay", "-v", "2", "/System/Library/Sounds/Glass.aiff"],
+                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except OSError:
+        pass
 
 
 def ask(message: str, buttons: List[str], default: str, timeout: int = 120, cancel=None) -> Optional[str]:

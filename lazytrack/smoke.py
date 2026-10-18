@@ -162,6 +162,17 @@ def app_in_use() -> bool:
     return time.time() - APP_FOCUS["t"] < 7
 
 
+def _nudge(again: bool = False) -> None:
+    """The notification, plus a sound LazyTrack plays itself, so you hear it even when the system
+    hides notifications (Do Not Disturb / Focus, a game in full screen, notifications not allowed)."""
+    line = last_line()
+    msg = ("Still waiting: was that a cigarette or a joint? Open LazyTrack to say." if again
+           else "Looks like you're smoking. Open LazyTrack to say what it was.")
+    system.notify("LazyTrack 👀", msg + (f" {line}" if line else ""), sound=False)
+    system.chime()
+    log.info("smoke question: notification%s sent", " (reminder)" if again else "")
+
+
 def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
     """Asks "cigarette or joint?" on every open LazyTrack page (it never jumps to the front: when you're not
     using LazyTrack you get a notification with a sound instead, and answer when you open it).
@@ -768,8 +779,14 @@ class SmokeDetector(threading.Thread):
 
     def _ask(self, crop) -> str:
         if not app_in_use():   # not in LazyTrack right now: a notification with a sound, no window popping up
-            line = last_line()
-            system.notify("LazyTrack 👀", "Looks like you're smoking. Open LazyTrack to say what it was." + (f" {line}" if line else ""))
+            _nudge()
+            t0 = time.time()
+
+            def remind():   # still not answered after 90 s (in a game, say): once more
+                time.sleep(90)
+                if QUESTION["open"] and QUESTION["asked_at"] >= t0 - 1 and not app_in_use():
+                    _nudge(again=True)
+            threading.Thread(target=remind, name="ask-remind", daemon=True).start()
         ans = ask_everywhere("computer", timeout=300)   # 5 minutes to open LazyTrack and answer
         return handle_answer(ans, crop, self.scfg, self.device_name, "camera")
 
