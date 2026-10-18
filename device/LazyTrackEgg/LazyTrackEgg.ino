@@ -1536,9 +1536,11 @@ void rpgBox(int x, int y, int w, int h) {   // cream, a thick dark edge and a th
 
 int menuRowY(int i) { return MB_Y + 11 + i * ROW_H; }
 
+int menuSlide = 0;   // while the choices box slides in from the right: how far it still has to go (px)
+
 void menuArrow(int i, uint16_t col) {
-  int y = menuRowY(i) + 7;
-  gfx->fillTriangle(MB_X + 10, y - 6, MB_X + 10, y + 6, MB_X + 17, y, col);
+  int y = menuRowY(i) + 7, x = MB_X + menuSlide;
+  gfx->fillTriangle(x + 10, y - 6, x + 10, y + 6, x + 17, y, col);
 }
 
 String menuLine(int i) {   // what the bottom box says about the picked one
@@ -1569,17 +1571,41 @@ void menuDesc() {   // the bottom box, text wrapped to 3 lines of 16
   }
 }
 
-void drawMenu() {
-  themeBg();
-  // Mochi on the left, big and a bit dimmed, like the other side of a battle screen
-  static uint16_t cell[16][16];
-  mochiNow(cell, framePx(false, false), CoolF{false, 0, -1, false, false});
-  for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++)
-    if (cell[cy][cx]) gfx->fillRect(14 + cx * 6, 108 + cy * 6, 6, 6, (cell[cy][cx] >> 1) & 0x7BEF);
-  rpgBox(MB_X, MB_Y, MB_W, MB_H);
-  for (int i = 0; i < MENU_ROWS; i++) text(MB_X + 22, menuRowY(i), i < MENU_N ? MENU_NAMES[i] : "EXIT", 2, i < MENU_N ? INK : GREY);
+void drawScreen();
+void menuBoxes() {   // the menu itself: the choices box and the line at the bottom
+  int x = MB_X + menuSlide;
+  rpgBox(x, MB_Y, MB_W, MB_H);
+  for (int i = 0; i < MENU_ROWS; i++) text(x + 22, menuRowY(i), i < MENU_N ? MENU_NAMES[i] : "EXIT", 2, i < MENU_N ? INK : GREY);
   menuArrow(menuSel, INK);
-  menuDesc();
+  if (!menuSlide) menuDesc();
+}
+
+void drawMenu() {   // the menu floats over Home: Home underneath, the boxes on top
+  view = V_HOME;
+  drawScreen();
+  view = V_MENU;
+  menuBoxes();
+}
+
+void pushRows(int y0, int y1);
+void slideMenu(bool in) {   // the choices box slides in from the right over Home (only its rows are redrawn)
+  static const int IN[] = {96, 60, 32, 12, 0}, OUT[] = {12, 40, 76, 116, 130};
+  for (int k = 0; k < 5; k++) { menuSlide = in ? IN[k] : OUT[k]; pushRows(MB_Y, MB_Y + MB_H + 1); }
+  menuSlide = 0;
+}
+
+void openMenu() {   // B on Home
+  menuSel = 0;
+  view = V_MENU;
+  if (!banded || gfx != lcd) { drawFrame(); return; }
+  slideMenu(true);
+  pushRows(DB_Y, DB_Y + DB_H + 1);   // then the line at the bottom
+}
+
+void closeMenu() {   // EXIT: the box slides away again, Mochi's screen comes back
+  if (banded && gfx == lcd) slideMenu(false);
+  view = V_HOME;
+  drawFrame();
 }
 
 void moveCursor(int to) {   // just the arrow and the bottom box, straight to the screen (no full redraw)
@@ -2222,14 +2248,15 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
   if (!(view == V_HOME && b == 1)) tuneClick();               // petting has its own chirp
   switch (view) {
     case V_HOME:
-      if (b == 0) { menuSel = 0; transition(V_MENU, true); }
+      if (b == 0) openMenu();
       else if (b == 1) { if (hungryNow().length() && !asleep()) feed(); else pet(); }
       else if (canUndo()) undoLog();
       else setScreen(false);
       break;
     case V_MENU:
-      if (b == 0) moveCursor((menuSel + 1) % MENU_ROWS);
-      else if (b == 2 || menuSel == MENU_N) transition(V_HOME, false);   // A, or EXIT
+      if (b == 0) moveCursor((menuSel + 1) % MENU_ROWS);                 // C: down
+      else if (b == 2) moveCursor((menuSel + MENU_ROWS - 1) % MENU_ROWS); // A: up
+      else if (menuSel == MENU_N) closeMenu();                             // B on EXIT: back to Mochi
       else if (menuSel == M_FEED) {   // straight back to Mochi: fed, or a word about when he eats
         view = V_HOME;
         if (hungryNow().length() && !asleep()) feed();
@@ -2386,7 +2413,7 @@ void onTap(int x, int y) {
         if (i == menuSel) act(1); else { tuneClick(); moveCursor(i); }
         return;
       }
-      if (y < DB_Y) act(2);
+      if (y < DB_Y) closeMenu();   // tap outside: close the menu
       return;
     }
     case V_LOG: {
