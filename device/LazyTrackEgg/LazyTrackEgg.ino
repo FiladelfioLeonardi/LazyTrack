@@ -77,6 +77,7 @@ volatile bool netKick = false;         // do a sync right away (after a log, Inf
 volatile bool habitsKick = false, friendsKick = false;
 volatile uint8_t eggCmd = 0;           // from LazyTrack on your computer / phone: 1 = sing, 2 = find my egg
 #define FW_VERSION "2026.10.18"
+String resetWhy = "";                  // why the egg (re)started: shown on Info, so a crash or power dip is easy to spot
 
 // the friends server (same as the app; this key is the public one made to sit in apps)
 static const char *SUPA_URL = "https://zmrzumltciteeznzjwaw.supabase.co";
@@ -1725,20 +1726,21 @@ void drawInfo() {
   themeHead(MENU_ICONS[M_INFO], "INFO", nn);
   String q = prefs.getString("queue", "");
   int waiting = 0; for (char ch : q) if (ch == '\n') waiting++;
-  dcard(12, 52, 216, 152);
-  kv(64, "WIFI", WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 20) : String("not connected"));
-  kv(84, "PHONE", String(bleLinked ? "connected" : bleConnected ? "pairing..." : NimBLEDevice::getNumBonds() ? "paired, not near" : "not paired")
+  dcard(12, 52, 216, 160);
+  kv(62, "WIFI", WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 20) : String("not connected"));
+  kv(81, "PHONE", String(bleLinked ? "connected" : bleConnected ? "pairing..." : NimBLEDevice::getNumBonds() ? "paired, not near" : "not paired")
                   + (bleSeen ? " " + String((millis() - bleSeen) / 1000) + "s" : ""));
-  kv(104, "STATUS", status.substring(0, 22));
-  kv(124, "LAST SYNC", lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never"));
-  kv(144, "PETS TODAY", String(loveToday()));
-  kv(164, "LOGS WAITING", waiting ? String(waiting) : String("none"));
-  kv(184, "MEMORY", String(ESP.getFreeHeap() / 1024) + " KB free");
-  if (!touchOn) text(22, 220, "Touch: not connected (buttons only)", 1, TSUB);
+  kv(100, "STATUS", status.substring(0, 22));
+  kv(119, "LAST SYNC", lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never"));
+  kv(138, "PETS TODAY", String(loveToday()));
+  kv(157, "LOGS WAITING", waiting ? String(waiting) : String("none"));
+  kv(176, "MEMORY", String(ESP.getFreeHeap() / 1024) + " KB free");
+  kv(195, "STARTED", resetWhy + " " + String(millis() / 60000) + "m ago");
+  if (!touchOn) text(22, 226, "Touch: not connected (buttons only)", 1, TSUB);
   else {
-    text(22, 220, "Touch: tap = pick, again = open,", 1, TSUB);
-    text(22, 234, "top = back. Hold here 3 s to set", 1, TSUB);
-    text(22, 248, "up touch again.", 1, TSUB);
+    text(22, 226, "Touch: tap = pick, again = open,", 1, TSUB);
+    text(22, 240, "top = back. Hold here 3 s to set", 1, TSUB);
+    text(22, 254, "up touch again.", 1, TSUB);
   }
   themeHints("B SYNC  C PAIR PHONE  A BACK");
 }
@@ -1784,6 +1786,16 @@ void netTask(void *);
 
 void setup() {
   Serial.begin(115200);
+  switch (esp_reset_reason()) {
+    case ESP_RST_POWERON: resetWhy = "power on"; break;
+    case ESP_RST_SW: resetWhy = "restarted"; break;
+    case ESP_RST_PANIC: resetWhy = "CRASH"; break;
+    case ESP_RST_INT_WDT: case ESP_RST_TASK_WDT: case ESP_RST_WDT: resetWhy = "FROZE"; break;
+    case ESP_RST_BROWNOUT: resetWhy = "POWER DIP"; break;
+    case ESP_RST_EXT: resetWhy = "reset button"; break;
+    default: resetWhy = "other " + String((int)esp_reset_reason());
+  }
+  Serial.printf("\n=== LazyTrack Egg %s: started because: %s ===\n", FW_VERSION, resetWhy.c_str());
   dataLock = xSemaphoreCreateMutex();
   httpLock = xSemaphoreCreateRecursiveMutex();
   LOCK();   // setup draws; loop() takes it from here
@@ -1843,6 +1855,10 @@ void setup() {
   String hs = prefs.getString("habits", "");   // the Log menu works before the first sync too
   if (hs.length()) parseSetup(hs);
   WiFi.mode(WIFI_STA);
+  WiFi.onEvent([](WiFiEvent_t e, WiFiEventInfo_t info) {   // why WiFi drops, in the Serial Monitor
+    if (e == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) Serial.printf("WiFi: disconnected (reason %d)\n", info.wifi_sta_disconnected.reason);
+    else if (e == ARDUINO_EVENT_WIFI_STA_GOT_IP) Serial.printf("WiFi: connected, free memory %u\n", (unsigned)ESP.getFreeHeap());
+  });
   wifi.addAP(WIFI_SSID, WIFI_PASS);
 #ifdef WIFI2_SSID
   wifi.addAP(WIFI2_SSID, WIFI2_PASS);
