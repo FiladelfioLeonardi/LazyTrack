@@ -392,7 +392,7 @@ void parseSetup(const String &body) {
     habits[n].k = x["k"] | ""; habits[n].n = x["n"] | ""; habits[n].bad = x["bad"] | false;
     if (habits[n].k.length()) n++;
   }
-  if (n) nhabits = n;
+  if (n || !list.isNull()) nhabits = n;   // exactly what LazyTrack sent: removed habits disappear (even the last one)
   int t = 0;
   for (JsonObject x : h["today"].as<JsonArray>()) {
     if (t >= 24) break;
@@ -408,7 +408,7 @@ void parseSetup(const String &body) {
     today[t].good = !(x["bad"] | true) && v > 0;
     t++;
   }
-  if (t) ntoday = t;
+  if (t || h["today"].is<JsonArray>()) ntoday = t;
 }
 
 void loadHabits() {   // your habits + today's numbers, put in egg_setup by LazyTrack
@@ -1364,14 +1364,14 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       if (b == 0) { menuSel = (menuSel + 1) % 4; drawFrame(); }
       else if (b == 2) transition(V_HOME, false);
       else if (menuSel == 0) {
-        if (!nhabits || millis() - habitsAt > 300000) loadHabits();
+        if (!nhabits || millis() - habitsAt > 20000) loadHabits();   // fresh list: habits you removed in the app are gone
         logSel = 0; transition(V_LOG, true);
       } else if (menuSel == 1) {
         friendSel = 0;
         if (millis() - friendsAt > 60000 || !nfriends) { panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK); loadFriends(); }
         status = ""; transition(V_FRIENDS, true);
       } else if (menuSel == 2) {
-        if (millis() - habitsAt > 30000) loadHabits();   // fresh numbers
+        if (millis() - habitsAt > 20000) loadHabits();   // fresh numbers (and only what you track now)
         todaySel = 0; transition(V_STATS, true);
       } else transition(V_INFO, true);
       break;
@@ -1558,7 +1558,7 @@ void loop() {
     if (WiFi.status() == WL_CONNECTED) {
       flushQueue();
       checkPokes();
-      if (!nhabits || millis() - habitsAt > 600000) loadHabits();
+      if (!nhabits || millis() - habitsAt > 120000) loadHabits();
       if (view == V_FRIENDS && millis() - friendsAt > 60000) { loadFriends(); if (friendSel >= nfriends) friendSel = 0; drawFrame(); }
     }
     if (view == V_HOME && (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat + card.nowLabel != what)) drawFrame();
