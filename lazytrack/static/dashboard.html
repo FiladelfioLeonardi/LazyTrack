@@ -618,12 +618,19 @@
   .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
   #settings .card { margin-top: 18px; }
   /* settings categories: a tab row, one category at a time */
-  .setcats { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 2px; }
-  .setcats button { border: 3px solid var(--line); border-radius: 12px; background: var(--card); color: var(--ink); font: 800 15px var(--body);
-    padding: 8px 14px; cursor: pointer; box-shadow: 3px 3px 0 var(--line); }
-  .setcats button[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); }
+  /* looks like a part of the page (a segmented bar inside one panel, labeled), not like the main tabs above it */
+  .setcats { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 14px 0 2px; padding: 6px;
+    background: var(--soft, var(--card)); border: 3px solid var(--line); border-radius: 16px; position: relative; }
+  .setcats::before { content: attr(data-label); font: 400 11px var(--pixel); letter-spacing: .06em; color: var(--ink-3); padding: 0 10px 0 8px;
+    border-right: 2px dashed var(--line); margin-right: 4px; align-self: stretch; display: flex; align-items: center; }
+  .setcats::after { content: ""; position: absolute; top: -12px; left: var(--notch, 50%); width: 18px; height: 18px; background: var(--soft, var(--card));
+    border-left: 3px solid var(--line); border-top: 3px solid var(--line); rotate: 45deg; translate: -50% 0; }
+  .setcats button { border: 0; border-radius: 11px; background: transparent; color: var(--ink-2, var(--ink)); font: 700 15px var(--body);
+    padding: 8px 13px; cursor: pointer; box-shadow: none; }
+  .setcats button:hover { background: color-mix(in srgb, var(--line) 8%, transparent); }
+  .setcats button[aria-pressed="true"] { background: var(--card); color: var(--ink); font-weight: 800; box-shadow: inset 0 0 0 2px var(--line), inset 0 -4px 0 var(--yellow); }
   #settings [data-cat].offcat { display: none; }
-  @media (max-width: 560px) { .setcats { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; } .setcats button { flex: none; font-size: 14px; padding: 7px 11px; } }
+  @media (max-width: 560px) { .setcats { flex-wrap: nowrap; overflow-x: auto; } .setcats::before, .setcats::after { display: none; } .setcats button { flex: none; font-size: 14px; padding: 7px 11px; } }
   #settings h2 { font-family: var(--pixel); font-size: 15px; margin: 0 0 4px; }
 
   /* ------------------------------------------------------------ toast + offline */
@@ -1405,7 +1412,7 @@ applyTheme();
     <section class="card pad">
       <h2>🛠 Admin</h2>
       <p class="sub">Only you see this page: what people ask for, who's using LazyTrack, news for everyone, and a lab to try things without touching your data.</p>
-      <nav class="setcats" id="admCats" aria-label="Admin sections">
+      <nav class="setcats" id="admCats" data-label="ADMIN" aria-label="Admin sections">
         <button type="button" data-goas="overview">📊 Overview</button><button type="button" data-goas="ideas">💡 Ideas</button>
         <button type="button" data-goas="news">📣 Announcements</button><button type="button" data-goas="users">👥 Users</button>
         <button type="button" data-goas="lab">🧪 Test lab</button>
@@ -1467,7 +1474,7 @@ applyTheme();
   </main>
 
   <main id="settings" class="view">
-    <nav class="setcats" id="setCats" aria-label="Settings sections">
+    <nav class="setcats" id="setCats" data-label="SETTINGS" aria-label="Settings sections">
       <button type="button" data-sc="account">👤 Account</button><button type="button" data-sc="habits">🎯 Habits</button>
       <button type="button" data-sc="look">🎨 Look</button><button type="button" data-sc="tracking">📷 Tracking</button>
       <button type="button" data-sc="app">⚙️ App</button>
@@ -4022,7 +4029,19 @@ function settingsCat(c) {
   try { localStorage.setItem("lt-setcat", c); } catch (_) {}
   document.querySelectorAll("#setCats [data-sc]").forEach(b => b.setAttribute("aria-pressed", b.dataset.sc === c));
   document.querySelectorAll("#settings [data-cat]").forEach(s => s.classList.toggle("offcat", s.dataset.cat !== c));
+  requestAnimationFrame(placeNotches);
 }
+// the little arrow on top of the sections bar points at the tab it belongs to (Settings / Admin)
+function placeNotches() {
+  for (const [nav, tab] of [["setCats", '.tab[data-tab="settings"]'], ["admCats", "#adminBtn"]]) {
+    const n = $(nav), t = document.querySelector(tab);
+    if (!n || !t || !n.offsetParent) continue;
+    const nr = n.getBoundingClientRect(), tr = t.getBoundingClientRect();
+    n.style.setProperty("--notch", Math.max(26, Math.min(nr.width - 26, tr.left + tr.width / 2 - nr.left)) + "px");
+  }
+}
+addEventListener("resize", placeNotches);
+addEventListener("hashchange", () => setTimeout(placeNotches, 60));
 document.addEventListener("click", e => {
   const b = e.target.closest("#setCats [data-sc]"); if (!b) return;
   settingsCat(b.dataset.sc); scrollTo({top: 0});
