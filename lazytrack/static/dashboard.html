@@ -365,6 +365,8 @@
   body[data-aura="sick"]   { background: var(--aura-sick); }
 
   .logbar { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+  h2.quickh { margin-top: 24px; }
+  h2.quickh + .sub + .logbar { margin-top: 0; }
   @media (max-width: 620px) { .logbar { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   .logbtn { height: 64px; border: 3px solid var(--line); border-radius: 16px; box-shadow: 4px 4px 0 var(--line); font: 800 16px var(--body); color: var(--on-fill);
             cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: transform .08s, box-shadow .08s; }
@@ -1083,6 +1085,8 @@ applyTheme();
       </ul>
       <div class="cambtns"><button type="button" class="btn primary" data-camask="on">Turn the camera on</button><button type="button" class="btn" data-camask="no">No thanks, I'll tap</button></div>
     </div>
+    <h2 class="sec quickh">Quick log</h2>
+    <p class="sub">Tap when it happens. Mochi counts it right away.</p>
     <div class="logbar" id="logbar" aria-label="Log something"></div>
     <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
 
