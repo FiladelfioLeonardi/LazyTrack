@@ -33,6 +33,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
     private var inbox = Data()
     private var outbox: [Data] = []
     private var timeSent = Date.distantPast
+    private var paired = false
 
     override init() {
         enabled = UserDefaults.standard.object(forKey: "eggLink") as? Bool ?? true
@@ -111,6 +112,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
 
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
         rx = nil
+        paired = false
         inbox = Data()
         outbox = []
         status = enabled ? "Egg out of reach, waiting for it" : "Off"
@@ -127,7 +129,10 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
     func peripheral(_ p: CBPeripheral, didDiscoverCharacteristicsFor s: CBService, error: Error?) {
         for ch in s.characteristics ?? [] {
             if ch.uuid == Self.rxUUID { rx = ch }
-            if ch.uuid == Self.txUUID { p.setNotifyValue(true, for: ch) }   // encrypted: iOS asks to pair the first time
+            if ch.uuid == Self.txUUID {
+                p.setNotifyValue(true, for: ch)
+                p.readValue(for: ch)   // an encrypted read: makes iOS pair now (the Pair pop-up the first time)
+            }
         }
     }
 
@@ -136,16 +141,25 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
             status = "Pairing needed: \(error.localizedDescription)"
             return
         }
-        if ch.isNotifying {
-            status = "Connected. The egg is online through this phone."
-            sendTime()   // the egg's clock
+        if ch.isNotifying && status != "Paired. The egg goes online through this phone." {
+            status = "Connected, pairing…"
         }
     }
 
     // MARK: relaying
 
     func peripheral(_ p: CBPeripheral, didUpdateValueFor ch: CBCharacteristic, error: Error?) {
-        guard ch.uuid == Self.txUUID, let v = ch.value, let kind = v.first else { return }
+        guard ch.uuid == Self.txUUID else { return }
+        if let error {   // the encrypted read failed: not paired
+            status = "Not paired yet (\(error.localizedDescription)). Turn Bluetooth off and on to try again."
+            return
+        }
+        if !paired {   // the first answer (to the encrypted read): the link is encrypted now
+            paired = true
+            status = "Paired. The egg goes online through this phone."
+            sendTime()   // the egg's clock
+        }
+        guard let v = ch.value, let kind = v.first else { return }
         inbox.append(v.dropFirst())
         guard kind == UInt8(ascii: "E") else { return }
         let msg = inbox

@@ -249,16 +249,21 @@ void tuneLove() { beep(1047, 80); beep(1319, 80); beep(1568, 80); beep(2093, 160
 #define EGG_RX "6c740003-8f3b-4a2e-9d1c-3b5a7e0f4c21"
 NimBLECharacteristic *bleTx = nullptr;
 volatile bool bleLinked = false;      // a phone is connected, paired (encrypted) and listening
+volatile bool bleConnected = false;   // a phone is connected (maybe not paired yet)
 volatile uint16_t bleMtu = 23;
 String bleBuf, bleResp;
 volatile bool bleRespReady = false;
 uint32_t bleSeen = 0;                 // last time the phone relayed something (for Info)
 
 class EggServerCb : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer *s, NimBLEConnInfo &c) override { NimBLEDevice::startSecurity(c.getConnHandle()); }
-  void onDisconnect(NimBLEServer *s, NimBLEConnInfo &c, int reason) override { bleLinked = false; }
+  void onConnect(NimBLEServer *s, NimBLEConnInfo &c) override { bleConnected = true; NimBLEDevice::startSecurity(c.getConnHandle()); }
+  void onDisconnect(NimBLEServer *s, NimBLEConnInfo &c, int reason) override { bleLinked = bleConnected = false; }
   void onMTUChange(uint16_t mtu, NimBLEConnInfo &c) override { bleMtu = mtu; }
-  void onAuthenticationComplete(NimBLEConnInfo &c) override { bleLinked = c.isEncrypted(); bleMtu = max((uint16_t)23, c.getMTU()); }
+  void onAuthenticationComplete(NimBLEConnInfo &c) override {
+    bleLinked = c.isEncrypted();
+    bleMtu = max((uint16_t)23, c.getMTU());
+    Serial.printf("Bluetooth: phone %s\n", bleLinked ? "paired, online through it" : "pairing failed");
+  }
 };
 
 class EggRxCb : public NimBLECharacteristicCallbacks {
@@ -296,6 +301,7 @@ void bleSetup() {
   adv->addServiceUUID(EGG_SVC);    // so the phone can find it even in the background
   adv->setName("LazyTrack Egg");
   adv->start();
+  Serial.printf("Bluetooth: advertising as LazyTrack Egg (free memory %u)\n", (unsigned)ESP.getFreeHeap());
 }
 
 // One request through the phone. Returns the HTTP status (negative = no phone / no answer), fills body.
@@ -339,7 +345,10 @@ int bleHttp(const String &method, const String &url, const String &payload, Stri
 }
 
 bool online() { return WiFi.status() == WL_CONNECTED || bleLinked; }
-String netName() { return WiFi.status() == WL_CONNECTED ? WiFi.SSID() : bleLinked ? String("phone (Bluetooth)") : String("offline"); }
+String netName() {
+  return WiFi.status() == WL_CONNECTED ? WiFi.SSID() : bleLinked ? String("phone (Bluetooth)")
+       : bleConnected ? String("phone: pairing...") : String("offline");
+}
 
 // ---------------------------------------------------------------- talking to the friends server
 WiFiClientSecure tls;
@@ -357,6 +366,7 @@ int http(const String &method, const String &path, const String &payload, String
   int code = method == "POST" ? h.POST(payload) : method == "GET" ? h.GET() : h.sendRequest(method.c_str(), payload);
   body = code > 0 ? h.getString() : "";
   h.end();
+  if (code < 0 && bleLinked) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // WiFi without internet: try the phone
   return code;
 }
 
@@ -385,7 +395,11 @@ bool login() {
   serializeJson(q, payload);
   int code = http("POST", "/auth/v1/token?grant_type=password", payload, body, false);
   if (code == 200 && takeSession(body)) return true;
-  status = code == 400 ? "Login failed: check secrets.h" : "Can't reach the server (" + String(code) + ")";
+  status = code == 400 ? "Login failed: check secrets.h"
+         : code == -4 ? (bleConnected ? "Phone connected, not paired yet" : "No WiFi or phone")
+         : code <= -5 ? "Phone didn't answer (" + String(code) + ")"
+         : "Can't reach the server (" + String(code) + ")";
+  Serial.printf("login: %d (%s), free memory %u\n", code, WiFi.status() == WL_CONNECTED ? "WiFi" : "Bluetooth", (unsigned)ESP.getFreeHeap());
   return false;
 }
 
@@ -1437,7 +1451,7 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     panel(8, 8, 221, 304);
     text(20, 20, "INFO", 2, INK);
     text(20, 52, "Online via: " + netName() + (bleLinked && bleSeen ? "  (" + String((millis() - bleSeen) / 1000) + "s)" : ""), 1, INK);
-    text(20, 70, "IP: " + WiFi.localIP().toString(), 1, INK);
+    text(20, 70, "IP: " + WiFi.localIP().toString() + "   mem " + String(ESP.getFreeHeap() / 1024) + "K", 1, INK);
     text(20, 88, "Status: " + status.substring(0, 26), 1, INK);
     text(20, 106, "Last sync: " + (lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never")), 1, INK);
     String q = prefs.getString("queue", "");
