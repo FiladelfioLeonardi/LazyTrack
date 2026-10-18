@@ -52,7 +52,8 @@
 #define T_DIN 13
 #define T_DO 35      // input-only pin: fine, it only listens
 #define T_IRQ 27     // goes LOW while a finger is on the screen
-bool tcalOk = false;
+int tpXfer(uint8_t cmd);
+bool tcalOk = false, touchOn = false;   // touchOn: the touch chip answered at start (no T_ wires = buttons only)
 int tcSwap = 0, tcX0 = 0, tcX1 = 1, tcY0 = 0, tcY1 = 1;   // raw readings at screen x = 20 / 220 and y = 20 / 300
 // SPI speed for the screen. 27 MHz is steady over breadboard jumper wires. Once it's soldered with short
 // wires (in the case), try 40000000: everything gets ~1.5x faster. White screen = too fast, go back.
@@ -1185,7 +1186,8 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     text(20, 176, "MENUS: C next   B ok    A back", 1, GREY);
     text(20, 200, "B here  sync now", 1, GREY);
     text(20, 216, "C here  legendary cool move (test)", 1, GREY);
-    if (T_IRQ >= 0) {
+    if (!touchOn) text(20, 240, "Touch: not connected (buttons only)", 1, GREY);
+    else {
       text(20, 240, "TOUCH: tap = pick, again = open,", 1, GREY);
       text(20, 254, "top bar = back. Hold here 3 s to", 1, GREY);
       text(20, 268, "set up touch again.", 1, GREY);
@@ -1256,6 +1258,13 @@ void setup() {
     tcSwap = prefs.getInt("tcs", 0); tcX0 = prefs.getInt("tx0", 0); tcX1 = prefs.getInt("tx1", 1);
     tcY0 = prefs.getInt("ty0", 0); tcY1 = prefs.getInt("ty1", 1);
     if (tcX1 == tcX0 || tcY1 == tcY0) tcalOk = false;
+    // Is the touch chip really there? Untouched, it reports ~0 pressure and its IRQ line is high.
+    // Without the T_ wires the readings are all 0s or all 1s (huge "pressure"), so touch stays off
+    // and the egg works with the buttons alone. (Don't touch the screen while it starts.)
+    long z = 0; int high = 0;
+    for (int i = 0; i < 8; i++) { z += tpXfer(0xB0) + 4095 - tpXfer(0xC0); high += digitalRead(T_IRQ) == HIGH; delay(2); }
+    touchOn = high == 8 && z / 8 < 150;
+    Serial.printf("touch: %s (pressure %ld)\n", touchOn ? "found" : "not connected, buttons only", z / 8);
   }
   refresh = prefs.getString("refresh", "");
   uid = prefs.getString("uid", "");
@@ -1459,8 +1468,9 @@ bool calTarget(int x, int y, int &a, int &b) {   // false = a button was pressed
   while (touchRaw(ra, rb) && millis() - t < 5000) delay(10);   // let go of the last tap first
   delay(150);
   long sa = 0, sb = 0; int n = 0;
+  uint32_t start = millis();
   while (n < 12) {
-    if (btnQueue) return false;
+    if (btnQueue || millis() - start > 20000) return false;   // a button, or nobody tapping: cancel
     if (touchRaw(ra, rb)) { sa += ra; sb += rb; n++; }
     else if (n) { sa = sb = 0; n = 0; }   // only a steady press counts
     delay(15);
@@ -1527,15 +1537,20 @@ void onTap(int x, int y) {
 }
 
 void pollTouch() {
-  if (T_IRQ < 0) return;
+  if (T_IRQ < 0 || !touchOn) return;
   static uint32_t last = 0, t0 = 0;
   static bool down = false, held = false;
   static int sx = 0, sy = 0, ups = 0;
   if (millis() - last < 15) return;
   last = millis();
   int x, y;
-  bool now = tcalOk ? touchAt(x, y) : digitalRead(T_IRQ) == LOW;
-  if (now && !tcalOk) { calibrate(); return; }   // the very first touch: set it up
+  static int lows = 0;
+  bool now = tcalOk ? touchAt(x, y) : touchRaw(x, y);
+  if (!tcalOk) {   // the very first touch: set it up (only after a steady press, never from a flicker)
+    lows = now ? lows + 1 : 0;
+    if (lows >= 6) { lows = 0; calibrate(); }
+    return;
+  }
   if (now) {
     ups = 0;
     if (!down) { down = true; held = false; t0 = millis(); sx = x; sy = y; }

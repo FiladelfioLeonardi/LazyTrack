@@ -41,7 +41,7 @@ It logs into your LazyTrack account over WiFi and reads your friend card every m
 | T_IRQ | GPIO 27 |
 
 Buttons need no resistors: the ESP32's own pull-ups are used. The SD card pins stay unconnected.
-Touch is optional: without the T_ wires everything works with the buttons (or set `T_IRQ` to -1).
+Touch is optional: at start the egg checks for the touch chip; without the T_ wires it just uses the buttons (Info shows "Touch: not connected"). Don't touch the screen while it starts.
 
 **Touch:** the first time you touch the screen it shows 3 crosses to tap (so it knows where your finger is; saved).
 Then: tap to pick something, tap it again to open it, tap the top bar to go back. On Home, tap Mochi to pet,
