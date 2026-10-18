@@ -13,11 +13,7 @@ struct LazyTrackApp: App {
 
     var body: some Scene {
         WindowGroup {
-            TabView {
-                LogView().tabItem { Label("Log", systemImage: "plus.circle.fill") }
-                FoodView().tabItem { Label("Food", systemImage: "fork.knife") }
-                SetupView().tabItem { Label("Setup", systemImage: "gearshape.fill") }
-            }
+            RootView()   // LazyTrack itself (the same app as on the Mac); phone settings open from inside it
             .onOpenURL { url in
                 if Settings.apply(setupURL: url) {
                     Task {
