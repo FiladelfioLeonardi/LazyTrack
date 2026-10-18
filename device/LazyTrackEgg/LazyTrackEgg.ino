@@ -362,6 +362,10 @@ void bleSetup() {
   NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
   adv->addServiceUUID(EGG_SVC);    // so the phone can find it even in the background
   adv->setName("LazyTrack Egg");
+  // WiFi and Bluetooth share one radio: advertising many times a second left WiFi waiting (requests stalled 12 s).
+  // Every ~0.5-1 s is plenty for your phone to find the egg, even in the background.
+  adv->setMinInterval(800);    // x 0.625 ms = 500 ms
+  adv->setMaxInterval(1600);   // 1 s
   adv->start();
   Serial.printf("Bluetooth: advertising as LazyTrack Egg (free memory %u)\n", (unsigned)ESP.getFreeHeap());
 }
@@ -505,7 +509,20 @@ int http(const String &method, const String &path, const String &payload, String
   return code;
 }
 
+int httpOnce(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer);
 int httpRaw(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer) {
+  int code = httpOnce(method, path, payload, body, auth, prefer);
+  // a stuck or dropped request: try once more on a fresh connection. A log (POST) is only sent again when it surely
+  // didn't reach the server (couldn't connect / send), so nothing gets logged twice.
+  bool unsent = code == -1 || code == -2 || code == -4;
+  if (code < 0 && code > -100 && WiFi.status() == WL_CONNECTED && (method == "GET" || unsent)) {
+    delay(300);
+    code = httpOnce(method, path, payload, body, auth, prefer);
+  }
+  return code;
+}
+
+int httpOnce(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer) {
   if (WiFi.status() != WL_CONNECTED) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // through the phone
   // One secure connection, kept open between requests: setting one up costs ~45 KB of memory and a second or
   // two every time, which with Bluetooth on often didn't fit (-1) or timed out (-11).
