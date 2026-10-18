@@ -518,6 +518,22 @@ def make_handler(cfg: dict):
                     return self._send(200, {"ok": True, "user": self._me(accounts.user_for(tok))}, cookie=tok)
                 if path == "/api/auth/update":
                     return self._update_account(b)
+                if path == "/api/auth/reset":   # forgot password: only on the computer itself
+                    if not self._local():
+                        raise accounts.AuthError("You can only reset your password on the computer where LazyTrack runs.")
+                    owner = accounts.owner()
+                    if owner is None:
+                        raise accounts.AuthError("There's no account here yet. Make one instead.")
+                    pw = str(b.get("password", ""))
+                    accounts.check_new(owner["username"], pw)
+                    note = ""
+                    if cloud.state()["connected"]:   # the friends account too, with the login this computer keeps
+                        cloud.update_account(password=pw)
+                    elif owner["email"]:
+                        note = "Changed on this computer. Friends weren't connected, so on other devices the old password still works until you change it in Settings."
+                    accounts.update(owner["id"], password=pw)
+                    tok = accounts.login(owner["username"], pw)
+                    return self._send(200, {"ok": True, "note": note, "user": self._me(accounts.user_for(tok))}, cookie=tok)
             except accounts.AuthError as e:
                 return self._send(400, {"error": str(e)})
             except cloud.CloudError as e:

@@ -984,11 +984,14 @@ applyTheme();
         <div id="aNameF"><label for="aName">What should Mochi call you?</label><input id="aName" autocomplete="nickname" maxlength="30" placeholder="Your name"></div>
         <div><label for="aUser" id="aUserL">Username</label><input id="aUser" autocomplete="username" maxlength="60" autocapitalize="none" spellcheck="false" placeholder="3 to 20 letters or numbers"></div>
         <div id="aMailF"><label for="aMail">Email</label><input id="aMail" type="email" autocomplete="email" placeholder="you@example.com"></div>
-        <div><label for="aPass">Password</label><input id="aPass" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+        <div><label for="aPass" id="aPassL">Password</label><input id="aPass" type="password" autocomplete="new-password" placeholder="At least 6 characters"></div>
+        <div id="aPass2F" hidden><label for="aPass2">Same password again</label><input id="aPass2" type="password" autocomplete="new-password"></div>
+        <p class="anote" id="aResetNote" hidden>Sets a new password for your account, here and for friends (your phone and other devices too). It only works on the computer where LazyTrack runs.</p>
         <p class="anote" id="aData" hidden>You already have data here. It stays and becomes part of this account.</p>
         <p class="aerr" id="aErr" role="alert"></p>
         <button class="btn primary wgo" id="aGo" type="submit">Create account <span class="arr" aria-hidden="true">→</span></button>
       </form>
+      <button type="button" class="aswitch" id="aForgot" hidden>Forgot your password?</button>
       <button type="button" class="aswitch" id="aSwitch"></button>
     </div>
   </div></div>
@@ -5402,9 +5405,9 @@ const welcome = {
 
 // ---------------- log in / make account
 const auth = {
-  signup: true,
-  open(signup = !AUTH.has_account) {
-    this.signup = signup;
+  signup: true, reset: false,
+  open(signup = !AUTH.has_account, reset = false) {
+    this.signup = signup; this.reset = reset && !signup;
     $("aTitle").textContent = this.signup ? "Make your account" : "Welcome back";
     $("aSub").textContent = this.signup ? "One account for all your devices and for friends. Your detailed data stays on this computer."
                                         : "Use your email or username. On a new computer, use your email.";
@@ -5418,10 +5421,41 @@ const auth = {
     $("aErr").textContent = "";
     $("aPet").innerHTML = mochiCells(PET_LOOK);
     $("aSwitch").textContent = this.signup ? "Already have an account? Log in" : "New here? Make an account";
+    // forgot password: only on the computer itself (where LazyTrack runs), never from a phone or another device
+    $("aForgot").hidden = this.signup || this.reset || !AUTH.local || !AUTH.has_account;
+    $("aPass2F").hidden = $("aResetNote").hidden = !this.reset;
+    $("aPassL").textContent = this.reset ? "New password" : "Password";
+    if (this.reset) {
+      $("aTitle").textContent = "New password";
+      $("aSub").textContent = "Pick a new password for your account.";
+      $("aUser").parentElement.hidden = true;
+      $("aPass").placeholder = "At least 6 characters"; $("aPass").autocomplete = "new-password";
+      $("aGo").firstChild.textContent = "Save and log in ";
+      $("aSwitch").textContent = "Back to log in";
+    } else $("aUser").parentElement.hidden = false;
+    $("aPass").value = ""; $("aPass2").value = "";
     flow.show("pAuth");
+  },
+  async resetSubmit() {
+    const pw = $("aPass").value;
+    if (pw.length < 6) { $("aErr").textContent = "At least 6 characters."; return; }
+    if (pw !== $("aPass2").value) { $("aErr").textContent = "The two passwords aren't the same."; return; }
+    $("aGo").disabled = true; $("aErr").textContent = "";
+    try {
+      const r = await post("/api/auth/reset", {password: pw}), j = await r.json();
+      if (!r.ok) { $("aErr").textContent = j.error || "That didn't work."; return; }
+      $("aPass").value = $("aPass2").value = "";
+      if (j.note) toast(j.note, null);
+      await refreshAuth(); await refreshCloud(); await loadHabits();
+      render().then(() => welcome.fill());
+      if (AUTH.user && !AUTH.user.setup_done) setup.begin("new"); else flow.leave();
+    } catch (_) {
+      $("aErr").textContent = "Can't reach LazyTrack. Is it running?";
+    } finally { $("aGo").disabled = false; }
   },
   async submit(e) {
     e.preventDefault();
+    if (this.reset) return this.resetSubmit();
     const body = this.signup
       ? {username: $("aUser").value.trim(), email: $("aMail").value.trim(), password: $("aPass").value, display_name: $("aName").value.trim()}
       : {login: $("aUser").value.trim(), password: $("aPass").value};
@@ -5445,7 +5479,8 @@ const auth = {
   },
 };
 $("aForm").addEventListener("submit", e => auth.submit(e));
-$("aSwitch").addEventListener("click", () => { auth.open(!auth.signup); });
+$("aSwitch").addEventListener("click", () => { auth.reset ? auth.open(false) : auth.open(!auth.signup); });
+$("aForgot").addEventListener("click", () => auth.open(false, true));
 async function refreshAuth() {
   try { const r = await api("/api/auth/state"); if (r.ok) AUTH = await r.json(); } catch (_) {}
   if (AUTH.os) {   // name the computer after what LazyTrack runs on, not the device you're looking from
