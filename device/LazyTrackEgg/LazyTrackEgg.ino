@@ -49,6 +49,9 @@
 // wires (in the case), try 40000000: everything gets ~1.5x faster. White screen = too fast, go back.
 #define SPI_HZ 27000000
 
+// (types used in function parameters live up here: Arduino IDE declares all functions near the top)
+struct CoolF { bool on; int shades; int glint; bool smirk, nod; };   // one moment of the legendary cool move
+
 // the friends server (same as the app; this key is the public one made to sit in apps)
 static const char *SUPA_URL = "https://zmrzumltciteeznzjwaw.supabase.co";
 static const char *SUPA_KEY = "sb_publishable_mmX_kRPufTOQk1M4fmjjFg_HenbqicQ";
@@ -665,25 +668,72 @@ void drawZs(uint32_t t) {
 
 // Mochi standing on the ground, with the face that fits right now (high, drunk, coughing) like in the app.
 // dx: drunk wobble / coughing shake, sideways only (it never floats)
+// ---------------------------------------------------------------- "deal with it": the legendary cool move
+// Out of nowhere: shades drop onto Mochi's face, a glint runs across them while fire and explosions go off
+// behind him, he smirks (toothpick), nods twice, and the shades fly off. Same timeline as the app.
+uint32_t coolStart = 0, nextCool = 0;
+CoolF coolFrame(uint32_t t) {
+  static const int G[6] = {3, 4, 5, 10, 11, 12};
+  if (t < 350) return {true, -3 + (int)(t / 70) * 2, -1, false, false};
+  if (t < 450) return {true, 4, -1, false, false};
+  if (t < 650) return {true, 5, -1, false, false};
+  if (t < 1010) return {true, 5, G[min(5, (int)((t - 650) / 60))], false, false};
+  if (t < 1460) return {true, 5, -1, true, false};
+  if (t < 1760) return {true, 5, -1, true, true};
+  if (t < 2020) return {true, 5, -1, true, false};
+  if (t < 2320) return {true, 5, -1, true, true};
+  if (t < 4520) return {true, 5, -1, true, false};
+  if (t < 4730) { static const int Y[3] = {4, 1, -2}; return {true, Y[min(2, (int)((t - 4520) / 70))], -1, true, false}; }
+  return {false, 0, -1, false, false};
+}
+
+// Mochi's 16x16 colours right now (0 = see-through), with the cool move drawn on top when it's on
+void mochiNow(uint16_t cell[16][16], const char *px, const CoolF &cf) {
+  for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) {
+    char ch = px[cy * 16 + cx];
+    cell[cy][cx] = ch == '.' ? 0 : cellColor(ch, card.sprite);
+  }
+  if (!cf.on) return;
+  static const char *SH[3] = {"..kkkkkkkkkkkk..", "...kggk..kggk...", "....kk....kk...."};
+  const uint16_t K = rgb(0x1d1b20), LENS = rgb(0x3a3648), PICK = rgb(0xe3b980);
+  if (cf.smirk) {
+    uint16_t skin = cell[11][8] ? cell[11][8] : rgb(0xb9a7ff);
+    for (int y = 9; y <= 10; y++) for (int x = 4; x < 12; x++)
+      if (cell[y][x] == K || cell[y][x] == INK || cell[y][x] == 0xFFFF || cell[y][x] == rgb(0xe0303a)) cell[y][x] = skin;
+    for (int x = 6; x <= 9; x++) cell[9][x] = K;          // flat mouth...
+    cell[8][10] = K;                                       // ...one corner up
+    cell[10][10] = cell[10][11] = cell[11][12] = PICK;     // toothpick
+  }
+  for (int i = 0; i < 3; i++) {
+    int y = cf.shades + i;
+    if (y < 0 || y > 15) continue;
+    for (int x = 0; x < 16; x++) if (SH[i][x] != '.') cell[y][x] = SH[i][x] == 'k' ? K : LENS;
+  }
+  if (cf.glint >= 0 && cf.shades + 1 >= 0 && cf.shades + 1 < 16) cell[cf.shades + 1][cf.glint] = 0xFFFF;
+  if (cf.nod) { for (int y = 13; y > 0; y--) memcpy(cell[y], cell[y - 1], sizeof cell[y]); memset(cell[0], 0, sizeof cell[0]); }
+}
+
+const char *framePx(bool blink, bool coughing) {
+  if (!card.sprite) return DEFAULT_N;
+  const char *px = blink || millis() < petUntil || asleep() ? card.fb : card.fn;   // eyes closed: petted (happy) or asleep
+  if (card.fxFrames) {
+    if (coughing) px = card.fc;
+    else if (card.drunk) px = card.fd[constrain(card.drunk, 1, 3) - 1];
+    else if (card.high) px = card.fh;
+  }
+  return px;
+}
+
 void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) {
   if (view != V_HOME && !anyView) return;
   for (int y = 0; y < SH; y++) for (int x = 0; x < SW; x++) stage[y * SW + x] = bgAt(SX + x, SY + y);
-  const char *px = DEFAULT_N;
   bool petting = millis() < petUntil;
-  if (card.sprite) {
-    px = blink || petting || asleep() ? card.fb : card.fn;   // eyes closed: petted (happy) or asleep
-    if (card.fxFrames) {
-      if (coughing) px = card.fc;
-      else if (card.drunk) px = card.fd[constrain(card.drunk, 1, 3) - 1];
-      else if (card.high) px = card.fh;
-    }
-  }
+  static uint16_t cell[16][16];
+  mochiNow(cell, framePx(blink, coughing), CoolF{false, 0, -1, false, false});
   int ox = PX - SX + dx, oy = PY - SY;
   for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) {
-    char ch = px[cy * 16 + cx];
-    if (ch == '.') continue;
-    uint16_t col = cellColor(ch, card.sprite);
-    if (!col && !card.sprite) continue;
+    uint16_t col = cell[cy][cx];
+    if (!col) continue;
     for (int y = 0; y < SCALE; y++) {
       int yy = oy + cy * SCALE + y;
       if (yy < 0 || yy >= SH) continue;
@@ -707,6 +757,76 @@ void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) 
     }
   }
   gfx->draw16bitRGBBitmap(SX, SY, stage, SW, SH);
+}
+
+// The epic part: pixel fire (the classic "Doom fire": heat rises cell by cell, cooling and drifting at random)
+// and explosions, across the whole width behind Mochi, with a dark red wash and a screen shake.
+static const int FC = 4, FW = 240 / FC, FH = SH / FC;      // fire cells of 4x4 px over the strip Mochi stands in
+uint8_t fireHeat[FW * FH];
+static const uint32_t FIRE_PAL[36] = {0x070707, 0x1f0707, 0x2f0f07, 0x470f07, 0x571707, 0x671f07, 0x771f07, 0x8f2707, 0x9f2f07,
+  0xaf3f07, 0xbf4707, 0xc74707, 0xdf4f07, 0xdf5707, 0xdf5707, 0xd75f07, 0xd7670f, 0xcf6f0f, 0xcf770f, 0xcf7f0f, 0xcf8717, 0xc78717,
+  0xc78f17, 0xc7971f, 0xbf9f1f, 0xbf9f1f, 0xbfa727, 0xbfa727, 0xbfaf2f, 0xb7af2f, 0xb7b72f, 0xb7b737, 0xcfcf6f, 0xdfdf9f, 0xefefc7, 0xffffff};
+
+uint16_t blend(uint16_t c, uint32_t hex, int a) {   // a: 0..256 of hex over c
+  int r = (c >> 11) << 3, g = ((c >> 5) & 63) << 2, b = (c & 31) << 3;
+  r += (((int)(hex >> 16) - r) * a) >> 8; g += (((int)((hex >> 8) & 255) - g) * a) >> 8; b += (((int)(hex & 255) - b) * a) >> 8;
+  return rgb(((uint32_t)r << 16) | (g << 8) | b);
+}
+
+void coolScene(uint32_t t) {
+  CoolF cf = coolFrame(t);
+  static uint16_t cell[16][16];
+  mochiNow(cell, framePx(false, false), cf);
+  long ft = (long)t - 650;                       // fire time: starts with the glint
+  bool fire = ft >= 0 && ft < 3550;
+  if (fire) {
+    int src = ft < 2050 ? 22 : max(0, 22 - (int)(ft - 2050) / 45);
+    for (int x = 0; x < FW; x++) fireHeat[(FH - 1) * FW + x] = src ? max(0, src - (int)random(6)) : 0;
+    for (int y = 1; y < FH; y++) for (int x = 0; x < FW; x++) {
+      int from = y * FW + x, r = random(3), to = from - FW - r + 1;
+      if (to >= 0) fireHeat[to] = max(0, fireHeat[from] - (int)random(3));
+    }
+  }
+  int wash = !fire ? 0 : ft < 250 ? ft * 140 / 250 : ft > 2750 ? max(0L, 140 - (ft - 2750) * 140 / 800) : 140;
+  int shake = fire && ft < 450 ? (int)random(7) - 3 : 0;
+  static const int BOOM[5][3] = {{0, 15, 9}, {170, 45, 6}, {360, 30, 4}, {620, 8, 17}, {820, 52, 15}};
+  for (int y0 = 0; y0 < SH; y0 += band.bh) {
+    int h = min((int)band.bh, SH - y0);
+    for (int y = 0; y < h; y++) {
+      int sy = SY + y0 + y, fy = (y0 + y) / FC;
+      int rowWash = wash * (y0 + y) / SH;          // the wash fades out toward the top, so there's no hard edge
+      for (int x = 0; x < 240; x++) {
+        uint16_t c = bgAt(x, sy);
+        if (fire) {
+          int v = fireHeat[fy * FW + x / FC];
+          if (v > 1) c = rgb(FIRE_PAL[min(35, v * 35 / 22)]);
+          else if (rowWash) c = blend(c, 0x28060a, rowWash);
+          for (auto &b : BOOM) {                   // explosions: flash, fireball, smoke ring
+            long bt = ft - b[0];
+            if (bt < 0 || bt > 650) continue;
+            int R = 2 + (int)(bt * 7 / 650), fx = x / FC, d2 = (fx - b[1]) * (fx - b[1]) + (fy - b[2]) * (fy - b[2]);
+            if (d2 > R * R) continue;
+            int edge = (int)(sqrtf(d2) * 100 / R);
+            c = bt < 80 ? 0xFFFF : edge > 82 ? (bt > 400 ? rgb(0x463e48) : rgb(0xbe2814)) : edge > 55 ? rgb(0xf07814) : bt > 450 ? rgb(0x786458) : rgb(0xffdc5a);
+          }
+        }
+        int cx = (x - PX - shake), cy = sy - PY;
+        if (cx >= 0 && cy >= 0 && cx < 16 * SCALE && cy < 16 * SCALE) { uint16_t m = cell[cy / SCALE][cx / SCALE]; if (m) c = m; }
+        band.fb[y * 240 + x] = c;
+      }
+    }
+    lcd->draw16bitRGBBitmap(0, SY + y0, band.fb, 240, h);
+  }
+  static bool boomSound = false, ting = false;
+  if (t < 600) boomSound = ting = false;
+  if (fire && !boomSound) { tone(PIN_BUZZ, 147, 320); boomSound = true; }   // BWAAM
+  if (t > 1000 && !ting) { tone(PIN_BUZZ, 1760, 70); ting = true; }          // ting
+}
+
+void playCool() {
+  if (coolStart || !banded) return;
+  memset(fireHeat, 0, sizeof fireHeat);
+  coolStart = millis();
 }
 
 bool stale() {   // LazyTrack closed or the computer asleep: what it last sent isn't true anymore
@@ -996,6 +1116,7 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     text(20, 160, "HOME:  B menu   A pet   C screen off", 1, GREY);
     text(20, 176, "MENUS: C next   B ok    A back", 1, GREY);
     text(20, 200, "B here  sync now", 1, GREY);
+    text(20, 216, "C here  legendary cool move (test)", 1, GREY);
   }
 }
 
@@ -1180,6 +1301,7 @@ void onButton(int phys) {
       break;
     case V_INFO:
       if (b == 1) { status = "Syncing..."; drawFrame(); sync(); checkPokes(); tuneClick(); if (view == V_INFO) drawFrame(); break; }
+      if (phys == 2) { transition(V_HOME, false); playCool(); break; }   // C: try the legendary cool move
       if (b == 2 || b == 0) transition(V_MENU, false);
       break;
     case V_STATS:
@@ -1213,6 +1335,22 @@ void loop() {
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
   // Only redrawn when something changes, so the screen stays calm.
+  // the legendary cool move: out of nowhere, every 15-30 minutes when Mochi is Legendary
+  if (card.tier == "legend" && !coolStart && screenOn && view == V_HOME && !asleep()) {
+    if (!nextCool) nextCool = millis() + (15 + random(16)) * 60000UL;
+    else if (millis() > nextCool) { nextCool = 0; playCool(); }
+  }
+  if (coolStart) {
+    static uint32_t coolTick = 0;
+    if (view != V_HOME || !screenOn) { coolStart = 0; }
+    else if (millis() - coolTick > 40) {
+      coolTick = millis();
+      uint32_t t = millis() - coolStart;
+      if (coolFrame(t).on || t < 4200) coolScene(t);
+      else { coolStart = 0; drawFrame(); }
+    }
+    return;   // nothing else draws while it plays
+  }
   static uint32_t zTick = 0;
   if (screenOn && view == V_HOME && millis() > msgUntil && asleep() && millis() - zTick > 90) { zTick = millis(); drawZs(zTick); }
   static int lastDx = 99; static bool lastBlink = false;

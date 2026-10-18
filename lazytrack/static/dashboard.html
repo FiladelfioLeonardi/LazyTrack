@@ -159,6 +159,13 @@
   .petcard[data-mood="smoky"] { background: #d9d2e9; } .petcard[data-mood="proud"] { background: var(--green); }
   .petcard[data-mood="sleepy"] { background: #b9c7f5; } .petcard[data-mood="meh"] { background: var(--orange); }
   .petbox { flex: none; width: 132px; height: 132px; background: #ffffff; border: 3px solid var(--line); border-radius: 16px; display: grid; place-items: center; }
+  #petBox { position: relative; overflow: hidden; }
+  .petfx { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; opacity: 0; transition: opacity .25s; }
+  .petfx.on { opacity: 1; }
+  #petBox > .pet { z-index: 1; }
+  #petBox.shake { animation: shake .45s steps(9) 1; }
+  @keyframes shake { 0%, 100% { translate: 0 0; } 11% { translate: -3px 2px; } 22% { translate: 3px -2px; } 33% { translate: -2px -3px; }
+    44% { translate: 3px 2px; } 55% { translate: -3px 1px; } 66% { translate: 2px -2px; } 77% { translate: -1px 2px; } 88% { translate: 1px -1px; } }
   .pet { display: grid; grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; }
   .pet i { display: block; }
   .pet.bob { animation: bob 3.2s ease-in-out infinite; }
@@ -1025,7 +1032,7 @@ applyTheme();
     <div id="newsBox"></div>
     <section class="card petcard" id="petcard">
       <div class="pettop">
-        <button type="button" class="petbox" id="petBox" aria-label="Dress up Mochi"><div class="pet" id="pet" role="img" aria-label="Your pet"></div><span class="dress" aria-hidden="true">👕</span></button>
+        <button type="button" class="petbox" id="petBox" aria-label="Dress up Mochi"><canvas class="petfx" id="petFx" width="42" height="42" aria-hidden="true"></canvas><div class="pet" id="pet" role="img" aria-label="Your pet"></div><span class="dress" aria-hidden="true">👕</span></button>
         <div class="petside"><div class="petwho" id="petWho" hidden></div><div class="statsheet" id="statsheet" aria-label="Today's stats"></div></div>
       </div>
       <div class="speech">
@@ -1432,6 +1439,7 @@ applyTheme();
         <button type="button" class="btn" data-lab="nmsg">💬 New message</button>
         <button type="button" class="btn" data-lab="nreq">👋 New friend request</button>
         <button type="button" class="btn" data-lab="npoke">👉 A friend pokes you</button>
+        <button type="button" class="btn" data-lab="cool">😎 Legendary cool move</button>
       </div>
     </section>
   </main>
@@ -2080,6 +2088,7 @@ const FX_FACE = {
  * fx (all optional): high 0-3 (weed), drunk 0-3 (alcohol), cough true/false, dx -1/0/1 (looking left/right),
  * up (looking up), frame (a counter that moves the smoke, bubbles and stars), breath (squashed one pixel: breathing out).
  */
+const COOL_SHADES = ["..kkkkkkkkkkkk..", "...kggk..kggk...", "....kk....kk...."];
 function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {}) {
   const L = {...LOOK_DEFAULT, ...(look || {})};
   const pick = (slot) => MOCHI[SLOTS[slot]][L[slot]] || MOCHI[SLOTS[slot]][LOOK_DEFAULT[slot]];
@@ -2161,6 +2170,18 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   // cough: a puff of smoke out of the mouth
   if (fx.cough) put({9: "..x.............", 10: ".x.x............", 11: "..x............."});
   if (mood === "sleepy" && !fx.noZ) put({0: "...........zz...", 1: "............z...", 2: "...........zz..."});   // the egg animates its own
+  // "deal with it" (the legendary cool move): shades on, a glint, a smirk with a toothpick
+  if (fx.shades != null) {
+    if (fx.smirk) {
+      mouth.forEach((r, i) => { for (let x = 0; x < 16; x++) if (r[x] && r[x] !== "." && "bB".includes(body[9 + i]?.[x] || "")) g[9 + i][x] = col.b; });
+      put(pick("neck").rows, 10, false, tintOf("neck"));
+      put({9: "......kkkk......", 8: "..........k....."});
+      g[10][10] = g[10][11] = g[11][12] = "#e3b980";   // the toothpick
+    }
+    put(COOL_SHADES.map(r => r.replace(/g/g, "\u0003")), fx.shades);
+    for (let i = 0; i < 3; i++) { const y = fx.shades + i; if (y >= 0 && y < 16) for (let x = 0; x < 16; x++) if (COOL_SHADES[i][x] === "g") g[y][x] = "#3a3648"; }
+    for (const gx of fx.glint || []) if (fx.shades + 1 >= 0 && fx.shades + 1 < 16) g[fx.shades + 1][gx] = "#ffffff";
+  }
   // breathing out: everything above the belly sinks one pixel, the feet stay on the ground
   if (fx.breath) { for (let y = 10; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
   return g.flat().map(c => `<i${c ? ` style="background:${c}"` : ""}></i>`).join("");
@@ -2481,9 +2502,91 @@ function petState(O) {
  */
 /** The base color of the "Soft" place: Mochi's own color, or the theme's. */
 const softColor = look => { const c = skinColor({...LOOK_DEFAULT, ...look}); return c.startsWith("#") ? c : getComputedStyle(document.documentElement).getPropertyValue("--pet").trim(); };
+// ---------------------------------------------------------------- "deal with it": the legendary cool move
+// Out of nowhere: shades drop onto Mochi's face, a glint runs across them while fire and explosions go off
+// behind him, he smirks (toothpick), nods twice, and the shades fly off again. Legendary Mochi does it now
+// and then (every 15-30 min on Home); Admin > Test lab plays it on demand.
+const COOL_LEN = 4800;
+function coolFrame(t) {
+  if (t < 350) return {shades: -3 + Math.floor(t / 70) * 2};
+  if (t < 450) return {shades: 4};
+  if (t < 650) return {shades: 5};
+  if (t < 1010) return {shades: 5, glint: [[3, 4, 5, 10, 11, 12][Math.min(5, Math.floor((t - 650) / 60))]]};
+  if (t < 1460) return {shades: 5, smirk: true};
+  if (t < 1760) return {shades: 5, smirk: true, nod: true};
+  if (t < 2020) return {shades: 5, smirk: true};
+  if (t < 2320) return {shades: 5, smirk: true, nod: true};
+  if (t < 4520) return {shades: 5, smirk: true};
+  if (t < 4730) return {shades: [4, 1, -2][Math.min(2, Math.floor((t - 4520) / 70))], smirk: true};
+  return null;
+}
+// pixel fire (the classic "Doom fire": heat rises row by row, cooling and drifting at random) + explosions
+const FIRE_PAL = [[7,7,7],[31,7,7],[47,15,7],[71,15,7],[87,23,7],[103,31,7],[119,31,7],[143,39,7],[159,47,7],[175,63,7],[191,71,7],
+  [199,71,7],[223,79,7],[223,87,7],[223,87,7],[215,95,7],[215,103,15],[207,111,15],[207,119,15],[207,127,15],[207,135,23],[199,135,23],
+  [199,143,23],[199,151,31],[191,159,31],[191,159,31],[191,167,39],[191,167,39],[191,175,47],[183,175,47],[183,183,47],[183,183,55],
+  [207,207,111],[223,223,159],[239,239,199],[255,255,255]];
+const fireFx = {
+  N: 42, heat: null, t0: 0, raf: 0, booms: [],
+  start() {
+    const cv = $("petFx"); if (!cv) return;
+    this.heat = new Uint8Array(this.N * this.N); this.t0 = performance.now(); this.booms = [];
+    for (const [d, x, y] of [[0, 12, 13], [170, 30, 9], [360, 21, 5], [620, 8, 22], [820, 33, 20]]) this.booms.push({d, x, y});
+    cv.classList.add("on");
+    if (calm) { const box = $("petBox"); box.classList.remove("shake"); void box.offsetWidth; box.classList.add("shake"); }
+    cancelAnimationFrame(this.raf);
+    const loop = now => { if (this.step(now)) this.raf = requestAnimationFrame(loop); else this.stop(); };
+    this.raf = requestAnimationFrame(loop);
+  },
+  stop() { cancelAnimationFrame(this.raf); const cv = $("petFx"); if (cv) cv.classList.remove("on"); },
+  step(now) {
+    const N = this.N, h = this.heat, t = now - this.t0, cv = $("petFx");
+    if (!cv || t > 4200) return false;
+    const src = t < 2700 ? 30 : Math.max(0, 30 - (t - 2700) / 30);       // the fire dies down at the end
+    for (let x = 0; x < N; x++) h[(N - 1) * N + x] = src ? Math.max(0, src - (Math.random() * 6 | 0)) : 0;
+    for (let y = 1; y < N; y++) for (let x = 0; x < N; x++) {
+      const from = y * N + x, r = Math.random() * 3 | 0, to = from - N - r + 1;
+      if (to >= 0) h[to] = Math.max(0, h[from] - (Math.random() * 3 | 0));   // flames reach about 2/3 of the way up
+    }
+    const ctx = cv.getContext("2d"), img = ctx.createImageData(N, N), d = img.data;
+    const tint = Math.min(1, t / 250) * (t > 3400 ? Math.max(0, 1 - (t - 3400) / 700) : 1);
+    for (let i = 0; i < N * N; i++) {
+      const v = h[i];
+      if (v > 1) { const c = FIRE_PAL[Math.min(35, v)]; d.set([c[0], c[1], c[2], v < 6 ? 120 + v * 20 : 255], i * 4); }
+      else d.set([40, 6, 10, Math.round(90 * tint)], i * 4);           // a dark red wash behind everything
+    }
+    // explosions: a white flash, then a growing fireball with a dark smoke ring, sparks flying out
+    for (const b of this.booms) {
+      const bt = t - b.d; if (bt < 0 || bt > 650) continue;
+      const k = bt / 650, R = 2 + k * 8;
+      for (let y = Math.floor(b.y - R - 1); y <= b.y + R + 1; y++) for (let x = Math.floor(b.x - R - 1); x <= b.x + R + 1; x++) {
+        if (x < 0 || y < 0 || x >= N || y >= N) continue;
+        const dist = Math.hypot(x - b.x, y - b.y); if (dist > R) continue;
+        const edge = dist / R;
+        const c = k < .12 ? [255, 255, 255] : edge > .82 ? (k > .6 ? [70, 62, 72] : [190, 40, 20]) : edge > .55 ? [240, 120, 20] : k > .7 ? [120, 100, 90] : [255, 220, 90];
+        if (k > .75 && Math.random() < (k - .75) * 3) continue;           // smoke breaking up
+        d.set([c[0], c[1], c[2], 255], (y * N + x) * 4);
+      }
+      for (let s = 0; s < 8; s++) {                                       // sparks
+        const a = s * Math.PI / 4 + b.d, sx = Math.round(b.x + Math.cos(a) * (R + 3)), sy = Math.round(b.y + Math.sin(a) * (R + 3));
+        if (sx >= 0 && sy >= 0 && sx < N && sy < N && k < .8) d.set([255, 230, 120, 255], (sy * N + sx) * 4);
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    return true;
+  },
+};
+
 const petAnim = {
   base: {mood: "happy", tier: "okay"}, t: 0, timer: null, seenCig: null,
-  idle: null, idleEnd: 0, nextIdle: 0, coughEnd: 0, nextCough: 0, cls: "",
+  idle: null, idleEnd: 0, nextIdle: 0, coughEnd: 0, nextCough: 0, cls: "", coolStart: 0, coolTimer: null, nextCool: 0,
+  playCool() {   // "deal with it"
+    if (this.coolStart) return;
+    this.coolStart = Date.now(); this.idle = null;
+    clearInterval(this.coolTimer);
+    this.coolTimer = setInterval(() => this.render(), 50);
+    setTimeout(() => fireFx.start(), 650);                     // fire + explosions when the glint hits
+    setTimeout(() => sfx.play("cool"), 640);
+  },
   set(base) {
     const b = this.base = base;
     // a cigarette that just got logged (by a tap or the camera): cough right away
@@ -2499,6 +2602,11 @@ const petAnim = {
     const now = Date.now(), b = this.base;
     this.t++;
     if (this.idle && now > this.idleEnd) this.idle = null;
+    // legendary Mochi pulls the cool move out of nowhere, every 15-30 minutes
+    if (b.tier === "legend" && !this.coolStart) {
+      if (!this.nextCool) this.nextCool = now + (15 + Math.random() * 15) * 60000;
+      else if (now > this.nextCool && !this.idle) { this.nextCool = 0; this.playCool(); }
+    }
     // idle moves, only when nothing else is going on
     if (!this.idle && now > this.nextIdle) {
       const busy = b.drunk >= 2 || b.high >= 2 || b.mood === "sleepy";
@@ -2532,8 +2640,13 @@ const petAnim = {
     else if (this.idle === "up") up = true;
     else if (this.idle === "lookaround") dx = [-1, -1, 0, 1, 1][Math.floor((now - this.idleStart) / 520) % 5];
     if ((b.drunk || b.high) && !this.idle) dx = Math.floor(this.t / 6) % 3 - 1;   // can't keep the eyes still
-    const breath = calm && !coughing && this.idle !== "hop" && Math.floor(now / 1700) % 2 === 1;
+    let breath = calm && !coughing && this.idle !== "hop" && Math.floor(now / 1700) % 2 === 1;
     const fx = {high: b.high || 0, drunk: b.drunk || 0, cough: coughing, dx, up, frame: Math.floor(this.t / 2), breath};
+    if (this.coolStart) {
+      const cf = coolFrame(now - this.coolStart);
+      if (cf) { Object.assign(fx, {shades: cf.shades, glint: cf.glint, smirk: cf.smirk, breath: !!cf.nod, dx: 0, up: false, cough: false}); blink = false; }
+      else { this.coolStart = 0; clearInterval(this.coolTimer); this.coolTimer = null; fireFx.stop(); }
+    }
     $("pet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, blink, fx);
     setPlace($("petBox"), PET_LOOK.place, {frame: Math.floor(this.t / 2), high: b.high || 0, tier: b.tier, soft: softColor(PET_LOOK)});
     // the body's motion: drunk wins over high, both win over the gentle bob
@@ -3357,6 +3470,7 @@ const sfx = {
     msg: {wave: "square", vol: .06, n: [[988, 0, .07], [1319, .08, .12]]},                      // bloop-bleep
     req: {wave: "triangle", vol: .16, n: [[523, 0, .09], [659, .09, .09], [784, .18, .09], [1047, .27, .2]]},   // ta-da
     poke: {wave: "square", vol: .07, n: [[784, 0, .05], [1175, .06, .05], [784, .14, .05], [1175, .2, .08]]},    // boop-boop
+    cool: {wave: "sawtooth", vol: .05, n: [[110, 0, .35], [165, 0, .35], [220, 0, .35], [82, .38, .6], [123, .38, .6], [165, .38, .6], [1760, .02, .05], [2093, .07, .07]]},   // BWAAAM + ting
   },
   play(kind, force) {
     if (!force && !this.on()) return;
@@ -4211,6 +4325,7 @@ const admin = {
     })();
     if (a === "idea") ideaBox.open();
     if (a === "nmsg") { sfx.play("msg", true); toast("💬 New message from a friend", null); }
+    if (a === "cool") { if (currentTab() !== "home") go({tab: "home"}); setTimeout(() => petAnim.playCool(), currentTab() === "home" ? 50 : 700); }
     if (a === "npoke") {
       sfx.play("poke", true); toast("👉 Test Friend poked you", null);
       const card = document.getElementById("petcard");
