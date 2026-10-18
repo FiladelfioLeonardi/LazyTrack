@@ -80,6 +80,7 @@ volatile bool habitsKick = false, friendsKick = false;
 volatile int pokeReq = -1;             // the screen asks the network task to poke friend #n
 volatile bool undoReq = false;         // ...or to take back the last log
 volatile bool friendsDone = false;     // the friend list was loaded once (the Friends screen says "loading" until then)
+volatile uint32_t friendsFailAt = 0;   // loading it failed: try again in 20 s
 volatile uint8_t eggCmd = 0;           // from LazyTrack on your computer / phone: 1 = sing, 2 = find my egg
 #define FW_VERSION "2026.10.18"
 String resetWhy = "";                  // why the egg (re)started: shown on Info, so a crash or power dip is easy to spot
@@ -947,12 +948,12 @@ Friend friends[12];
 int nfriends = 0, friendSel = 0;
 uint32_t friendsAt = 0;
 
-void loadFriends() {
+bool loadFriends() {   // false: couldn't load (the list stays as it was)
   friendsAt = millis();
   String body;
-  if (api("GET", "/rest/v1/friendships?status=eq.accepted&select=requester,addressee", "", body) != 200) return;
+  if (api("GET", "/rest/v1/friendships?status=eq.accepted&select=requester,addressee", "", body) != 200) return false;
   JsonDocument d;
-  if (deserializeJson(d, body)) return;
+  if (deserializeJson(d, body)) { Serial.println("friends: couldn't read the list"); return false; }
   String ids[12];
   int n = 0;
   for (JsonObject r : d.as<JsonArray>()) {
@@ -960,13 +961,17 @@ void loadFriends() {
     String a = r["requester"] | "", b = r["addressee"] | "";
     ids[n++] = a == uid ? b : a;
   }
-  if (!n) { nfriends = 0; return; }
+  Serial.printf("friends: %d\n", n);
+  if (!n) { nfriends = 0; return true; }
   String in = "(";
   for (int i = 0; i < n; i++) { if (i) in += ","; in += ids[i]; }
   in += ")";
   String pb, cb;
   JsonDocument pd, cd;
-  if (api("GET", "/rest/v1/profiles?id=in." + in + "&select=id,username,display_name", "", pb) != 200 || deserializeJson(pd, pb)) return;
+  if (api("GET", "/rest/v1/profiles?id=in." + in + "&select=id,username,display_name", "", pb) != 200 || deserializeJson(pd, pb)) {
+    Serial.println("friends: couldn't load their names");
+    return false;
+  }
   bool cards = api("GET", "/rest/v1/cards?user_id=in." + in + "&select=user_id,updated_at,hp:card->hp,tier:card->>tier,fx:card->fx,"
                    "now:card->now,offline:card->offline,built:card->built,pal:card->sprite->p,px:card->sprite->n", "", cb) == 200
                && !deserializeJson(cd, cb);
@@ -1006,6 +1011,7 @@ void loadFriends() {
   // online first, then by name
   for (int i = 1; i < nfriends; i++) for (int j = i; j > 0 && (friends[j].online > friends[j - 1].online ||
        (friends[j].online == friends[j - 1].online && friends[j].name < friends[j - 1].name)); j--) std::swap(friends[j], friends[j - 1]);
+  return true;
 }
 
 String nameOf(const String &id) {
@@ -1656,7 +1662,7 @@ uint16_t tierColor(const String &t) {
 void drawFriend() {
   if (!nfriends) {
     themeBg();
-    themeHead(MENU_ICONS[M_FRIENDS], "FRIENDS", !online() ? "OFFLINE RIGHT NOW" : !friendsDone ? "LOADING..." : "NO FRIENDS YET");
+    themeHead(MENU_ICONS[M_FRIENDS], "FRIENDS", !online() ? "OFFLINE RIGHT NOW" : friendsFailAt ? "COULDN'T LOAD, TRYING AGAIN" : !friendsDone ? "LOADING..." : "NO FRIENDS YET");
     if (!friendsDone && online()) { themeHints("A BACK"); return; }
     dcard(12, 60, 216, 64);
     text(24, 74, "Add some in the LazyTrack", 1, CARD);
@@ -2030,7 +2036,7 @@ void netSync(bool all) {   // with the lock held: card, queued logs, pokes (+ ha
     checkPokes();
     if (all || habitsKick || !nhabits || millis() - habitsAt > 120000) { habitsKick = false; loadHabits(); }
     if (all || friendsKick || (view == V_FRIENDS && millis() - friendsAt > 60000)) {
-      friendsKick = false; loadFriends(); friendsDone = true; if (friendSel >= nfriends) friendSel = 0;
+      friendsKick = false; if (loadFriends()) { friendsDone = true; friendsFailAt = 0; } else friendsFailAt = millis(); if (friendSel >= nfriends) friendSel = 0;
       if (view == V_FRIENDS) needRedraw = true;
     }
   }
@@ -2120,6 +2126,7 @@ void netTask(void *) {
       if (undoReq) { undoReq = false; undoNow(); }
       UNLOCK();
     }
+    if (!friendsDone && friendsFailAt && millis() - friendsFailAt > 20000) { friendsFailAt = 0; friendsKick = true; }
     bool due = millis() - last > 30000;              // every 30 s: LazyTrack's changes arrive within a minute
     if (due || netKick || habitsKick || friendsKick) {
       bool full = due || netKick;
@@ -2129,7 +2136,7 @@ void netTask(void *) {
       if (full) netSync(false);
       else if (online()) {
         if (habitsKick) { habitsKick = false; loadHabits(); needRedraw = true; }
-        if (friendsKick) { friendsKick = false; loadFriends(); friendsDone = true; if (friendSel >= nfriends) friendSel = 0; needRedraw = true; }
+        if (friendsKick) { friendsKick = false; if (loadFriends()) { friendsDone = true; friendsFailAt = 0; } else friendsFailAt = millis(); if (friendSel >= nfriends) friendSel = 0; needRedraw = true; }
       }
       UNLOCK();
     }
