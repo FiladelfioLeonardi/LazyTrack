@@ -237,6 +237,17 @@
     background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.85) 50%, transparent 58%); animation: shine 4.5s ease-in-out infinite; }
   @keyframes shine { 0%, 55% { transform: translateX(-70%); } 100% { transform: translateX(70%); } }
   .hp { display: grid; gap: 10px; }
+  /* meals: up to 3 a day at your times, and the Feed button when Mochi is hungry */
+  .meals { display: grid; gap: 6px; margin: -4px 0 14px; }
+  .mealrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+  .mealrow .lbl { font: 700 12px var(--pixel); letter-spacing: .06em; margin-right: 2px; }
+  .meal { border: 2px solid var(--line); border-radius: 10px; padding: 3px 8px; font: 800 13px var(--body); background: var(--card); color: var(--text); }
+  .meal.fed { background: #c9f2d4; color: #1d1b20; } .meal.missed { opacity: .5; text-decoration: line-through; }
+  .meal.hungry { background: var(--yellow); color: var(--on-fill); animation: mealPulse 1.2s ease-in-out infinite; }
+  @keyframes mealPulse { 50% { transform: scale(1.06); } }
+  @media (prefers-reduced-motion: reduce) { .meal.hungry { animation: none; } }
+  .feedbtn { margin-left: auto; }
+  .meals .note { margin: 0; font-size: 12px; }
   .hprow { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
   .hpl { font: 700 14px var(--pixel); }
   .hpbar { display: flex; gap: 3px; }
@@ -1081,6 +1092,7 @@ applyTheme();
         <h1 id="headline">Loading your day…</h1>
         <p class="mood" id="petMood"></p>
       </div>
+      <div class="meals" id="meals" hidden></div>
       <div class="hp" id="hp"></div>
     </section>
 
@@ -1269,6 +1281,8 @@ applyTheme();
           Nothing at all = a small loss (0.4× its size), goal reached = +0.6× its size, a bit more for going past it.</li>
         <li><b>Size</b> is how much a thing matters: <b>small 3, medium 6, big 10 HP</b>. You pick it per habit.</li>
         <li><b>+2 HP every day</b> just for being alive.</li>
+        <li><b>Meals:</b> Mochi gets hungry up to 3 times a day (breakfast, lunch, dinner, at times that fit your day, never while you sleep). Feed him in the app, on your phone or on the egg: <b>+1 HP</b>. A missed meal: <b>−3 HP</b>. So ignoring him for days slowly hurts.</li>
+        <li><b>Sleep:</b> he learns when you usually go to bed and wake up, and sleeps then. But never while you're still on the computer.</li>
         <li><b>Limits:</b> one day can take at most <b>25 HP</b> and give at most <b>15</b>. So a healthy Mochi survives at least 4 terrible days in a row.</li>
         <li>Days with no data at all (computer off, nothing logged) only get the +2.</li>
       </ul>
@@ -2807,6 +2821,29 @@ const labels14 = () => days14().map(d => new Date(d + "T12:00:00").toLocaleDateS
 const openDay = (e, els) => { if (els.length) { const dd = days14()[els[0].index]; go({tab: currentTab(), day: dd >= todayISO() ? "" : dd}); } };
 
 // ---------------------------------------------------------------- HOME
+// meals: what Mochi ate today, and the Feed button while he's hungry
+let lastHungry = null;
+function renderMeals(R) {
+  const box = $("meals");
+  box.hidden = !R || !R.meals;
+  if (box.hidden) return;
+  const cap = s => s[0].toUpperCase() + s.slice(1);
+  const tip = {fed: "eaten", missed: "missed", hungry: "hungry now", later: "later"};
+  const m = R.meals.find(x => x.n === R.hungry);
+  box.innerHTML = `<div class="mealrow"><span class="lbl">MEALS</span>${R.meals.length ? R.meals.map(x => `<span class="meal ${x.state}" title="${cap(x.n)} at ${x.at}: ${tip[x.state]}">${x.e} ${x.at}${x.state === "fed" ? " ✓" : ""}</span>`).join("")
+      : `<span class="note">none today (you sleep through meal times)</span>`}${m ? `<button type="button" class="btn primary feedbtn" id="feedBtn">${m.e} Feed Mochi</button>` : ""}</div>
+    <p class="note">He gets hungry up to 3 times a day, never while you sleep (around ${R.bed}–${R.wake}${R.learned ? "" : ", still learning your nights"}). Fed on time ${fmtHp(R.fed_hp)} HP, missed ${fmtHp(R.missed_hp)}.</p>`;
+  if (R.hungry && R.hungry !== lastHungry && lastHungry !== null) { sfx.play("msg"); toast(`${m ? m.e : "🍙"} Mochi is hungry!`, null); }
+  lastHungry = R.hungry || "";
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("#feedBtn"); if (!b) return;
+  b.disabled = true;
+  const r = await post("/api/feed", {device: "app"}), j = await r.json().catch(() => ({}));
+  if (j.ok) { sfx.play("poke"); toast("Yum! Mochi is full 😋", null); lastHungry = ""; }
+  else toast(j.why === "full" ? `He's not hungry right now${j.next ? `. Next meal at ${j.next}` : ""}.` : "Couldn't feed him.", null);
+  render();
+});
 function renderHome() {
   const t = O.today, ref = O.ref, val = O.val, isToday = O.is_today, against = O.against;
   // the "main" bad habit (the first one in the list) leads the headline and the mood
@@ -2837,7 +2874,8 @@ function renderHome() {
 
   // the pet's mood follows the day
   let mood = "happy", say = "Nice and calm today. Keep it up.";
-  if (isToday && hour >= 1 && hour < 5) { mood = "sleepy"; say = "It's really late. Bed soon?"; }
+  const R = (O.life || {}).rhythm;   // learned sleep + meals (rhythm.py); older LazyTrack: just the clock
+  if (isToday && (R ? R.asleep : hour >= 1 && hour < 5)) { mood = "sleepy"; say = R ? "Zzz… sleeping. I wake up when you're back." : "It's really late. Bed soon?"; }
   else if (cig && cig > cigRef) { mood = lead.smoke ? "smoky" : "meh"; say = lead.smoke ? "I'm a little smoky today." : `More ${lead.n.toLowerCase()} than yesterday. We can do better.`; }
   else if (coding >= 2 * 3600 || commits >= 3) { mood = "proud"; say = "Look at you, getting stuff done!"; }
   else if (yt > coding + 3600) { mood = "meh"; say = "Lots of YouTube. Code a bit with me?"; }
@@ -2854,7 +2892,9 @@ function renderHome() {
   else if (st.high) say = isToday ? (st.high === 2 ? "Everything's sooo slow and wavy right now." : "Feeling a little floaty, ngl.") : say;
   else if (st.drunk === 1 && isToday) say = "Just a little tipsy. One glass of water for me?";
   else if (st.coughy >= 2 && isToday) say = "*cough cough* My little lungs are working hard today.";
+  if (isToday && R && R.hungry && mood !== "sleepy") { const m = R.meals.find(x => x.n === R.hungry) || {}; say = `I'm hungry! ${m.e || "🍙"} ${R.hungry[0].toUpperCase() + R.hungry.slice(1)} time?`; }
   $("petMood").textContent = say;
+  renderMeals(isToday ? R : null);
   const fxName = st.drunk ? ", a bit drunk" : st.high ? ", a bit high" : st.coughy >= 2 ? ", coughing" : "";
   drawPet(mood, `Your pet Mochi, feeling ${mood}${fxName}, ${H.name.toLowerCase()} at ${H.hp} HP`, H.tier, st);
   $("petcard").dataset.tier = H.tier;

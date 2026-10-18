@@ -94,7 +94,8 @@ def _day(d: date) -> dict:
 
 
 def _has_data(r: dict) -> bool:
-    return bool(r["screen_total"] or r["events"] or r["commits"])
+    # feeding Mochi doesn't make a day "tracked" (meals are scored on their own)
+    return bool(r["screen_total"] or any(k != "feed" for k in r["events"]) or r["commits"])
 
 
 # ---------------------------------------------------------------- rules (targets and goals)
@@ -230,7 +231,14 @@ def day_score(d: date, rs: Optional[dict] = None, until: Optional[datetime] = No
                       **{k: (round(x, 1) if isinstance(x, float) else x) for k, x in sc.items()}})
     data = _has_data(today)
     raw = total + REGEN if data else REGEN
-    return {"delta": max(-MAX_LOSS, min(MAX_GAIN, raw)), "raw": round(raw, 1), "data": data, "parts": parts}
+    try:   # meals: fed +1, missed -3 (rhythm.py); they count even on days without other data
+        from . import rhythm
+        meals = rhythm.day_part(d, until)
+    except Exception:
+        meals = None
+    if meals:
+        raw += meals["d"]
+    return {"delta": max(-MAX_LOSS, min(MAX_GAIN, raw)), "raw": round(raw, 1), "data": data, "parts": parts, "meals": meals}
 
 
 # ---------------------------------------------------------------- the pet's life
@@ -296,7 +304,8 @@ def catch_up() -> dict:
             sc = day_score(d, rs)
             st["hp"] = min(100.0, st["hp"] + sc["delta"])
             st["log"].append({"day": d.isoformat(), "gen": st["gen"], "delta": round(sc["delta"], 1), "hp": round(max(0, st["hp"]), 1),
-                              "parts": {p["k"]: p["d"] for p in sc["parts"] if p.get("d")}})
+                              "parts": {**{p["k"]: p["d"] for p in sc["parts"] if p.get("d")},
+                                        **({"meals": sc["meals"]["d"]} if sc.get("meals") and sc["meals"]["d"] else {})}})
             if d.weekday() == 6:
                 notes = _tighten(st, rs, d)
                 if notes:
@@ -349,7 +358,16 @@ def status() -> dict:
         "best": best, "deaths": len(st["deaths"]), "graveyard": st["deaths"][-10:], "unseen_death": unseen,
         "log": st["log"][-30:], "rules": rs, "confirmed": db.kv_get("rules_confirmed") == "1",
         "limits": {"regen": REGEN, "max_loss": MAX_LOSS, "max_gain": MAX_GAIN, "sizes": SIZES},
+        "rhythm": _rhythm(),
     }
+
+
+def _rhythm() -> Optional[dict]:
+    try:
+        from . import rhythm
+        return rhythm.now_state()
+    except Exception:
+        return None
 
 
 def mark_seen() -> None:

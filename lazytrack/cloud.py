@@ -232,7 +232,22 @@ def _with_now(card: dict) -> dict:
         card["built"] = int(time.time())
     except Exception as e:
         log.debug("pet fx failed: %s", e)
+    try:   # sleeping (when you sleep, never while you're up) and hungry (meal times): for friends and the egg
+        r = _rhythm()
+        card["asleep"], card["hungry"] = r
+        if r[0]:
+            card["mood"] = "sleepy"
+        elif card.get("mood") == "sleepy":
+            card["mood"] = "happy"
+    except Exception as e:
+        log.debug("rhythm failed: %s", e)
     return card
+
+
+def _rhythm() -> tuple:
+    from . import rhythm
+    h = rhythm.hungry()
+    return rhythm.asleep(), (h["n"] if h else None)
 
 
 def push_card(card: dict) -> bool:
@@ -246,7 +261,8 @@ def push_card(card: dict) -> bool:
     _http("POST", "/rest/v1/cards", {"user_id": uid, "card": card, "updated_at": _now()}, token=_token(),
           prefer="resolution=merge-duplicates,return=minimal")
     d = _doing()
-    _last_card.update(t=time.time(), body=body, what=d.get("what"), label=d.get("label"), fx=card.get("fx"))
+    _last_card.update(t=time.time(), body=body, what=d.get("what"), label=d.get("label"), fx=card.get("fx"),
+                      rh=(card.get("asleep"), card.get("hungry")))
     return True
 
 
@@ -264,7 +280,12 @@ def heartbeat() -> None:
         fx = None
     # started doing something else, or Mochi got drunk/high/sober: tell friends (and the egg) now
     d = _doing()
-    changed = (d.get("what"), d.get("label")) != (_last_card.get("what"), _last_card.get("label")) or (fx is not None and fx != _last_card.get("fx"))
+    try:
+        rh = _rhythm()
+    except Exception:
+        rh = None
+    changed = ((d.get("what"), d.get("label")) != (_last_card.get("what"), _last_card.get("label")) or (fx is not None and fx != _last_card.get("fx"))
+               or (rh is not None and rh != _last_card.get("rh")))
     if time.time() - _last_card["t"] < (45 if changed else 120):
         return
     body = db.kv_get("cloud_last_card")
@@ -275,7 +296,7 @@ def heartbeat() -> None:
         _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": card, "updated_at": _now()},
               token=_token(), prefer="resolution=merge-duplicates,return=minimal")
         _last_card.update(t=time.time(), body=json.dumps(card, sort_keys=True), what=d.get("what"),
-                          label=d.get("label"), fx=card.get("fx"))
+                          label=d.get("label"), fx=card.get("fx"), rh=(card.get("asleep"), card.get("hungry")))
     except (CloudError, ValueError) as e:
         log.debug("heartbeat failed: %s", e)
 
@@ -634,7 +655,7 @@ def egg_sync() -> int:
     if not rows:
         return 0
     import datetime as _dt
-    known, n = set(_habits.keys()), 0
+    known, n = set(_habits.keys()) | {"feed"}, 0   # "feed": Mochi fed on the egg
     for r in rows:
         if r.get("kind") not in known:
             continue

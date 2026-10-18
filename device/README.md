@@ -65,7 +65,7 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 
 | | A | B | C |
 |---|---|---|---|
-| **Home** (your Mochi) | pet Mochi (hearts) | menu | screen off (any button wakes it). Right after logging: undo |
+| **Home** (your Mochi) | pet Mochi (hearts); feed him when he's hungry | menu | screen off (any button wakes it). Right after logging: undo |
 | **Menu** | back | open | next |
 | **Log** | back | log it (Mochi reacts right away) | next |
 | **Friends** | back | poke them (their egg buzzes, their app plays a sound) | next friend |

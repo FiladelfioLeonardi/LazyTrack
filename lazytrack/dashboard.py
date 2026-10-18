@@ -266,6 +266,9 @@ def make_handler(cfg: dict):
                 if u.path == "/api/setup" and user:
                     accounts.set_setup_done(user["id"])
                 return self._send(200, out)
+            if u.path == "/api/feed":
+                from . import rhythm
+                return self._send(200, rhythm.feed(str(b.get("device", "app"))[:40], source=str(b.get("source", "manual"))[:20]))
             if u.path == "/api/uninstall":
                 if not self._local():
                     return self._send(403, {"error": "only on the computer itself"})

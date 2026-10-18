@@ -51,12 +51,29 @@ class SyncWorker(threading.Thread):
             except Exception as e:
                 log.warning("backup failed: %s", e)
             try:
+                from . import rhythm
+                rhythm.tick(_hungry_notice)   # Mochi got hungry: tell you once per meal
+            except Exception:
+                log.exception("meal check failed")
+            try:
                 from . import cloud
                 cloud.egg_sync()    # logs made on the egg come in here
                 cloud.heartbeat()   # friends see you as online while LazyTrack runs
             except Exception as e:
                 log.debug("friends heartbeat failed: %s", e)
             self.stop_ev.wait(30)
+
+
+def _hungry_notice(meal: dict) -> None:
+    """Not in LazyTrack right now: a notification with a sound (in LazyTrack, the app shows it itself)."""
+    from . import smoke
+    if smoke.app_in_use():
+        return
+    system.notify(f"Mochi is hungry {meal['e']}", f"Time for {meal['n']}! Feed him in LazyTrack, on your phone or on the egg.", sound=False)
+    try:
+        system.chime()
+    except Exception:
+        pass
 
 
 def _camera_permission(cfg: dict) -> None:
