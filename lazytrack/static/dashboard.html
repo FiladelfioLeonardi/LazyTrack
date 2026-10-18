@@ -16,6 +16,7 @@
 <style>
   /* ------------------------------------------------------------ tokens */
   :root {
+    --text: var(--ink);
     --bg: #efeaff; --card: #ffffff; --soft: #f4f1ff; --ink: #1d1b20; --ink-2: #4e4858; --ink-3: #7a7387;
     --line: #1d1b20; --on-fill: #1d1b20;
     --pink: #ff8fb1; --green: #9be8a9; --yellow: #ffe45e; --blue: #7ad3ff; --lilac: #c9b8ff; --orange: #ffd28a; --lime: #d6f5a3; --red: #ff9b9b;
@@ -242,14 +243,15 @@
   /* meals: up to 3 a day at your times, and the Feed button when Mochi is hungry */
   .meals { display: grid; gap: 6px; margin: -4px 0 14px; }
   .mealrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .mealrow .lbl { font: 700 12px var(--pixel); letter-spacing: .06em; margin-right: 2px; }
-  .meal { border: 2px solid var(--line); border-radius: 10px; padding: 3px 8px; font: 800 13px var(--body); background: var(--card); color: var(--text); }
-  .meal.fed { background: #c9f2d4; color: #1d1b20; } .meal.missed { opacity: .5; text-decoration: line-through; }
-  .meal.hungry { background: var(--yellow); color: var(--on-fill); animation: mealPulse 1.2s ease-in-out infinite; }
+  .mealrow .lbl { font: 700 14px var(--pixel); letter-spacing: .06em; margin-right: 4px; color: #1d1b20; }
+  /* the pet card is always a light color (also in dark mode), so meal text is always dark */
+  .meal { border: 3px solid #1d1b20; border-radius: 12px; padding: 5px 10px; font: 800 16px var(--body); background: #ffffff; color: #1d1b20; box-shadow: 2px 2px 0 #1d1b20; }
+  .meal.fed { background: #c9f2d4; } .meal.missed { background: #ece8f3; color: #6a6475; text-decoration: line-through; box-shadow: none; }
+  .meal.hungry { background: #ffe45e; color: #1d1b20; animation: mealPulse 1.2s ease-in-out infinite; }
   @keyframes mealPulse { 50% { transform: scale(1.06); } }
   @media (prefers-reduced-motion: reduce) { .meal.hungry { animation: none; } }
   .feedbtn { margin-left: auto; }
-  .meals .note { margin: 0; font-size: 12px; }
+  .meals .note { margin: 0; font-size: 14px; line-height: 1.4; color: #1d1b20; opacity: .85; font-weight: 600; }
   .hprow { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
   .hpl { font: 700 14px var(--pixel); }
   .hpbar { display: flex; gap: 3px; }
