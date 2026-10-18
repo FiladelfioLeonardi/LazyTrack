@@ -502,6 +502,15 @@ def make_handler(cfg: dict):
                         # the account on the friends server is the real one: log in there and copy/refresh it here
                         st = cloud.connect(login, pw, "", "", new=False)
                         tok = self._link_local(st, login, pw)
+                    elif row is not None and row["email"]:
+                        # the password may have changed on another device (or since an old version): the friends
+                        # server has the real one. Right there? This computer's copy is updated to match.
+                        try:
+                            st = cloud.connect(row["email"], pw, "", "", new=False)
+                        except cloud.CloudError:
+                            time.sleep(0.6)
+                            raise accounts.AuthError("That username and password don't match. Try logging in with your email.") from None
+                        tok = self._link_local(st, row["email"], pw)
                     elif accounts.has_account():
                         tok = accounts.login(login, pw)       # raises "don't match"
                     else:

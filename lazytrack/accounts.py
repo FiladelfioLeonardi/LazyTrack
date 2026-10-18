@@ -115,7 +115,7 @@ def login(login_name: str, password: str) -> str:
     row = find(login_name)
     if not password_ok(row, password):
         time.sleep(0.6)   # makes guessing slow
-        raise AuthError("That username or email and password don't match.")
+        raise AuthError("That username or email and password don't match. Try your email with the password you use for friends.")
     return _new_session(row["id"])
 
 
