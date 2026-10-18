@@ -1499,8 +1499,6 @@ static const uint8_t MENU_ICONS[MENU_N][8] = {   // 8x8 pixel icons
   {0x00, 0x66, 0x99, 0x66, 0x00, 0xFF, 0x99, 0xFF},   // two friends
   {0x00, 0x02, 0x02, 0x12, 0x12, 0x92, 0x92, 0xFF},   // bars
   {0x18, 0x00, 0x38, 0x18, 0x18, 0x18, 0x3C, 0x00}};  // an "i"
-static const int RING_X = 120, RING_Y = 160, RING_R = 88;
-float ringRot = 0;   // degrees, while the ring turns (0 = at rest)
 
 void pixIcon(const uint8_t *rows, int cx, int cy, int sc, uint16_t col) {
   for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++)
@@ -1523,61 +1521,74 @@ String nextMeal() {   // "NEXT: LUNCH 13:05" from LazyTrack's plan, or ""
   return "";
 }
 
-String ringSub(int i) {   // the live line under the name
+// ---- the menu, old handheld RPG style: a cream box with the choices on the right, Mochi on the left, a line
+// about the picked one at the bottom. Moving the cursor redraws only the arrow and that line (instant).
+static const int MENU_ROWS = MENU_N + 1;   // + EXIT
+static const int MB_X = 118, MB_Y = 7, MB_W = 115, ROW_H = 22, MB_H = 18 + MENU_ROWS * ROW_H;
+static const int DB_X = 7, DB_Y = 246, DB_W = 226, DB_H = 67;
+
+void rpgBox(int x, int y, int w, int h) {   // cream, a thick dark edge and a thin line inside it
+  uint16_t cream = rgb(0xfffdf4);
+  gfx->fillRect(x, y, w, h, cream);
+  gfx->drawRect(x, y, w, h, INK); gfx->drawRect(x + 1, y + 1, w - 2, h - 2, INK);
+  gfx->drawRect(x + 4, y + 4, w - 8, h - 8, INK);
+}
+
+int menuRowY(int i) { return MB_Y + 11 + i * ROW_H; }
+
+void menuArrow(int i, uint16_t col) {
+  int y = menuRowY(i) + 7;
+  gfx->fillTriangle(MB_X + 10, y - 6, MB_X + 10, y + 6, MB_X + 17, y, col);
+}
+
+String menuLine(int i) {   // what the bottom box says about the picked one
   int onl = 0; for (int k = 0; k < nfriends; k++) onl += friends[k].online;
-  String h = hungryNow(); h.toUpperCase();
+  String h = hungryNow();
   switch (i) {
-    case M_LOG: return nhabits ? String(nhabits) + (nhabits == 1 ? " HABIT TO LOG" : " HABITS TO LOG") : String("SET UP IN THE APP");
-    case M_FEED: return asleep() ? String("SHH, HE'S SLEEPING") : h.length() ? "HUNGRY FOR " + h : nextMeal().length() ? nextMeal() : String("NOT HUNGRY NOW");
-    case M_FRIENDS: return nfriends ? String(onl) + " ONLINE" : String("ADD SOME IN THE APP");
-    case M_TODAY: { String t = card.tierName; t.toUpperCase(); return "HP " + String(card.hp) + " - " + t; }
-    default: { String n = online() ? netName() : String("offline"); n.toUpperCase(); return n.substring(0, 30); }
+    case M_LOG: return nhabits ? "Log something you did. " + String(nhabits) + (nhabits == 1 ? " habit." : " habits.") : String("Nothing to log yet. Set it up in the app.");
+    case M_FEED: return asleep() ? String("Shh... he's sleeping.") : h.length() ? "He's hungry for " + h + "!" : nextMeal().length() ? "Not hungry. " + nextMeal() : String("Not hungry right now.");
+    case M_FRIENDS: return nfriends ? "See your friends. " + String(onl) + " online." : String("No friends yet. Add some in the app.");
+    case M_TODAY: return "Today's numbers. HP " + String(card.hp) + ", " + card.tierName + ".";
+    case M_INFO: return "WiFi, phone and sync. Now: " + (online() ? netName() : String("offline")) + ".";
+    default: return "Back to Mochi.";
   }
 }
 
-void ringPos(int i, int &x, int &y, float &top) {   // where button i sits right now; top: 1 at the top, 0 a step away or more
-  float a = -90 + ((i - menuSel + MENU_N) % MENU_N) * (360.0f / MENU_N) + ringRot;
-  if (a > 180) a -= 360;
-  x = RING_X + (int)lroundf(cosf(a * PI / 180) * RING_R);
-  y = RING_Y + (int)lroundf(sinf(a * PI / 180) * RING_R);
-  top = max(0.0f, 1 - fabsf(a + 90) / (360.0f / MENU_N));
+void menuDesc() {   // the bottom box, text wrapped to 3 lines of 16
+  rpgBox(DB_X, DB_Y, DB_W, DB_H);
+  String t = menuLine(menuSel), line = "";
+  int y = DB_Y + 12, lines = 0, at = 0;
+  while (at <= (int)t.length() && lines < 3) {
+    int sp = t.indexOf(' ', at); if (sp < 0) sp = t.length();
+    String word = t.substring(at, sp);
+    if (line.length() && line.length() + 1 + word.length() > 16) { text(DB_X + 12, y, line, 2, INK); y += 18; lines++; line = ""; }
+    if (lines >= 3) break;
+    line += (line.length() ? " " : "") + word.substring(0, 16);
+    at = sp + 1;
+    if (sp >= (int)t.length()) { text(DB_X + 12, y, line, 2, INK); break; }
+  }
 }
 
 void drawMenu() {
   themeBg();
-  // Mochi, smaller, in the middle
+  // Mochi on the left, big and a bit dimmed, like the other side of a battle screen
   static uint16_t cell[16][16];
   mochiNow(cell, framePx(false, false), CoolF{false, 0, -1, false, false});
-  for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) if (cell[cy][cx]) gfx->fillRect(88 + cx * 4, 128 + cy * 4, 4, 4, cell[cy][cx]);
-  // the buttons: the ones further from the top first, so the big one is drawn over them
-  int order[MENU_N]; float tops[MENU_N];
-  for (int i = 0; i < MENU_N; i++) { int x, y; ringPos(i, x, y, tops[i]); order[i] = i; }
-  for (int i = 1; i < MENU_N; i++) for (int j = i; j > 0 && tops[order[j]] < tops[order[j - 1]]; j--) std::swap(order[j], order[j - 1]);
-  for (int k = 0; k < MENU_N; k++) {
-    int i = order[k], x, y; float top;
-    ringPos(i, x, y, top);
-    int r = 18 + (int)(5 * top);
-    bool big = top > 0.5f;
-    if (big) gfx->fillCircle(x + 2, y + 2, r, INK);   // hard shadow
-    gfx->fillCircle(x, y, r, INK);
-    gfx->fillCircle(x, y, r - 2, big ? YELLOW : CARD);
-    pixIcon(MENU_ICONS[i], x, y, big ? 3 : 2, INK);
-  }
-  // name + live line at the top, hints at the bottom
-  String t = MENU_NAMES[menuSel];
-  text((240 - t.length() * 18) / 2, 8, t, 3, CARD);
-  String sub = ringSub(menuSel).substring(0, 38);
-  text((240 - sub.length() * 6) / 2, 34, sub, 1, rgb(0xc9b8ff));
-  String hint = "C TURN  B OPEN  A BACK";
-  text((240 - hint.length() * 6) / 2, 306, hint, 1, rgb(0xbdb6cc));
+  for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++)
+    if (cell[cy][cx]) gfx->fillRect(14 + cx * 6, 108 + cy * 6, 6, 6, (cell[cy][cx] >> 1) & 0x7BEF);
+  rpgBox(MB_X, MB_Y, MB_W, MB_H);
+  for (int i = 0; i < MENU_ROWS; i++) text(MB_X + 22, menuRowY(i), i < MENU_N ? MENU_NAMES[i] : "EXIT", 2, i < MENU_N ? INK : GREY);
+  menuArrow(menuSel, INK);
+  menuDesc();
 }
 
-void turnRing() {   // C: the next button rolls up to the top
-  menuSel = (menuSel + 1) % MENU_N;
-  if (!banded) { drawFrame(); return; }
-  static const float steps[] = {0.62f, 0.32f, 0.12f, 0.0f};   // eased: quick, then settles
-  for (float f : steps) { ringRot = (360.0f / MENU_N) * f; drawFrame(); }
-  ringRot = 0;
+void moveCursor(int to) {   // just the arrow and the bottom box, straight to the screen (no full redraw)
+  if (to == menuSel) return;
+  if (!banded || gfx != lcd) { menuSel = to; drawFrame(); return; }
+  menuArrow(menuSel, rgb(0xfffdf4));
+  menuSel = to;
+  menuArrow(menuSel, INK);
+  menuDesc();
 }
 
 // ---------------------------------------------------------------- today: everything you track, in pages
@@ -2217,8 +2228,8 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       else setScreen(false);
       break;
     case V_MENU:
-      if (b == 0) turnRing();
-      else if (b == 2) transition(V_HOME, false);
+      if (b == 0) moveCursor((menuSel + 1) % MENU_ROWS);
+      else if (b == 2 || menuSel == MENU_N) transition(V_HOME, false);   // A, or EXIT
       else if (menuSel == M_FEED) {   // straight back to Mochi: fed, or a word about when he eats
         view = V_HOME;
         if (hungryNow().length() && !asleep()) feed();
@@ -2369,15 +2380,13 @@ void onTap(int x, int y) {
       if (canUndo() && y >= 56 && y < 116) { undoLog(); return; }
       if (x >= PX && x < PX + 16 * SCALE && y >= PY && y < PY + 16 * SCALE + 10) { act(1); return; }   // pet
       act(0); return;                                                                                   // menu
-    case V_MENU: {   // tap a button: the top one opens, another one rolls up; Mochi or the title: back
-      if (top || (x >= 88 && x < 152 && y >= 128 && y < 192)) { act(2); return; }
-      for (int i = 0; i < MENU_N; i++) {
-        int bx, by; float t; ringPos(i, bx, by, t);
-        if ((x - bx) * (x - bx) + (y - by) * (y - by) > 26 * 26) continue;
-        if (i == menuSel) act(1);
-        else { tuneClick(); while (menuSel != i) turnRing(); }
+    case V_MENU: {   // tap a choice: picks it, tap it again: opens it; anywhere else: back
+      if (x >= MB_X && x < MB_X + MB_W && y >= MB_Y + 8 && y < MB_Y + 8 + MENU_ROWS * ROW_H) {
+        int i = (y - MB_Y - 8) / ROW_H;
+        if (i == menuSel) act(1); else { tuneClick(); moveCursor(i); }
         return;
       }
+      if (y < DB_Y) act(2);
       return;
     }
     case V_LOG: {
