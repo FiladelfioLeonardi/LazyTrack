@@ -568,7 +568,8 @@ int httpOnce(const String &method, const String &path, const String &payload, St
   int code = method == "POST" ? h.POST(payload) : method == "GET" ? h.GET() : h.sendRequest(method.c_str(), payload);
   body = code > 0 ? h.getString() : "";
   h.end();
-  if (code < 0) tls.stop();   // a broken connection: start fresh next time
+  tls.stop();   // close it ourselves once the answer is read: a kept-open connection the server had quietly dropped
+                // made the next request wait in vain (-11 after 35 s), and the one after fail (-1)
   if (code < 0 && bleLinked) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // WiFi without internet: try the phone
   return code;
 }
