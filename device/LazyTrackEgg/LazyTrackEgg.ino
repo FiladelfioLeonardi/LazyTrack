@@ -551,11 +551,11 @@ int httpRaw(const String &method, const String &path, const String &payload, Str
 
 int httpOnce(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer) {
   if (WiFi.status() != WL_CONNECTED) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // through the phone
-  // One secure connection, kept open between requests: setting one up costs ~45 KB of memory and a second or
-  // two every time, which with Bluetooth on often didn't fit (-1) or timed out (-11).
-  static HTTPClient h;
-  static bool ready = false;
-  if (!ready) { h.setReuse(true); h.setTimeout(8000); ready = true; }
+  // A fresh secure connection per request, closed right after: kept open, it held ~40 KB of memory all the time,
+  // which left too little for Bluetooth pairing and crashed in the middle of a connection.
+  HTTPClient h;
+  h.setReuse(false);
+  h.setTimeout(8000);
   if (!h.begin(tls, String(SUPA_URL) + path)) { tls.stop(); return -1; }
   h.addHeader("apikey", SUPA_KEY);
   h.addHeader("Content-Type", "application/json");
@@ -563,8 +563,8 @@ int httpOnce(const String &method, const String &path, const String &payload, St
   if (prefer) h.addHeader("Prefer", prefer);
   int code = method == "POST" ? h.POST(payload) : method == "GET" ? h.GET() : h.sendRequest(method.c_str(), payload);
   body = code > 0 ? h.getString() : "";
-  h.end();                    // keeps the connection open for the next request
-  if (code < 0) tls.stop();   // something went wrong: start fresh next time
+  h.end();
+  tls.stop();   // memory back right away
   if (code < 0 && bleLinked) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // WiFi without internet: try the phone
   return code;
 }
@@ -2007,7 +2007,7 @@ void setup() {
   esp_task_wdt_config_t wdt = {.timeout_ms = 20000, .idle_core_mask = 1 << 0, .trigger_panic = true};
   esp_task_wdt_reconfigure(&wdt);
 #endif
-  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 0, nullptr, 0);
+  xTaskCreatePinnedToCore(netTask, "net", 16384, nullptr, 0, nullptr, 0);   // a secure connection needs a deep stack
 }
 
 // ---------------------------------------------------------------- the network task (core 0)
