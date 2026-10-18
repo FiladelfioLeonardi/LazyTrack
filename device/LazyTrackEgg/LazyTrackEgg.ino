@@ -502,16 +502,20 @@ int http(const String &method, const String &path, const String &payload, String
 
 int httpRaw(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer) {
   if (WiFi.status() != WL_CONNECTED) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // through the phone
-  HTTPClient h;
-  h.setTimeout(12000);
-  if (!h.begin(tls, String(SUPA_URL) + path)) return -1;
+  // One secure connection, kept open between requests: setting one up costs ~45 KB of memory and a second or
+  // two every time, which with Bluetooth on often didn't fit (-1) or timed out (-11).
+  static HTTPClient h;
+  static bool ready = false;
+  if (!ready) { h.setReuse(true); h.setTimeout(12000); ready = true; }
+  if (!h.begin(tls, String(SUPA_URL) + path)) { tls.stop(); return -1; }
   h.addHeader("apikey", SUPA_KEY);
   h.addHeader("Content-Type", "application/json");
   if (auth && token.length()) h.addHeader("Authorization", "Bearer " + token);
   if (prefer) h.addHeader("Prefer", prefer);
   int code = method == "POST" ? h.POST(payload) : method == "GET" ? h.GET() : h.sendRequest(method.c_str(), payload);
   body = code > 0 ? h.getString() : "";
-  h.end();
+  h.end();                    // keeps the connection open for the next request
+  if (code < 0) tls.stop();   // something went wrong: start fresh next time
   if (code < 0 && bleLinked) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // WiFi without internet: try the phone
   return code;
 }
