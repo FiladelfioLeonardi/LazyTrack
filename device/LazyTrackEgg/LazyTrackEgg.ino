@@ -45,6 +45,15 @@
 #define BTN_B 33
 #define BTN_C 25
 #define PIN_BUZZ 26  // passive buzzer: + to this pin, - to GND
+// Touch (the screen's T_ pins, an XPT2046 chip). Its own pins, so it never fights the screen for the wires.
+// Set T_IRQ to -1 if the touch pins aren't connected.
+#define T_CLK 14
+#define T_CS 21
+#define T_DIN 13
+#define T_DO 35      // input-only pin: fine, it only listens
+#define T_IRQ 27     // goes LOW while a finger is on the screen
+bool tcalOk = false;
+int tcSwap = 0, tcX0 = 0, tcX1 = 1, tcY0 = 0, tcY1 = 1;   // raw readings at screen x = 20 / 220 and y = 20 / 300
 // SPI speed for the screen. 27 MHz is steady over breadboard jumper wires. Once it's soldered with short
 // wires (in the case), try 40000000: everything gets ~1.5x faster. White screen = too fast, go back.
 #define SPI_HZ 27000000
@@ -1176,6 +1185,11 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     text(20, 176, "MENUS: C next   B ok    A back", 1, GREY);
     text(20, 200, "B here  sync now", 1, GREY);
     text(20, 216, "C here  legendary cool move (test)", 1, GREY);
+    if (T_IRQ >= 0) {
+      text(20, 240, "TOUCH: tap = pick, again = open,", 1, GREY);
+      text(20, 254, "top bar = back. Hold here 3 s to", 1, GREY);
+      text(20, 268, "set up touch again.", 1, GREY);
+    }
   }
 }
 
@@ -1235,6 +1249,14 @@ void setup() {
   scrollSetup();
   Serial.printf("screen buffer: %d rows per band\n", banded ? band.bh : 0);
   prefs.begin("lazytrack", false);
+  if (T_IRQ >= 0) {
+    pinMode(T_CLK, OUTPUT); pinMode(T_CS, OUTPUT); pinMode(T_DIN, OUTPUT); pinMode(T_DO, INPUT); pinMode(T_IRQ, INPUT_PULLUP);
+    digitalWrite(T_CS, HIGH); digitalWrite(T_CLK, LOW);
+    tcalOk = prefs.getBool("tok", false);
+    tcSwap = prefs.getInt("tcs", 0); tcX0 = prefs.getInt("tx0", 0); tcX1 = prefs.getInt("tx1", 1);
+    tcY0 = prefs.getInt("ty0", 0); tcY1 = prefs.getInt("ty1", 1);
+    if (tcX1 == tcX0 || tcY1 == tcY0) tcalOk = false;
+  }
   refresh = prefs.getString("refresh", "");
   uid = prefs.getString("uid", "");
   tls.setInsecure();  // a pocket toy: skip certificate checks (the server still needs your login)
@@ -1322,9 +1344,14 @@ int role(int phys) {
   return phys == 2 ? 0 : phys == 1 ? 1 : 2;                         // C next, B ok, A back
 }
 
+void act(int b);
+
 void onButton(int phys) {
   if (!screenOn) { setScreen(true); drawFrame(); return; }   // any button wakes it up
-  int b = role(phys);
+  act(role(phys));
+}
+
+void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (buttons and taps both end up here)
   if (!(view == V_HOME && b == 1)) tuneClick();               // petting has its own chirp
   switch (view) {
     case V_HOME:
@@ -1360,7 +1387,7 @@ void onButton(int phys) {
       break;
     case V_INFO:
       if (b == 1) { status = "Syncing..."; drawFrame(); sync(); checkPokes(); tuneClick(); if (view == V_INFO) drawFrame(); break; }
-      if (phys == 2) { transition(V_HOME, false); playCool(); break; }   // C: try the legendary cool move
+      if (b == 0) { transition(V_HOME, false); playCool(); break; }   // C: try the legendary cool move
       if (b == 2 || b == 0) transition(V_MENU, false);
       break;
     case V_STATS:
@@ -1377,10 +1404,153 @@ void onButton(int phys) {
   }
 }
 
+// ---------------------------------------------------------------- touch
+// Tap to pick, tap the picked one again to open it, tap the top bar to go back. On Home: tap Mochi to pet,
+// anywhere else for the menu. The first touch ever asks you to tap 3 targets (calibration, saved);
+// hold a finger on the Info screen for 3 seconds to do it again.
+
+int tpXfer(uint8_t cmd) {   // one 12-bit reading from the touch chip, bit by bit
+  digitalWrite(T_CS, LOW);
+  for (int i = 7; i >= 0; i--) {
+    digitalWrite(T_DIN, (cmd >> i) & 1); delayMicroseconds(1);
+    digitalWrite(T_CLK, HIGH); delayMicroseconds(1); digitalWrite(T_CLK, LOW);
+  }
+  delayMicroseconds(2);
+  int v = 0;
+  for (int i = 0; i < 16; i++) {
+    digitalWrite(T_CLK, HIGH); delayMicroseconds(1);
+    v = (v << 1) | digitalRead(T_DO);
+    digitalWrite(T_CLK, LOW); delayMicroseconds(1);
+  }
+  digitalWrite(T_CS, HIGH);
+  return (v >> 3) & 0xFFF;
+}
+
+bool touchRaw(int &a, int &b) {   // a finger on the screen? raw channel readings, averaged
+  if (T_IRQ < 0 || digitalRead(T_IRQ) == HIGH) return false;
+  int z = tpXfer(0xB0) + 4095 - tpXfer(0xC0);   // pressure
+  if (z < 250) return false;
+  long sa = 0, sb = 0;
+  for (int i = 0; i < 4; i++) { sa += tpXfer(0xD0); sb += tpXfer(0x90); }
+  if (digitalRead(T_IRQ) == HIGH) return false;  // lifted while reading: don't trust it
+  a = sa / 4; b = sb / 4;
+  return true;
+}
+
+bool touchAt(int &x, int &y) {   // a finger on the screen, in screen pixels
+  int a, b;
+  if (!touchRaw(a, b)) return false;
+  int rx = tcSwap ? b : a, ry = tcSwap ? a : b;
+  x = constrain(20 + (long)(rx - tcX0) * 200 / (tcX1 - tcX0), 0, 239);
+  y = constrain(20 + (long)(ry - tcY0) * 280 / (tcY1 - tcY0), 0, 319);
+  return true;
+}
+
+bool calTarget(int x, int y, int &a, int &b) {   // false = a button was pressed (cancel)
+  gfx = lcd;
+  lcd->fillScreen(BG);
+  panel(14, 120, 211, 74);
+  text(28, 132, "TAP THE +", 2, INK);
+  text(28, 156, "Tap the middle of the cross,", 1, GREY);
+  text(28, 170, "a fingernail works best.", 1, GREY);
+  lcd->drawFastHLine(x - 12, y, 25, RED); lcd->drawFastVLine(x, y - 12, 25, RED); lcd->drawCircle(x, y, 7, INK);
+  int ra, rb;
+  uint32_t t = millis();
+  while (touchRaw(ra, rb) && millis() - t < 5000) delay(10);   // let go of the last tap first
+  delay(150);
+  long sa = 0, sb = 0; int n = 0;
+  while (n < 12) {
+    if (btnQueue) return false;
+    if (touchRaw(ra, rb)) { sa += ra; sb += rb; n++; }
+    else if (n) { sa = sb = 0; n = 0; }   // only a steady press counts
+    delay(15);
+  }
+  a = sa / n; b = sb / n;
+  tuneClick();
+  return true;
+}
+
+void calibrate() {
+  if (!screenOn) setScreen(true);
+  coolStart = 0;
+  int a1, b1, a2, b2, a3, b3;
+  bool ok = calTarget(20, 20, a1, b1) && calTarget(220, 20, a2, b2) && calTarget(20, 300, a3, b3);
+  if (ok) {
+    int swap = abs(b2 - b1) > abs(a2 - a1);   // moving right changed the "y" channel: the chip is turned
+    int x0 = swap ? b1 : a1, x1 = swap ? b2 : a2, y0 = swap ? a1 : b1, y1 = swap ? a3 : b3;
+    if (abs(x1 - x0) > 400 && abs(y1 - y0) > 400) {
+      tcSwap = swap; tcX0 = x0; tcX1 = x1; tcY0 = y0; tcY1 = y1; tcalOk = true;
+      prefs.putInt("tcs", tcSwap); prefs.putInt("tx0", tcX0); prefs.putInt("tx1", tcX1);
+      prefs.putInt("ty0", tcY0); prefs.putInt("ty1", tcY1); prefs.putBool("tok", true);
+      tuneGood();
+      showMsg("TOUCH ON", "tap Mochi to pet, anywhere for the menu", 4000);
+    } else showMsg("TRY AGAIN", "touch didn't read right, tap again", 4000);
+  }
+  noInterrupts(); btnQueue = 0; interrupts();
+  view = V_HOME; drawFrame();
+}
+
+void onTap(int x, int y) {
+  if (!screenOn) { setScreen(true); drawFrame(); return; }
+  if (coolStart) return;
+  bool top = y < 44;   // the title bar: back
+  switch (view) {
+    case V_HOME:
+      if (undoId && millis() < msgUntil && y >= 60 && y < 120) { tuneClick(); undoLog(); return; }
+      if (x >= PX && x < PX + 16 * SCALE && y >= PY && y < PY + 16 * SCALE + 10) { act(1); return; }   // pet
+      act(0); return;                                                                                   // menu
+    case V_MENU:
+      if (x > 196) { act(2); return; }
+      for (int i = 0; i < 4; i++) if (y >= 66 + i * 58 && y < 116 + i * 58) { menuSel = i; act(1); return; }
+      return;
+    case V_LOG: {
+      if (top || !nhabits) { act(2); return; }
+      int first = logSel >= 9 ? logSel - 8 : 0, i = first + (y - 44) / 27;
+      if (y > 290 || i >= nhabits) return;
+      if (i == logSel) act(1); else { logSel = i; tuneClick(); drawFrame(); }
+      return;
+    }
+    case V_FRIENDS:
+      if (top || !nfriends) { act(2); return; }
+      if (x >= PX && x < PX + 16 * SCALE && y >= PY && y < PY + 16 * SCALE) { act(1); return; }   // poke
+      act(0); return;                                                                             // next friend
+    case V_STATS: {
+      if (top || !ntoday) { act(2); return; }
+      int r = (y - 46) / 24, i = (todaySel / 10) * 10 + r;
+      if (y < 46 || r >= 10 || i >= ntoday) return;
+      if (i == todaySel) act(1); else { todaySel = i; tuneClick(); drawFrame(); }
+      return;
+    }
+    case V_CMP: act(top ? 2 : 0); return;   // tap: next stat
+    case V_INFO: act(top ? 2 : 1); return;  // tap: sync now
+  }
+}
+
+void pollTouch() {
+  if (T_IRQ < 0) return;
+  static uint32_t last = 0, t0 = 0;
+  static bool down = false, held = false;
+  static int sx = 0, sy = 0, ups = 0;
+  if (millis() - last < 15) return;
+  last = millis();
+  int x, y;
+  bool now = tcalOk ? touchAt(x, y) : digitalRead(T_IRQ) == LOW;
+  if (now && !tcalOk) { calibrate(); return; }   // the very first touch: set it up
+  if (now) {
+    ups = 0;
+    if (!down) { down = true; held = false; t0 = millis(); sx = x; sy = y; }
+    else if (!held && view == V_INFO && millis() - t0 > 3000) { held = true; down = false; calibrate(); }
+  } else if (down && ++ups >= 2) {   // lifted (2 readings in a row, so a flicker isn't a new tap)
+    down = false;
+    if (!held && millis() - t0 < 1500) onTap(sx, sy);
+  }
+}
+
 void loop() {
   static uint32_t tick = 0, nextBlink = 4000, blinkEnd = 0;
   int b = pressed();
   if (b >= 0) onButton(b);
+  pollTouch();
 
   if (millis() - lastTry > 30000) {   // every 30 s: LazyTrack sends changes (drunk, high, sober...) within a minute
     int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat + card.nowLabel;

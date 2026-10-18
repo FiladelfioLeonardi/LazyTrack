@@ -32,7 +32,20 @@ It logs into your LazyTrack account over WiFi and reads your friend card every m
 | Button C (next / screen off) | GPIO 25, other leg to GND |
 | Buzzer + | GPIO 26 (buzzer - to GND) |
 
-Buttons need no resistors: the ESP32's own pull-ups are used. Touch pins on the screen (T_CLK, T_CS...) and the SD card pins stay unconnected.
+| Touch pin (screen) | ESP32 pin |
+|---|---|
+| T_CLK | GPIO 14 |
+| T_CS | GPIO 21 |
+| T_DIN | GPIO 13 |
+| T_DO | GPIO 35 |
+| T_IRQ | GPIO 27 |
+
+Buttons need no resistors: the ESP32's own pull-ups are used. The SD card pins stay unconnected.
+Touch is optional: without the T_ wires everything works with the buttons (or set `T_IRQ` to -1).
+
+**Touch:** the first time you touch the screen it shows 3 crosses to tap (so it knows where your finger is; saved).
+Then: tap to pick something, tap it again to open it, tap the top bar to go back. On Home, tap Mochi to pet,
+anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up again, hold a finger on the Info screen for 3 s.
 
 ## Arduino IDE, step by step
 
