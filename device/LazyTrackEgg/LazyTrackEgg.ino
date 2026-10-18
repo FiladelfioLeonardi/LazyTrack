@@ -7,9 +7,9 @@
   the friends server every minute, so it works anywhere with WiFi (a phone hotspot too).
 
   Buttons (like a Tamagotchi):  A = pet / back   B = menu / OK   C = next
-    Home:     B opens the menu, A pets Mochi (hearts!), C turns the screen off (any button wakes it)
-    Menu:     Log something (cigarette, water, gym... whatever you track), Friends (see their Mochi,
-              poke them), Today's stats, Info
+    Home:     B opens the menu, A pets Mochi (hearts!) or feeds him, C turns the screen off (any button wakes it)
+    Menu:     a ring around Mochi (C turns it, B opens): Log something (cigarette, water, gym... whatever you
+              track), Feed, Friends (see their Mochi, poke them), Today's stats, Phone (pairing), Info
   Friends poking you make the egg buzz. Logs go to LazyTrack within a minute (needs supabase/egg.sql).
 
   Setup: see README.md next to this folder. Short version:
@@ -74,6 +74,8 @@ SemaphoreHandle_t httpLock;            // one request at a time (they share the 
 volatile bool needRedraw = false;      // the network task got news: the screen redraws it
 volatile bool netKick = false;         // do a sync right away (after a log, Info B, the phone connecting...)
 volatile bool habitsKick = false, friendsKick = false;
+volatile uint8_t eggCmd = 0;           // from LazyTrack on your computer / phone: 1 = sing, 2 = find my egg
+#define FW_VERSION "2026.10.18"
 
 // the friends server (same as the app; this key is the public one made to sit in apps)
 static const char *SUPA_URL = "https://zmrzumltciteeznzjwaw.supabase.co";
@@ -231,6 +233,11 @@ static const Note SONG_MOCHI[] = {   // Mochi's song: bouncy, a bit proud of him
 static const Note SONG_LULLABY[] = {   // falling asleep: slow and soft
   {N_E5, 380}, {N_G5, 380}, {N_E5, 380}, {N_D5, 760}, {0, 120}, {N_C5, 380}, {N_D5, 380}, {N_E5, 380}, {N_G4, 760}, {0, 120},
   {N_A4, 380}, {N_C5, 380}, {N_E5, 380}, {N_D5, 570}, {N_C5, 900}};
+static const Note SONG_FIND[] = {   // "find my egg": loud chirps for ~8 s (any button stops it)
+  {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420},
+  {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420},
+  {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420},
+  {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_C6, 90}, {N_E6, 90}, {N_G5, 90}, {N_C6, 300}};
 static const Note SONG_WAKE[] = {{N_C5, 90}, {N_G5, 90}, {N_C6, 90}, {0, 60}, {N_E6, 220}};   // good morning!
 const Note *songNotes = nullptr;
 int songLen = 0, songAt = 0;
@@ -260,7 +267,7 @@ void tuneLove() { beep(1047, 80); beep(1319, 80); beep(1568, 80); beep(2093, 160
 #define EGG_TX "6c740002-8f3b-4a2e-9d1c-3b5a7e0f4c21"
 #define EGG_RX "6c740003-8f3b-4a2e-9d1c-3b5a7e0f4c21"
 NimBLECharacteristic *bleTx = nullptr;
-// Only YOUR phone: a new phone can pair only while you put the egg in pairing mode (Info → C → B), and both
+// Only YOUR phone: a new phone can pair only while you put the egg in pairing mode (Menu → Phone → B), and both
 // screens show the same 6-digit code that you confirm on the egg (B) and on the phone (Pair). The rest of the
 // time the egg only talks to phones it already knows; anything else is turned away.
 volatile bool bleLinked = false;      // a known phone is connected, the link encrypted + confirmed with the code
@@ -305,7 +312,7 @@ class EggServerCb : public NimBLEServerCallbacks {
       Serial.println("Bluetooth: your phone, online through it");
     } else if (c.isEncrypted()) {                   // paired the old way (no code): not good enough anymore
       bleOldAddr = c.getIdAddress(); bleOldBond = true; bleDrop = true;
-      Serial.println("Bluetooth: phone paired without a code: forgetting it, pair again (Info > C > B)");
+      Serial.println("Bluetooth: phone paired without a code: forgetting it, pair again (Menu > Phone > B)");
     } else {
       bleDrop = true;
       Serial.println("Bluetooth: pairing refused or failed");
@@ -1267,6 +1274,37 @@ void panel(int x, int y, int w, int h) {  // the app's card look: white, thick d
   gfx->drawRoundRect(x + 1, y + 1, w - 2, h - 2, 9, INK);
 }
 
+// Home's HUD pieces
+void darkBox(int x, int y, int w, int h) {   // see-through dark box (78% of the outline color over the scene)
+  if (gfx == &band) {
+    uint16_t base = rgb(0x161418);
+    for (int yy = max(y, (int)band.oy); yy < min(y + h, band.oy + band.bh); yy++)
+      for (int xx = x; xx < x + w; xx++) { uint16_t &p = band.fb[(yy - band.oy) * 240 + xx]; p = ((p >> 2) & 0x39E7) + base; }
+  } else gfx->fillRect(x, y, w, h, INK);
+  gfx->drawRoundRect(x, y, w, h, 4, INK); gfx->drawRoundRect(x + 1, y + 1, w - 2, h - 2, 3, INK);
+}
+
+void heart(int x, int y, int fill) {   // a 7x6 pixel heart at 2x: 0 empty, 1 half, 2 full
+  static const uint8_t H[6] = {0x6C, 0xFE, 0xFE, 0x7C, 0x38, 0x10};
+  uint16_t off = rgb(0x5a5266);
+  for (int r = 0; r < 6; r++) for (int c = 0; c < 7; c++)
+    if (H[r] & (0x80 >> c)) gfx->fillRect(x + c * 2, y + r * 2, 2, 2, fill == 2 || (fill == 1 && c < 4) ? RED : off);
+}
+
+int chip(int x, int y, const String &s, uint16_t fill) {   // a little label; returns its width
+  int w = 10 + s.length() * 6;
+  gfx->fillRoundRect(x, y, w, 15, 3, fill);
+  gfx->drawRoundRect(x, y, w, 15, 3, INK); gfx->drawRoundRect(x + 1, y + 1, w - 2, 13, 2, INK);
+  text(x + 5, y + 4, s, 1, INK);
+  return w;
+}
+
+void hint(int cx, const String &s) {   // the tiny button hints along the bottom (light, with a dark edge)
+  int x = cx - s.length() * 3;
+  text(x + 1, 307, s, 1, INK);
+  text(x, 306, s, 1, CARD);
+}
+
 // a list in the app's card style, the picked row in yellow
 void drawList(const char *title, const String *items, const bool *dots, const bool *bad, int n, int sel, const char *hint) {
   drawBackground();
@@ -1284,71 +1322,106 @@ void drawList(const char *title, const String *items, const bool *dots, const bo
   text(20, 296, hint, 1, GREY);
 }
 
-// ---------------------------------------------------------------- the menu: a drawer over your (dimmed) Mochi
-void menuIcon(int i, int x, int y, bool on) {
-  uint16_t fill = on ? CARD : SOFT;
-  if (i == 0) {          // Log: a little notepad with a plus
-    gfx->fillRoundRect(x, y, 28, 28, 6, rgb(0xff8fb1)); gfx->drawRoundRect(x, y, 28, 28, 6, INK);
-    gfx->fillRect(x + 12, y + 6, 4, 16, INK); gfx->fillRect(x + 6, y + 12, 16, 4, INK);
-  } else if (i == 1) {   // Friends: two little heads
-    gfx->fillCircle(x + 9, y + 10, 6, rgb(0x9be8a9)); gfx->drawCircle(x + 9, y + 10, 6, INK);
-    gfx->fillCircle(x + 20, y + 12, 6, rgb(0xbfe9ff)); gfx->drawCircle(x + 20, y + 12, 6, INK);
-    gfx->fillRoundRect(x + 1, y + 18, 16, 10, 5, rgb(0x9be8a9)); gfx->drawRoundRect(x + 1, y + 18, 16, 10, 5, INK);
-    gfx->fillRoundRect(x + 12, y + 20, 16, 8, 4, rgb(0xbfe9ff)); gfx->drawRoundRect(x + 12, y + 20, 16, 8, 4, INK);
-  } else if (i == 2) {   // Today: bars
-    gfx->fillRoundRect(x, y, 28, 28, 6, fill); gfx->drawRoundRect(x, y, 28, 28, 6, INK);
-    gfx->fillRect(x + 5, y + 15, 5, 8, rgb(0xffe45e)); gfx->drawRect(x + 5, y + 15, 5, 8, INK);
-    gfx->fillRect(x + 12, y + 9, 5, 14, rgb(0x9be8a9)); gfx->drawRect(x + 12, y + 9, 5, 14, INK);
-    gfx->fillRect(x + 19, y + 5, 5, 18, rgb(0xc9b8ff)); gfx->drawRect(x + 19, y + 5, 5, 18, INK);
-  } else {               // Info: an "i"
-    gfx->fillCircle(x + 14, y + 14, 13, rgb(0xbfe9ff)); gfx->drawCircle(x + 14, y + 14, 13, INK);
-    gfx->fillRect(x + 12, y + 6, 4, 4, INK); gfx->fillRect(x + 12, y + 12, 4, 11, INK);
+// ---------------------------------------------------------------- the menu: a ring of round buttons around Mochi
+// Six round buttons circle a smaller Mochi over the dimmed scene. C turns the ring (the picked one rolls to the top,
+// big and yellow), B opens it, A goes back. Its name and a live line about it sit at the top.
+static const int MENU_N = 6;
+enum { M_LOG, M_FEED, M_FRIENDS, M_TODAY, M_PHONE, M_INFO };
+static const char *MENU_NAMES[MENU_N] = {"LOG", "FEED", "FRIENDS", "TODAY", "PHONE", "INFO"};
+static const uint8_t MENU_ICONS[MENU_N][8] = {   // 8x8 pixel icons
+  {0x7C, 0x46, 0x52, 0x7A, 0x52, 0x42, 0x7E, 0x00},   // a note with a plus
+  {0x00, 0x18, 0x24, 0xFF, 0x81, 0x81, 0x42, 0x3C},   // a bowl
+  {0x00, 0x66, 0x99, 0x66, 0x00, 0xFF, 0x99, 0xFF},   // two friends
+  {0x00, 0x02, 0x02, 0x12, 0x12, 0x92, 0x92, 0xFF},   // bars
+  {0x3C, 0x24, 0x24, 0x24, 0x24, 0x3C, 0x2C, 0x3C},   // a phone
+  {0x18, 0x00, 0x38, 0x18, 0x18, 0x18, 0x3C, 0x00}};  // an "i"
+static const int RING_X = 120, RING_Y = 160, RING_R = 88;
+float ringRot = 0;   // degrees, while the ring turns (0 = at rest)
+
+void pixIcon(const uint8_t *rows, int cx, int cy, int sc, uint16_t col) {
+  for (int y = 0; y < 8; y++) for (int x = 0; x < 8; x++)
+    if (rows[y] & (0x80 >> x)) gfx->fillRect(cx - 4 * sc + x * sc, cy - 4 * sc + y * sc, sc, sc, col);
+}
+
+String nextMeal() {   // "NEXT: LUNCH 13:05" from LazyTrack's plan, or ""
+  if (!card.hasPlan || !clockOk()) return "";
+  long d = dayNow() - card.planDay;
+  if (d < 0 || d > 1) return "";
+  int m = minuteNow();
+  for (int i = 0; i < card.nmeals[d]; i++) {
+    const Card::Meal &x = card.meals[d][i];
+    if (x.s > m && !x.fed) {
+      char t[8]; snprintf(t, sizeof t, "%02d:%02d", x.s / 60, x.s % 60);
+      String n = mealName(x.n); n.toUpperCase();
+      return "NEXT: " + n + " " + t;
+    }
+  }
+  return "";
+}
+
+String ringSub(int i) {   // the live line under the name
+  int onl = 0; for (int k = 0; k < nfriends; k++) onl += friends[k].online;
+  String h = hungryNow(); h.toUpperCase();
+  switch (i) {
+    case M_LOG: return nhabits ? String(nhabits) + (nhabits == 1 ? " HABIT TO LOG" : " HABITS TO LOG") : String("SET UP IN THE APP");
+    case M_FEED: return asleep() ? String("SHH, HE'S SLEEPING") : h.length() ? "HUNGRY FOR " + h : nextMeal().length() ? nextMeal() : String("NOT HUNGRY NOW");
+    case M_FRIENDS: return nfriends ? String(onl) + " ONLINE" : String("ADD SOME IN THE APP");
+    case M_TODAY: { String t = card.tierName; t.toUpperCase(); return "HP " + String(card.hp) + " - " + t; }
+    case M_PHONE: return bleLinked ? String("CONNECTED") : NimBLEDevice::getNumBonds() ? String("PAIRED, NOT NEAR") : String("NOT PAIRED YET");
+    default: { String n = online() ? netName() : String("offline"); n.toUpperCase(); return n.substring(0, 30); }
   }
 }
 
-void dimBand(uint8_t level) {   // darkens what's already in the band: 1 = a bit, 2 = half
-  if (gfx != &band) return;
-  for (int i = 0; i < 240 * band.bh; i++) {
-    uint16_t p = band.fb[i];
-    band.fb[i] = level >= 2 ? (p >> 1) & 0x7BEF : p - ((p >> 2) & 0x39E7);
-  }
+void ringPos(int i, int &x, int &y, float &top) {   // where button i sits right now; top: 1 at the top, 0 a step away or more
+  float a = -90 + ((i - menuSel + MENU_N) % MENU_N) * (360.0f / MENU_N) + ringRot;
+  if (a > 180) a -= 360;
+  x = RING_X + (int)lroundf(cosf(a * PI / 180) * RING_R);
+  y = RING_Y + (int)lroundf(sinf(a * PI / 180) * RING_R);
+  top = max(0.0f, 1 - fabsf(a + 90) / 60);
 }
 
-uint8_t menuDim = 2;
 void drawMenu() {
   int16_t slide = band.ox;
   band.ox = 0;
   drawBackground();
-  drawStage(0, false, false, true);    // your Mochi stays there, dimmed, behind the drawer
-  dimBand(menuDim);
-  band.ox = slide;
-  const int W = 196;
-  gfx->fillRoundRect(-12 + 4, 4 + 4, W + 12, 312, 14, INK);   // hard shadow, like the app's cards
-  gfx->fillRoundRect(-12, 4, W + 12, 312, 14, CARD);
-  gfx->drawRoundRect(-12, 4, W + 12, 312, 14, INK);
-  gfx->drawRoundRect(-11, 5, W + 10, 310, 13, INK);
-  text(16, 18, "MENU", 3, INK);
-  text(16, 46, card.name.substring(0, 24), 1, GREY);
-  int onl = 0; for (int i = 0; i < nfriends; i++) onl += friends[i].online;
-  static const char *names[] = {"Log", "Friends", "Today", "Info"};
-  String subs[4] = {nhabits ? String(nhabits) + " habits" : String("set up in the app"),
-                    nfriends ? String(onl) + " online" : String("add some in the app"),
-                    "HP " + String(card.hp) + " - " + card.tierName,
-                    online() ? netName().substring(0, 18) : String("offline")};
-  for (int i = 0; i < 4; i++) {
-    int y = 66 + i * 58;
-    bool on = i == menuSel;
-    if (on) {
-      gfx->fillRoundRect(10 + 3, y + 3, W - 20, 50, 10, INK);
-      gfx->fillRoundRect(10, y, W - 20, 50, 10, YELLOW);
-      gfx->drawRoundRect(10, y, W - 20, 50, 10, INK);
-    }
-    menuIcon(i, 20, y + 11, on);
-    text(58, y + 10, names[i], 2, INK);
-    text(58, y + 32, subs[i], 1, on ? INK : GREY);
-    if (on) gfx->fillTriangle(W - 22, y + 18, W - 22, y + 32, W - 14, y + 25, INK);
+  if (gfx == &band) {   // the scene at 25% over a deep purple (#2b2246)
+    uint16_t base = rgb(0x201a34);
+    for (int k = 0; k < 240 * band.bh; k++) band.fb[k] = ((band.fb[k] >> 2) & 0x39E7) + base;
   }
-  text(16, 300, "C next  B open  A back", 1, GREY);
+  band.ox = slide;
+  // Mochi, smaller, in the middle
+  static uint16_t cell[16][16];
+  mochiNow(cell, framePx(false, false), CoolF{false, 0, -1, false, false});
+  for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) if (cell[cy][cx]) gfx->fillRect(88 + cx * 4, 128 + cy * 4, 4, 4, cell[cy][cx]);
+  // the buttons: the ones further from the top first, so the big one is drawn over them
+  int order[MENU_N]; float tops[MENU_N];
+  for (int i = 0; i < MENU_N; i++) { int x, y; ringPos(i, x, y, tops[i]); order[i] = i; }
+  for (int i = 1; i < MENU_N; i++) for (int j = i; j > 0 && tops[order[j]] < tops[order[j - 1]]; j--) std::swap(order[j], order[j - 1]);
+  for (int k = 0; k < MENU_N; k++) {
+    int i = order[k], x, y; float top;
+    ringPos(i, x, y, top);
+    int r = 18 + (int)(5 * top);
+    bool big = top > 0.5f;
+    if (big) gfx->fillCircle(x + 2, y + 2, r, INK);   // hard shadow
+    gfx->fillCircle(x, y, r, INK);
+    gfx->fillCircle(x, y, r - 2, big ? YELLOW : CARD);
+    pixIcon(MENU_ICONS[i], x, y, big ? 3 : 2, INK);
+  }
+  // name + live line at the top, hints at the bottom
+  String t = MENU_NAMES[menuSel];
+  text((240 - t.length() * 18) / 2, 8, t, 3, CARD);
+  String sub = ringSub(menuSel).substring(0, 38);
+  text((240 - sub.length() * 6) / 2, 34, sub, 1, rgb(0xc9b8ff));
+  String hint = "C TURN  B OPEN  A BACK";
+  text((240 - hint.length() * 6) / 2, 306, hint, 1, rgb(0xbdb6cc));
+}
+
+void turnRing() {   // C: the next button rolls up to the top
+  menuSel = (menuSel + 1) % MENU_N;
+  if (!banded) { drawFrame(); return; }
+  static const float steps[] = {0.62f, 0.32f, 0.12f, 0.0f};   // eased: quick, then settles
+  for (float f : steps) { ringRot = 60 * f; drawFrame(); }
+  ringRot = 0;
 }
 
 // ---------------------------------------------------------------- today: everything you track, in pages
@@ -1494,8 +1567,9 @@ void drawFrame() {   // a whole screen, without flicker: built band by band in m
   gfx = lcd;
 }
 
-// ---------------------------------------------------------------- your phone: pairing (Info → C)
-uint32_t forgetAsk = 0;   // C pressed once: press again within 3 s to forget all phones
+// ---------------------------------------------------------------- your phone: pairing (Menu → Phone, or Info → C)
+uint32_t forgetAsk = 0;    // C pressed once: press again within 3 s to forget all phones
+int phoneBack = V_INFO;   // where A goes back to from the Phone screen (the menu or Info)
 void drawPhone() {
   drawBackground();
   panel(8, 8, 221, 304);
@@ -1517,8 +1591,8 @@ void drawPhone() {
     int left = (int)((blePairUntil - millis()) / 1000);
     gfx->fillRoundRect(16, 96, 205, 78, 10, YELLOW); gfx->drawRoundRect(16, 96, 205, 78, 10, INK);
     text(26, 106, "PAIRING MODE " + String(left / 60) + ":" + (left % 60 < 10 ? "0" : "") + String(left % 60), 2, INK);
-    text(26, 134, "Open the LazyTrack app on the", 1, INK);
-    text(26, 148, "phone (phone button > egg on)", 1, INK);
+    text(26, 134, "On the phone: LazyTrack app >", 1, INK);
+    text(26, 148, "Egg > Keep my egg online", 1, INK);
   } else {
     text(20, 100, "Only phones paired here can use", 1, GREY);
     text(20, 114, "the egg. To add one, press B and", 1, GREY);
@@ -1552,49 +1626,42 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
   }
   if (view == V_FRIENDS) { drawFriend(); return; }
   drawBackground();
-  if (view == V_HOME) {
-    String name = card.name.substring(0, 15);
-    panel(8, 8, max(150, (int)name.length() * 12 + 22), 46);
-    text(18, 16, name, 2, INK);
-    text(18, 38, "MOCHI #" + String(card.gen) + " - " + (card.age ? String(card.age) + "D OLD" : String("BORN TODAY")), 1, GREY);
-    if (millis() < msgUntil) {   // a moment's message: logged, poked, petted
+  if (view == V_HOME) {   // a game HUD over the scene: hearts + level top left, the clock top right, what's up at the bottom
+    darkBox(8, 8, 94, 24);
+    int halves = (card.hp + 5) / 10;   // 5 hearts, 20 HP each, halves too
+    for (int i = 0; i < 5; i++) heart(14 + i * 17, 14, constrain(halves - i * 2, 0, 2));
+    String tn = card.tierName; tn.toUpperCase();
+    int bw = chip(8, 36, tn, tierColor(card.tier));
+    static const char *DR[] = {"TIPSY", "DRUNK", "WASTED"}, *HI[] = {"BUZZED", "HIGH", "SO HIGH"};
+    String fx = card.drunk ? DR[constrain(card.drunk, 1, 3) - 1] : card.high ? HI[constrain(card.high, 1, 3) - 1] : card.coughy ? "COUGHING" : "";
+    if (fx.length()) chip(12 + bw, 36, fx, card.drunk ? rgb(0xffd28a) : card.high ? rgb(0x9be8a9) : rgb(0xd9d2e9));
+    darkBox(162, 8, 70, 24);
+    char clk[8] = "--:--";
+    if (clockOk()) snprintf(clk, sizeof clk, "%02d:%02d", minuteNow() / 60, minuteNow() % 60);
+    text(168, 13, clk, 2, CARD);
+    if (millis() < msgUntil) {   // a moment's message: logged, poked, fed
       int tsz = msgTitle.length() <= 10 ? 3 : 2, tw = msgTitle.length() * 6 * tsz;
       int w = constrain(max(tw, (int)min((int)msgSub.length(), 36) * 6) + 28, 120, 224);
-      panel((240 - w) / 2, 64, w, 50);
-      text((240 - tw) / 2, tsz == 3 ? 72 : 76, msgTitle, tsz, INK);
-      text((240 - (int)min((int)msgSub.length(), 36) * 6) / 2, 100, msgSub.substring(0, 36), 1, GREY);
+      panel((240 - w) / 2, 60, w, 50);
+      text((240 - tw) / 2, tsz == 3 ? 68 : 72, msgTitle, tsz, INK);
+      text((240 - (int)min((int)msgSub.length(), 36) * 6) / 2, 96, msgSub.substring(0, 36), 1, GREY);
     }
-    panel(8, 246, 221, 66);
-    text(18, 256, "HP", 2, INK);
-    int on = (card.hp + 5) / 10;
-    for (int i = 0; i < 10; i++) {
-      int x = 46 + i * 13;
-      gfx->drawRect(x, 256, 11, 14, INK);
-      if (i < on) gfx->fillRect(x + 2, 258, 7, 10, card.tier == "sick" ? RED : card.tier == "legend" ? YELLOW : GREEN);
-    }
-    text(182, 256, String(card.hp), 2, INK);
-    int bw = 10 + card.tierName.length() * 6;
-    gfx->fillRoundRect(18, 276, bw, 14, 4, YELLOW);
-    gfx->drawRoundRect(18, 276, bw, 14, 4, INK);
-    text(23, 280, card.tierName, 1, INK);
-    // how Mochi is right now, always shown: sober, tipsy/drunk/wasted, buzzed/high, coughing
-    static const char *DR[] = {"TIPSY", "DRUNK", "WASTED"}, *HI[] = {"BUZZED", "HIGH", "SO HIGH"};
-    String fx = card.drunk ? DR[constrain(card.drunk, 1, 3) - 1] : card.high ? HI[constrain(card.high, 1, 3) - 1] : card.coughy ? "COUGHING" : "SOBER";
-    if (card.drunk && card.high) fx += String(" + ") + HI[constrain(card.high, 1, 3) - 1];
-    int fw = 10 + fx.length() * 6;
-    uint16_t fcol = fx == "SOBER" ? rgb(0xc9f2d4) : card.drunk ? rgb(0xffd28a) : card.high ? rgb(0x9be8a9) : rgb(0xd9d2e9);
-    gfx->fillRoundRect(26 + bw, 276, fw, 14, 4, fcol);
-    gfx->drawRoundRect(26 + bw, 276, fw, 14, 4, INK);
-    text(31 + bw, 280, fx, 1, INK);
+    // the bar: hungry, asleep, what you're doing, or how the egg is doing
     String hn = hungryNow();
-    bool hungryNow = hn.length() && !asleep();
-    if (hungryNow && 34 + bw + fw + 46 <= 226) {   // HUNGRY chip, when it fits
-      int hx = 34 + bw + fw;
-      gfx->fillRoundRect(hx, 276, 46, 14, 4, YELLOW);
-      gfx->drawRoundRect(hx, 276, 46, 14, 4, INK);
-      text(hx + 5, 280, "HUNGRY", 1, INK);
-    }
-    text(18, 297, (hungryNow ? "Hungry! A = feed (" + hn + ")" : doing().length() ? doing() : status).substring(0, 33), 1, hungryNow ? INK : GREY);
+    bool hungry = hn.length() && !asleep();
+    String line; uint16_t dot;
+    if (hungry) { line = "HUNGRY! A = FEED"; dot = YELLOW; }
+    else if (asleep()) { line = "SLEEPING... ZZZ"; dot = rgb(0xc9b8ff); }
+    else if (doing().length()) { line = doing(); dot = GREEN; }
+    else { line = status == "Synced" || !status.length() ? String("Hanging out") : status; dot = online() ? GREEN : GREY; }
+    line.toUpperCase();
+    gfx->fillRoundRect(8 + 3, 270 + 3, 224, 26, 7, INK);
+    gfx->fillRoundRect(8, 270, 224, 26, 7, CARD);
+    gfx->drawRoundRect(8, 270, 224, 26, 7, INK); gfx->drawRoundRect(9, 271, 222, 24, 6, INK);
+    gfx->fillCircle(22, 283, 5, INK); gfx->fillCircle(22, 283, 3, dot);
+    if (line.length() <= 15) text(34, 276, line, 2, INK); else text(34, 280, line.substring(0, 32), 1, INK);
+    String ha = hungry ? "A FEED" : "A PET", hc = undoId && millis() < msgUntil ? "C UNDO" : "C OFF";
+    hint(40, ha); hint(120, "B MENU"); hint(200, hc);
     drawStage(0, false);
   } else {
     panel(8, 8, 221, 304);
@@ -1731,7 +1798,11 @@ void setup() {
 void netSync(bool all) {   // with the lock held: card, queued logs, pokes (+ habits / friends when due)
   int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy;
   String tb = card.tierName, what = card.nowWhat + card.nowLabel, rh = hungryNow() + String(asleep());
+  String wasHungry = hungryNow();
   sync();
+  if (wasHungry.length() && !hungryNow().length() && !card.hungry.length() && !fedHere(wasHungry) && view == V_HOME && screenOn && !stale()) {
+    petUntil = millis() + 1500; tuneYum(); showMsg("YUM!", "fed from LazyTrack", 3000);   // fed on the computer or phone
+  }
   if (online()) {
     flushQueue();
     checkPokes();
@@ -1746,12 +1817,65 @@ void netSync(bool all) {   // with the lock held: card, queued logs, pokes (+ ha
   if (view == V_INFO || view == V_LOG || view == V_STATS) needRedraw = true;
 }
 
+// ---- your egg on the computer / phone (supabase/egg_status.sql): how it's doing, and commands for it
+uint32_t eggCmdOff = 0;   // the tables aren't there yet: try again later
+const char *viewName() {
+  if (!screenOn) return "off";
+  static const char *N[] = {"home", "today", "info", "menu", "log", "friends", "today", "phone"};
+  return view >= 0 && view < 8 ? N[view] : "home";
+}
+
+void eggReport() {   // about once a minute: what LazyTrack shows under "Your egg"
+  if (!uid.length() || millis() < eggCmdOff) return;
+  String q = prefs.getString("queue", "");
+  int waiting = 0; for (char ch : q) if (ch == '\n') waiting++;
+  JsonDocument d;
+  d["user_id"] = uid;
+  d["seen_at"] = "now";
+  d["via"] = WiFi.status() == WL_CONNECTED ? "wifi" : "phone";
+  d["wifi"] = WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 40) : String("");
+  d["phones"] = min(20, NimBLEDevice::getNumBonds());
+  d["phone_linked"] = (bool)bleLinked;
+  d["screen"] = viewName();
+  d["asleep"] = asleep();
+  d["waiting"] = min(1000, waiting);
+  d["free_kb"] = (int)(ESP.getFreeHeap() / 1024);
+  d["fw"] = FW_VERSION;
+  String pl, body;
+  serializeJson(d, pl);
+  int code = api("POST", "/rest/v1/egg_status", pl, body, "resolution=merge-duplicates,return=minimal");
+  if (code == 404) eggCmdOff = millis() + 600000;   // egg_status.sql not run yet
+}
+
+void eggCommands() {   // "make him sing", "find my egg", "sync now" from LazyTrack
+  if (!uid.length() || millis() < eggCmdOff) return;
+  String body;
+  int code = api("GET", "/rest/v1/egg_commands?select=id,cmd,created_at&order=id.asc&limit=5", "", body);
+  if (code == 404) { eggCmdOff = millis() + 600000; return; }
+  if (code != 200) return;
+  JsonDocument d;
+  if (deserializeJson(d, body) || !d.as<JsonArray>().size()) return;
+  String ids;
+  for (JsonObject c : d.as<JsonArray>()) {
+    if (ids.length()) ids += ",";
+    ids += String((long)(c["id"] | 0));
+    time_t at = parseIso(c["created_at"] | "");
+    if (clockOk() && at && time(nullptr) - at > 600) continue;   // older than 10 min: too late to sing
+    String cmd = c["cmd"] | "";
+    if (cmd == "sing") eggCmd |= 1;
+    else if (cmd == "find") eggCmd |= 2;
+    else if (cmd == "sync") netKick = true;
+  }
+  String r;
+  api("DELETE", "/rest/v1/egg_commands?id=in.(" + ids + ")", "", r, "return=minimal");
+}
+
 void netTask(void *) {
   LOCK(); status = "Connecting to WiFi..."; UNLOCK();
   for (int i = 0; i < 20 && wifi.run(1000) != WL_CONNECTED && !bleLinked; i++) {}
   configTime(0, 0, "pool.ntp.org");  // the clock, for "coding for 25 min"
   LOCK(); netSync(true); needRedraw = true; UNLOCK();
-  uint32_t last = millis(), wifiTry = millis();
+  uint32_t last = millis(), wifiTry = millis(), reportAt = 0, cmdAt = 0;
   bool wasLinked = bleLinked;
   for (;;) {
     vTaskDelay(pdMS_TO_TICKS(200));
@@ -1775,6 +1899,8 @@ void netTask(void *) {
       }
       UNLOCK();
     }
+    if (online() && (!reportAt || millis() - reportAt > 60000)) { reportAt = millis(); LOCK(); eggReport(); UNLOCK(); }
+    if (online() && millis() - cmdAt > 12000) { cmdAt = millis(); LOCK(); eggCommands(); UNLOCK(); }
   }
 }
 
@@ -1838,6 +1964,7 @@ int role(int phys) {
 void act(int b);
 
 void onButton(int phys) {
+  if (songNotes == SONG_FIND) { songNotes = nullptr; noTone(PIN_BUZZ); msgUntil = millis(); tuneYum(); return; }   // found it
   if (!screenOn) { setScreen(true); drawFrame(); return; }   // any button wakes it up
   act(role(phys));
 }
@@ -1852,17 +1979,22 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       else setScreen(false);
       break;
     case V_MENU:
-      if (b == 0) { menuSel = (menuSel + 1) % 4; drawFrame(); }
+      if (b == 0) turnRing();
       else if (b == 2) transition(V_HOME, false);
-      else if (menuSel == 0) {
+      else if (menuSel == M_FEED) {   // straight back to Mochi: fed, or a word about when he eats
+        view = V_HOME;
+        if (hungryNow().length() && !asleep()) feed();
+        else { String n = nextMeal(); showMsg(asleep() ? "SHH..." : "NOT HUNGRY", asleep() ? "he's sleeping" : n.length() ? n : "he'll tell you when", 3000); }
+      } else if (menuSel == M_PHONE) { forgetAsk = 0; phoneBack = V_MENU; transition(V_PHONE, true); }
+      else if (menuSel == M_LOG) {
         if (!nhabits) loadHabits(); else if (millis() - habitsAt > 20000) habitsKick = true;   // fresh list in the background
         logSel = 0; transition(V_LOG, true);
-      } else if (menuSel == 1) {
+      } else if (menuSel == M_FRIENDS) {
         friendSel = 0;
         if (!friendsAt) { panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK); loadFriends(); }   // the first time only
         else if (millis() - friendsAt > 60000) friendsKick = true;
         status = ""; transition(V_FRIENDS, true);
-      } else if (menuSel == 2) {
+      } else if (menuSel == M_TODAY) {
         if (!ntoday) loadHabits(); else if (millis() - habitsAt > 20000) habitsKick = true;   // fresh numbers in the background
         todaySel = 0; transition(V_STATS, true);
       } else transition(V_INFO, true);
@@ -1879,7 +2011,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       break;
     case V_INFO:
       if (b == 1) { status = "Syncing..."; drawFrame(); netKick = true; break; }   // the network task does it (Info updates when done)
-      if (b == 0) { forgetAsk = 0; transition(V_PHONE, true); break; }   // C: your phone (pairing)
+      if (b == 0) { forgetAsk = 0; phoneBack = V_INFO; transition(V_PHONE, true); break; }   // C: your phone (pairing)
       if (b == 2 || b == 0) transition(V_MENU, false);
       break;
     case V_STATS:
@@ -1893,7 +2025,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       else if (b == 0) {
         if (forgetAsk && millis() - forgetAsk < 3000) { forgetAsk = 0; bleForgetAll(); showMsg("FORGOTTEN", "no phones paired now", 3000); }
         else { forgetAsk = millis(); drawFrame(); }
-      } else transition(V_INFO, false);
+      } else transition(phoneBack, false);
       break;
     case V_CMP:
       if (b == 0 && ntoday) { todaySel = (todaySel + 1) % ntoday; drawFrame(); }
@@ -1992,18 +2124,26 @@ void calibrate() {
 }
 
 void onTap(int x, int y) {
+  if (songNotes == SONG_FIND) { songNotes = nullptr; noTone(PIN_BUZZ); msgUntil = millis(); tuneYum(); return; }   // found it
   if (!screenOn) { setScreen(true); drawFrame(); return; }
   if (coolStart) return;
   bool top = y < 44;   // the title bar: back
   switch (view) {
     case V_HOME:
-      if (undoId && millis() < msgUntil && y >= 60 && y < 120) { tuneClick(); undoLog(); return; }
+      if (undoId && millis() < msgUntil && y >= 56 && y < 116) { tuneClick(); undoLog(); return; }
       if (x >= PX && x < PX + 16 * SCALE && y >= PY && y < PY + 16 * SCALE + 10) { act(1); return; }   // pet
       act(0); return;                                                                                   // menu
-    case V_MENU:
-      if (x > 196) { act(2); return; }
-      for (int i = 0; i < 4; i++) if (y >= 66 + i * 58 && y < 116 + i * 58) { menuSel = i; act(1); return; }
+    case V_MENU: {   // tap a button: the top one opens, another one rolls up; Mochi or the title: back
+      if (top || (x >= 88 && x < 152 && y >= 128 && y < 192)) { act(2); return; }
+      for (int i = 0; i < MENU_N; i++) {
+        int bx, by; float t; ringPos(i, bx, by, t);
+        if ((x - bx) * (x - bx) + (y - by) * (y - by) > 26 * 26) continue;
+        if (i == menuSel) act(1);
+        else { tuneClick(); while (menuSel != i) turnRing(); }
+        return;
+      }
       return;
+    }
     case V_LOG: {
       if (top || !nhabits) { act(2); return; }
       int first = logSel >= 9 ? logSel - 8 : 0, i = first + (y - 44) / 27;
@@ -2075,6 +2215,15 @@ void uiLoop() {
   if (bleNewPairing && bleNewPairing != pairShown) { pairShown = bleNewPairing; tuneUp(); showMsg("PAIRED!", "your phone keeps the egg online", 4000); }
   static uint32_t phoneTick = 0;  // the pairing countdown / connection state on the Phone screen
   if (view == V_PHONE && screenOn && millis() - phoneTick > 1000) { phoneTick = millis(); drawFrame(); }
+  if (eggCmd) {   // from LazyTrack: sing / find my egg
+    uint8_t c = eggCmd; eggCmd = 0;
+    if (!screenOn) setScreen(true);
+    coolStart = 0;
+    if (c & 2) { view = V_HOME; SING(SONG_FIND); shakeUntil = millis() + 2000; showMsg("HERE I AM!", "press any button", 8000); }
+    else if (c & 1) { if (view != V_HOME) { view = V_HOME; drawFrame(); } SING(SONG_MOCHI); }
+  }
+  static int lastMin = -1;   // the clock on Home (and "playing for 25m") move on every minute
+  if (clockOk() && minuteNow() != lastMin) { if (lastMin >= 0 && view == V_HOME && screenOn) needRedraw = true; lastMin = minuteNow(); }
   songTick();
   bleCheck();
   int b = pressed();

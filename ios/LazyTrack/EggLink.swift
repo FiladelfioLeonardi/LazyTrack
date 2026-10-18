@@ -20,6 +20,8 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
 
     @Published var status = "Off"
     @Published var relayed = 0
+    @Published var linked = false   // paired and connected right now: the egg can go online through this phone
+    var known: Bool { savedEgg != nil }
     @Published var enabled: Bool {
         didSet {
             UserDefaults.standard.set(enabled, forKey: "eggLink")
@@ -33,7 +35,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
     private var inbox = Data()
     private var outbox: [Data] = []
     private var timeSent = Date.distantPast
-    private var paired = false
+    private var paired = false { didSet { linked = paired } }
     private var pairFailed = false   // turned away: wait a bit between tries (the egg may not be in pairing mode)
     private var connectedAt = Date.distantPast
 
@@ -71,6 +73,14 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
         egg = nil
         rx = nil
         status = "Off"
+    }
+
+    /// "Forget this egg": stop using it here (iOS keeps its own pairing until you forget it in Settings → Bluetooth)
+    func forget() {
+        stop()
+        savedEgg = nil
+        paired = false
+        if enabled { DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.start() } }
     }
 
     private func connect(_ p: CBPeripheral) {
@@ -121,7 +131,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
         outbox = []
         if pairFailed {
             pairFailed = false
-            status = "Not paired. On the egg: Info → C (Phone) → B, then confirm the same number on both."
+            status = "Not paired yet. On the egg: B (menu) → PHONE → B, then confirm the same number on both."
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
                 guard let self, self.enabled else { return }
                 c.connect(p)

@@ -70,6 +70,58 @@
   .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
   .btn.primary { background: var(--yellow); color: var(--on-fill); }
 
+
+  /* ------------------------------------------------------------ your egg (header button + panel) */
+  .tourbtn.eggbtn { position: relative; display: inline-flex; align-items: center; gap: 7px; background: var(--yellow); color: var(--on-fill); }
+  .eggbtn[hidden] { display: none; }
+  .eggbtn svg { width: 18px; height: 18px; }
+  .eggdot { width: 10px; height: 10px; border: 2px solid var(--line); border-radius: 50%; background: #a39cb0; flex: none; }
+  .eggdot.on { background: #3fbf6f; } .eggdot.late { background: var(--yellow); }
+  .eggdot.on.ping { animation: eggping 1.6s ease-out infinite; }
+  @keyframes eggping { 0% { box-shadow: 0 0 0 0 rgba(63,191,111,.55); } 70%, 100% { box-shadow: 0 0 0 7px rgba(63,191,111,0); } }
+  #eggPop { position: fixed; z-index: 55; top: 76px; right: max(16px, calc((100vw - 1080px) / 2 + 16px)); width: min(560px, calc(100vw - 32px));
+    max-height: calc(100vh - 96px); overflow: auto; padding: 20px; display: grid; gap: 16px;
+    background: var(--card); border: 3px solid var(--line); border-radius: 22px; box-shadow: 6px 6px 0 var(--line);
+    transform-origin: top right; animation: eggin .18s cubic-bezier(.2, .9, .3, 1.2); }
+  #eggPop[hidden] { display: none; }
+  @keyframes eggin { from { transform: scale(.92) translateY(-6px); opacity: 0; } }
+  @media (max-width: 560px) { #eggPop { top: auto; bottom: 0; right: 0; left: 0; width: 100%; max-height: 88vh; border-radius: 22px 22px 0 0;
+    border-bottom: 0; box-shadow: 0 -4px 0 var(--line); padding-bottom: calc(24px + env(safe-area-inset-bottom)); transform-origin: bottom center; animation-name: egginup; } }
+  @keyframes egginup { from { transform: translateY(40px); opacity: 0; } }
+  .egghead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .egghead h2 { font: 700 20px var(--pixel); margin: 0; }
+  .eggstate { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; }
+  .eggx { border: 0; background: none; font-size: 22px; line-height: 1; cursor: pointer; color: var(--ink-2); padding: 0 4px; }
+  .eggmain { display: flex; gap: 20px; align-items: center; }
+  @media (max-width: 460px) { .eggmain { flex-direction: column; align-items: stretch; } .eggshell { align-self: center; } }
+  .eggshell { width: 150px; height: 186px; flex: none; position: relative; background: #fffdf4; border: 3px solid var(--line);
+    border-radius: 75px 75px 62px 62px; box-shadow: 4px 4px 0 var(--line); }
+  .eggshell canvas { position: absolute; left: 33px; top: 36px; width: 78px; height: 104px; border: 3px solid #1d1b20; border-radius: 8px;
+    image-rendering: pixelated; background: #000; }
+  .eggshell .bt { position: absolute; bottom: 16px; width: 14px; height: 14px; background: #1d1b20; border-radius: 50%; }
+  .eggshell.sing { animation: eggwig .35s ease-in-out 6; } .eggshell.find { animation: eggshake .12s linear 14; }
+  @keyframes eggwig { 50% { transform: rotate(-4deg) translateY(-3px); } }
+  @keyframes eggshake { 25% { transform: translateX(-4px) rotate(-2deg); } 75% { transform: translateX(4px) rotate(2deg); } }
+  .eggnote { position: absolute; top: 20px; font: 700 18px var(--pixel); color: #1d1b20; animation: eggnote 1.8s ease-out forwards; pointer-events: none; }
+  @keyframes eggnote { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-46px) rotate(12deg); opacity: 0; } }
+  .eggrows { flex: 1; display: grid; gap: 8px; font-size: 15px; min-width: 0; }
+  .eggrows > div { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 7px; border-bottom: 2px dashed color-mix(in srgb, var(--ink-3) 45%, transparent); }
+  .eggrows > div:last-child { border-bottom: 0; padding-bottom: 0; }
+  .eggrows span:first-child { color: var(--ink-2); } .eggrows b { text-align: right; overflow-wrap: anywhere; }
+  .eggbtns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .eggcard { border: 3px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 10px; background: var(--soft); }
+  .eggcard h3 { font: 700 14px var(--pixel); margin: 0; }
+  .eggtog { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 800; font-size: 17px; }
+  .eggsw { appearance: none; width: 58px; height: 32px; flex: none; border: 3px solid var(--line); border-radius: 18px; background: #c4bfce; position: relative; cursor: pointer; transition: background .15s; margin: 0; }
+  .eggsw::after { content: ""; position: absolute; left: 3px; top: 3px; width: 20px; height: 20px; border: 3px solid var(--line); border-radius: 50%; background: #fff; box-sizing: border-box; transition: left .15s; }
+  .eggsw:checked { background: #3fbf6f; } .eggsw:checked::after { left: 27px; }
+  .eggsteps { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; font-size: 14px; line-height: 1.35; }
+  .eggsteps li { display: flex; gap: 10px; align-items: flex-start; }
+  .eggsteps i { font-style: normal; width: 24px; height: 24px; flex: none; display: grid; place-items: center; background: var(--lilac); color: var(--on-fill);
+    border: 2px solid var(--line); border-radius: 8px; font-weight: 800; }
+  .eggforget { justify-self: center; background: none; border: 0; color: #b4232c; font-weight: 700; text-decoration: underline; cursor: pointer; font-size: 14px; }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--prev); font-weight: 700; text-decoration: underline; cursor: pointer; }
+  .pet.yum { animation: hop .6s cubic-bezier(.3, 0, .4, 1) 2; }
   /* ------------------------------------------------------------ the guided tour */
   .inapp[hidden] { display: none !important; }
   a.tourbtn { text-decoration: none; display: inline-flex; align-items: center; }
@@ -1066,7 +1118,8 @@ applyTheme();
     <a class="brand" href="#"><span class="mini" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 10 10" shape-rendering="crispEdges"><path fill="#1d1b20" d="M2 2h6v1H2zM1 3h1v5H1zM8 3h1v5H8zM3 4h1v1H3zM6 4h1v1H6zM2 8h2v1H2zM6 8h2v1H6zM4 6h2v1H4z"/></svg></span>LAZYTRACK</a>
     <a class="tourbtn admin-only" id="adminBtn" href="#tab=admin" title="Admin: ideas, users, announcements, test lab" aria-label="Admin">🛠<span class="hidesm">&nbsp;Admin</span></a>
     <button type="button" class="tourbtn" id="tourBtn" title="A quick tutorial of LazyTrack">🧭 Tutorial</button>
-    <a class="tourbtn inapp" href="lazytrack-app://setup" hidden title="Phone settings: egg Bluetooth, gym, Apple Health" aria-label="Phone settings">📱</a>
+    <button type="button" class="tourbtn eggbtn" id="eggBtn" hidden aria-haspopup="dialog" aria-expanded="false" title="Your LazyTrack Egg"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h2v1H3zM2 1h1v1H2zM5 1h1v1H5zM1 2h1v2H1zM6 2h1v2H6zM0 4h1v2H0zM7 4h1v2H7zM1 6h1v1H1zM6 6h1v1H6zM2 7h4v1H2z"/></svg><span class="hidesm">Egg</span><span class="eggdot" id="eggDot"></span></button>
+    <a class="tourbtn inapp" href="lazytrack-app://setup" hidden title="Phone settings: gym, Apple Health, food scanner" aria-label="Phone settings">📱</a>
     <div class="daynav" role="group" aria-label="Choose day">
       <button id="prevDay" aria-label="Previous day">‹</button>
       <div class="lbl" id="dayLabel">Today</div>
@@ -1723,6 +1776,7 @@ applyTheme();
   </main>
 </div>
 
+<div id="eggPop" role="dialog" aria-label="Your egg" hidden></div>
 <div class="toast" id="toast" role="status" aria-live="polite"><span id="toastText"></span><button id="toastUndo">Undo</button></div>
 
 <script>
@@ -2849,16 +2903,19 @@ function renderMeals(R) {
       : `<span class="note">none today (you sleep through meal times)</span>`}${m ? `<button type="button" class="btn primary feedbtn" id="feedBtn">${m.e} Feed Mochi</button>` : ""}</div>
     <p class="note">He gets hungry up to 3 times a day, never while you sleep (around ${R.bed}–${R.wake}${R.learned ? "" : ", still learning your nights"}). Fed on time ${fmtHp(R.fed_hp)} HP, missed ${fmtHp(R.missed_hp)}.</p>`;
   if (R.hungry && R.hungry !== lastHungry && lastHungry !== null) { sfx.play("msg"); toast(`${m ? m.e : "🍙"} Mochi is hungry!`, null); }
+  const ate = lastHungry && !R.hungry && R.meals.find(x => x.n === lastHungry && x.state === "fed");
+  if (ate) { sfx.play("poke"); toast("😋 Mochi ate (fed on your egg)", null); petYum(); }   // fed somewhere else: same happy hop as here
   lastHungry = R.hungry || "";
 }
 document.addEventListener("click", async e => {
   const b = e.target.closest("#feedBtn"); if (!b) return;
   b.disabled = true;
   const r = await post("/api/feed", {device: "app"}), j = await r.json().catch(() => ({}));
-  if (j.ok) { sfx.play("poke"); toast("Yum! Mochi is full 😋", null); lastHungry = ""; }
+  if (j.ok) { sfx.play("poke"); toast("Yum! Mochi is full 😋", null); lastHungry = ""; petYum(); }
   else toast(j.why === "full" ? `He's not hungry right now${j.next ? `. Next meal at ${j.next}` : ""}.` : "Couldn't feed him.", null);
   render();
 });
+function petYum() { const p = $("pet"); if (!p) return; p.classList.remove("yum"); void p.offsetWidth; p.classList.add("yum"); setTimeout(() => p.classList.remove("yum"), 1300); }
 function renderHome() {
   const t = O.today, ref = O.ref, val = O.val, isToday = O.is_today, against = O.against;
   // the "main" bad habit (the first one in the list) leads the headline and the mood
@@ -3646,6 +3703,164 @@ async function refreshCloud() {
   if (CLOUD.connected && admin.askedFor !== CLOUD.uid) { admin.askedFor = CLOUD.uid; admin.check(); }
   if (!CLOUD.connected && admin.is) { admin.askedFor = null; admin.is = false; document.body.classList.remove("is-admin"); }
 }
+// ---------------------------------------------------------------- your egg: the header button + panel
+// The egg checks in about once a minute (supabase/egg_status.sql); the panel mirrors its screen, says how it's
+// connected, and sends it "make him sing", "find my egg" and "sync now". Inside the iPhone app it also holds
+// the phone's Bluetooth link (keep the egg online, pairing), through the app (window.webkit.messageHandlers.egg).
+const eggPanel = {
+  st: null, native: null, open: false, timer: 0, lastFetch: 0,
+  inApp: () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.egg),
+  async poll() {
+    if (!CLOUD.connected) { this.st = null; this.paint(); return; }
+    try { const r = await api("/api/cloud/egg"); if (r.ok) this.st = await r.json(); } catch (_) {}
+    this.lastFetch = Date.now();
+    this.paint();
+  },
+  egg() { return this.st && this.st.egg; },
+  live() {   // "on" checked in within 3 min, "late" within 15, else "off"
+    const s = this.st; if (!s || s.age == null) return "off";
+    const age = s.age + (Date.now() - this.lastFetch) / 1000;
+    return age < 180 ? "on" : age < 900 ? "late" : "off";
+  },
+  ago(sec) {
+    if (sec == null) return "never";
+    sec = Math.round(sec + (Date.now() - this.lastFetch) / 1000);
+    return sec < 60 ? `${sec} seconds ago` : sec < 3600 ? `${Math.round(sec / 60)} min ago` : sec < 86400 ? `${Math.round(sec / 3600)} h ago` : `${Math.round(sec / 86400)} days ago`;
+  },
+  paint() {
+    const btn = $("eggBtn"), e = this.egg(), n = this.native;
+    btn.hidden = !(e || (n && (n.known || n.linked)) || (this.inApp() && CLOUD.connected));
+    const live = this.live();
+    $("eggDot").className = "eggdot" + (live === "on" ? " on ping" : live === "late" ? " late" : "");
+    btn.title = !e ? "Your LazyTrack Egg" : live === "on" ? "Your egg is online" : `Your egg checked in ${this.ago(this.st.age)}`;
+    if (!this.open) return;
+    const key = this.key();
+    if (key !== this.shown || !$("eggPop").querySelector(".eggrows")) return this.render();
+    $("eggPop").querySelector(".eggrows").outerHTML = this.rows();   // just the numbers: animations keep playing
+    $("eggPop").querySelector(".eggstate").outerHTML = this.stateHtml();
+    this.mirror();
+  },
+  key() { const n = this.native, s = this.st; return JSON.stringify([!!CLOUD.connected, s && s.setup, !!this.egg(), n]); },
+  stateHtml() {
+    const e = this.egg(), live = this.live();
+    const state = !e ? "" : live === "on" ? "Online" : live === "late" ? "Quiet for a bit" : "Offline";
+    return `<span class="eggstate">${e ? `<span class="eggdot ${live === "on" ? "on" : live === "late" ? "late" : ""}"></span>${state}` : ""}<button type="button" class="eggx" id="eggClose" aria-label="Close">×</button></span>`;
+  },
+  toggle(on = !this.open) {
+    this.open = on;
+    $("eggPop").hidden = !on;
+    $("eggBtn").setAttribute("aria-expanded", on);
+    clearInterval(this.timer);
+    if (on) {
+      this.render(); this.poll();
+      this.timer = setInterval(() => this.poll(), 10000);   // fresh while it's open
+      if (this.inApp()) window.webkit.messageHandlers.egg.postMessage({do: "get"});
+    }
+  },
+  rows() {
+    const e = this.egg(), live = this.live(), n = this.native;
+    if (!e) return "";
+    const via = live === "off" ? "offline" : e.via === "wifi" ? `WiFi${e.wifi ? " · " + esc(e.wifi) : ""}` : "your phone (Bluetooth)";
+    const phone = e.phone_linked ? "connected now" : e.phones ? `${e.phones} paired${n && n.linked ? "" : ", not near"}` : "none paired";
+    const screens = {home: "Home", menu: "Menu", log: "Log", friends: "Friends", today: "Today", info: "Info", phone: "Phone", off: "off"};
+    const scr = live === "off" ? "–" : e.screen === "off" ? "screen off" : `${screens[e.screen] || "Home"} · ${e.asleep ? "asleep" : "awake"}`;
+    return `<div class="eggrows">
+      <div><span>Connected via</span><b>${via}</b></div>
+      <div><span>Last check-in</span><b>${this.ago(this.st.age)}</b></div>
+      <div><span>Phone backup</span><b>${phone}</b></div>
+      <div><span>On the screen</span><b>${scr}</b></div>
+      <div><span>Logs waiting</span><b>${e.waiting ? e.waiting : "none"}</b></div></div>`;
+  },
+  render() {
+    const s = this.st, e = this.egg(), n = this.native;
+    this.shown = this.key();
+    let body;
+    if (!CLOUD.connected) body = `<p class="note">Your egg talks to LazyTrack through the friends server. Connect to friends first (Friends tab).</p>`;
+    else if (s && !s.setup) body = `<p class="note">${esc(s.why || "One more setup step.")}</p>`;
+    else if (!s) body = `<p class="note">Checking…</p>`;
+    else if (!e) body = `<p class="note">No egg has checked in yet. Once yours is on (with the latest egg code), it shows up here within a minute.</p>`;
+    else body = `<div class="eggmain"><div class="eggshell" id="eggShell" aria-label="What your egg shows"><canvas id="eggCv" width="240" height="320"></canvas>
+        <span class="bt" style="left:43px"></span><span class="bt" style="left:68px"></span><span class="bt" style="left:93px"></span></div>${this.rows()}</div>
+      <div class="eggbtns"><button type="button" class="btn primary" data-eggcmd="sing">🎵 Make him sing</button><button type="button" class="btn" data-eggcmd="find">📣 Find my egg</button><button type="button" class="btn" data-eggcmd="sync">🔄 Sync now</button></div>`;
+    let bt = "";
+    if (n) bt = `<div class="eggcard">
+        <label class="eggtog">Keep my egg online <input type="checkbox" class="eggsw" id="eggLinkOn" ${n.enabled ? "checked" : ""}></label>
+        <p class="note">No WiFi around? The egg goes online through this phone over Bluetooth, even with the app closed. Only the LazyTrack server is reached.</p>
+        <p class="note"><b>${esc(n.status || "")}</b>${n.relayed ? ` · ${n.relayed} requests passed on` : ""}</p></div>
+      ${n.linked ? "" : `<div class="eggcard"><h3>PAIR YOUR EGG</h3><ol class="eggsteps">
+        <li><i>1</i>On the egg: B (menu) → turn to PHONE with C → B, then B again for pairing mode.</li>
+        <li><i>2</i>Keep "Keep my egg online" on. iPhone shows a number: check it's the same as on the egg.</li>
+        <li><i>3</i>Press B on the egg and Pair on the iPhone.</li></ol></div>`}
+      ${n.known || n.linked ? `<button type="button" class="eggforget" id="eggForget">Forget this egg</button>` : ""}`;
+    $("eggPop").innerHTML = `<div class="egghead"><h2>YOUR EGG</h2>${this.stateHtml()}</div>${body}${bt}`;
+    this.mirror();
+  },
+  // the egg's Home screen, drawn the way the egg draws it (same scene, same Mochi, same HUD)
+  mirror() {
+    const cv = $("eggCv"), e = this.egg(); if (!cv || !O) return;
+    const g = cv.getContext("2d"), live = this.live();
+    g.imageSmoothingEnabled = false;
+    if (!e || e.screen === "off" || live === "off") { g.fillStyle = "#000"; g.fillRect(0, 0, 240, 320); return; }
+    const tier = O.health.tier, sc = deviceScene(PET_LOOK, tier), sp = deviceSprite(PET_LOOK, "happy", tier);
+    const FEET = 232, SY = FEET - 201;
+    if (sc) {
+      const N = sc.w, cell = 240 / N;
+      for (let y = 0; y < 320; y += cell) for (let x = 0; x < N; x++) {
+        const sy = Math.max(0, Math.min(N - 1, Math.floor((y - SY) / cell)));
+        g.fillStyle = sc.p[SCENE_CHARS.indexOf(sc.d[sy * N + x])] || "#c9b8ff";
+        g.fillRect(x * cell, y, cell + .5, cell + .5);
+      }
+    } else { g.fillStyle = "#c9b8ff"; g.fillRect(0, 0, 240, FEET); g.fillStyle = "#7cc97f"; g.fillRect(0, FEET, 240, 88); }
+    if (sp) { const px = e.asleep ? sp.b : sp.n; for (let i = 0; i < 256; i++) if (px[i] !== ".") { g.fillStyle = sp.p[parseInt(px[i], 36)]; g.fillRect(64 + (i % 16) * 7, FEET + 2 - 112 + Math.floor(i / 16) * 7, 7, 7); } }
+    const box = (x, y, w, h) => { g.fillStyle = "rgba(29,27,32,.78)"; g.fillRect(x, y, w, h); g.strokeStyle = "#1d1b20"; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, w - 2, h - 2); };
+    box(8, 8, 94, 24);
+    const halves = Math.round(O.health.hp / 10), H = [0x6C, 0xFE, 0xFE, 0x7C, 0x38, 0x10];
+    for (let i = 0; i < 5; i++) { const f = Math.max(0, Math.min(2, halves - i * 2)); for (let r = 0; r < 6; r++) for (let c = 0; c < 7; c++) if (H[r] & (0x80 >> c)) { g.fillStyle = f === 2 || (f === 1 && c < 4) ? "#e0303a" : "#5a5266"; g.fillRect(14 + i * 17 + c * 2, 14 + r * 2, 2, 2); } }
+    box(162, 8, 70, 24);
+    g.font = "16px Silkscreen, monospace"; g.textBaseline = "top"; g.fillStyle = "#fff";
+    g.fillText(new Date().toTimeString().slice(0, 5), 168, 11);
+    const R = (O.life || {}).rhythm || {};
+    const line = e.asleep ? "SLEEPING... ZZZ" : R.hungry ? "HUNGRY! A = FEED" : "HANGING OUT";
+    g.fillStyle = "#1d1b20"; g.fillRect(11, 273, 224, 26); g.fillStyle = "#fff"; g.fillRect(8, 270, 224, 26); g.strokeRect(9, 271, 222, 24);
+    g.fillStyle = e.asleep ? "#c9b8ff" : R.hungry ? "#ffe45e" : "#3fbf6f"; g.beginPath(); g.arc(22, 283, 5, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = "#1d1b20"; g.font = "13px Silkscreen, monospace"; g.fillText(line, 34, 277);
+  },
+  async cmd(c, b) {
+    b.disabled = true;
+    try {
+      const r = await post("/api/cloud/egg/cmd", {cmd: c}), j = await r.json().catch(() => ({}));
+      if (!r.ok) { toast(j.error || "Couldn't reach your egg.", null); return; }
+      const live = this.live() === "on";
+      toast(c === "sing" ? (live ? "🎵 Mochi sings on your egg in a few seconds" : "🎵 He'll sing when your egg is back online")
+          : c === "find" ? (live ? "📣 Your egg chirps in a few seconds: follow the sound" : "📣 It'll chirp once your egg is back online")
+          : "🔄 Your egg syncs in a few seconds", null);
+      const sh = $("eggShell");
+      if (sh && c !== "sync") {   // the same thing the egg does: notes for a song, a shake for find
+        sh.classList.remove("sing", "find"); void sh.offsetWidth; sh.classList.add(c);
+        if (c === "sing") for (let k = 0; k < 3; k++) setTimeout(() => {
+          const nt = document.createElement("span"); nt.className = "eggnote"; nt.textContent = k === 1 ? "♫" : "♪";
+          nt.style.left = 40 + k * 30 + "px"; sh.appendChild(nt); setTimeout(() => nt.remove(), 1900);
+        }, k * 450);
+      }
+      sfx.play("poke");
+    } finally { setTimeout(() => { b.disabled = false; }, 2500); }
+  },
+};
+window.eggNative = st => { eggPanel.native = st; eggPanel.paint(); };   // from the iPhone app
+document.addEventListener("click", e => {
+  if (e.target.closest("#eggBtn")) return eggPanel.toggle();
+  if (e.target.closest("#eggClose")) return eggPanel.toggle(false);
+  const c = e.target.closest("[data-eggcmd]"); if (c) return eggPanel.cmd(c.dataset.eggcmd, c);
+  if (e.target.closest("#eggForget")) {
+    if (confirm("Forget this egg on this phone? To pair it again later, also forget \"LazyTrack Egg\" in iPhone Settings → Bluetooth.")) window.webkit.messageHandlers.egg.postMessage({do: "forget"});
+    return;
+  }
+  if (eggPanel.open && !e.target.closest("#eggPop")) eggPanel.toggle(false);   // a click outside closes it
+});
+document.addEventListener("change", e => { if (e.target.id === "eggLinkOn") window.webkit.messageHandlers.egg.postMessage({do: e.target.checked ? "on" : "off"}); });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && eggPanel.open) eggPanel.toggle(false); });
+setTimeout(() => eggPanel.poll(), 3000);
+setInterval(() => { if (!eggPanel.open && !document.hidden) eggPanel.poll(); }, 60000);
 /**
  * Little chiptune sounds, made on the spot with WebAudio (no sound files).
  * msg = a new DM, req = a new friend request. Off in Settings > Look > Sounds.
@@ -4237,21 +4452,20 @@ const phoneSetup = {
         <div class="actions"><button type="button" class="btn primary" data-phone="enable">Connect my phone</button></div>`;
       return;
     }
-    $("phBox").innerHTML = `<div class="phqr">${s.qr ? `<div class="qr" aria-label="QR code for your phone">${s.qr}</div>` : ""}
+    const browser = `<p class="note" style="margin-top:12px">${s.app_qr ? "No iPhone app (Android, or a friend's phone)? " : ""}Open <code>${esc(s.url)}</code> in the phone's browser
+        (Tailscale on), then Share → <b>Add to Home Screen</b>.${s.app_qr && s.qr ? ` <button type="button" class="linkbtn" data-phone="webqr">Show a QR for that</button>` : ""}</p>
+      <div class="phqr" id="phWebQr" ${s.app_qr ? "hidden" : ""}>${s.qr ? `<div class="qr" aria-label="QR code for the phone's browser">${s.qr}</div>` : ""}</div>
+      <p class="note" style="margin-top:10px">Keep this computer on with LazyTrack running: the phone shows what this computer tracks.</p>`;
+    $("phBox").innerHTML = (s.app_qr ? `<div class="phqr"><div class="qr" aria-label="QR code for the iPhone app">${s.app_qr}</div>
         <ol class="phsteps"><li>Make sure <b>Tailscale is on</b> on your phone.</li>
-          <li>Scan this with your phone's <b>camera</b> and open the link.</li>
-          <li>iPhone: <b>Share → Add to Home Screen</b>. Android: <b>⋮ → Add to Home screen</b>. Now it's an app icon.</li></ol></div>
-      <p class="note" style="margin-top:10px">Or open this on the phone: <code>${esc(s.url)}</code><br>
-        Keep this computer on with LazyTrack running: the phone shows what this computer tracks.</p>
-      ${s.app_qr ? `<h3 style="margin:18px 0 6px">Got the LazyTrack iPhone app?</h3>
-      <div class="phqr"><div class="qr" aria-label="QR code for the iPhone app">${s.app_qr}</div>
-        <ol class="phsteps"><li>Scan this one with the iPhone <b>camera</b> instead.</li><li>Tap the link: it opens the LazyTrack app and connects it to this computer.</li>
-          <li>The app then shows LazyTrack, plus the phone-only parts (egg over Bluetooth, gym, Apple Health).</li></ol></div>` : ""}`;
+          <li>Scan this with the iPhone <b>camera</b> and tap the link: it opens the <b>LazyTrack app</b> and connects it to this computer.</li>
+          <li>The app shows LazyTrack, plus the phone-only parts: your egg over Bluetooth, the gym, Apple Health.</li></ol></div>` : "") + browser;
   },
 };
 document.addEventListener("click", async e => {
   const b = e.target.closest("[data-phone]"); if (!b) return;
   if (b.dataset.phone === "check") return phoneSetup.load();
+  if (b.dataset.phone === "webqr") { const q = $("phWebQr"); q.hidden = !q.hidden; b.textContent = q.hidden ? "Show a QR for that" : "Hide it"; return; }
   b.disabled = true; b.textContent = "Connecting…";
   try {
     const r = await (await post("/api/phone/enable", {})).json();

@@ -67,13 +67,21 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 | | A | B | C |
 |---|---|---|---|
 | **Home** (your Mochi) | pet Mochi (hearts); feed him when he's hungry | menu | screen off (any button wakes it). Right after logging: undo |
-| **Menu** | back | open | next |
+| **Menu** (a ring around Mochi) | back | open the one on top | turn the ring |
 | **Log** | back | log it (Mochi reacts right away) | next |
 | **Friends** | back | poke them (their egg buzzes, their app plays a sound) | next friend |
 | **Today** | back | yesterday vs today for the highlighted stat | next stat |
 | **Yesterday vs today** | back | back | next stat |
-| **Phone** (Info → C) | back / no | pairing mode / yes (the code) | forget all phones (press twice) |
+| **Phone** (Menu → Phone, or Info → C) | back / no | pairing mode / yes (the code) | forget all phones (press twice) |
 
+- **Home** is a little game screen: hearts for HP (each heart is 20 HP) with Mochi's level under them, the clock
+  top right, and a bar at the bottom with what you're doing, or HUNGRY / SLEEPING.
+- **Menu** is a ring of six round buttons around Mochi: Log, Feed, Friends, Today, Phone, Info. C turns it (the one on
+  top is big and yellow, with its name and a live line above it), B opens it. With touch: tap a button.
+- **Your egg on the computer and phone:** run `supabase/egg_status.sql` in Supabase once. The egg then checks in every
+  minute, and LazyTrack shows an **Egg** button at the top (green dot = online): it mirrors the egg's screen, shows how it's
+  connected, and has **Make him sing**, **Find my egg** (it chirps for a few seconds, any button stops it) and **Sync now**.
+  In the iPhone app, the same panel also holds Bluetooth (keep the egg online, pairing).
 - **Log** lists the habits you track in LazyTrack. A log reaches LazyTrack within a minute, while LazyTrack runs on
   your computer. Without WiFi, logs wait on the egg and go out once it's back online.
 - **Friends** shows each friend's Mochi, HP, whether they're drunk/high, online or last seen, and what they're doing.

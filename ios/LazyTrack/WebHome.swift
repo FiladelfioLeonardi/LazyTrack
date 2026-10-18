@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import Combine
 
 /// The app's main screen: the real LazyTrack (the same pretty app as on the Mac, served by LazyTrack on your Mac
 /// through Tailscale), full screen. The phone-only things (egg Bluetooth, gym, Apple Health, food scanner) run
@@ -19,6 +20,8 @@ struct WebHome: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let cfg = WKWebViewConfiguration()
+        // the page's "Your egg" panel talks to the phone's Bluetooth link through this (window.webkit.messageHandlers.egg)
+        cfg.userContentController.add(context.coordinator, name: "egg")
         cfg.applicationNameForUserAgent = "LazyTrackApp/1"   // the page knows it's inside the iPhone app
         cfg.allowsInlineMediaPlayback = true
         let web = WKWebView(frame: .zero, configuration: cfg)
@@ -38,11 +41,40 @@ struct WebHome: UIViewRepresentable {
 
     func updateUIView(_ web: WKWebView, context: Context) {}
 
-    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandler {
         let parent: WebHome
         weak var web: WKWebView?
+        private var watch: AnyCancellable?
 
-        init(_ parent: WebHome) { self.parent = parent }
+        init(_ parent: WebHome) {
+            self.parent = parent
+            super.init()
+            let egg = EggLink.shared   // tell the page whenever the Bluetooth link changes
+            watch = Publishers.CombineLatest4(egg.$status, egg.$enabled, egg.$relayed, egg.$linked)
+                .debounce(for: .milliseconds(150), scheduler: RunLoop.main)
+                .sink { [weak self] _ in self?.sendEgg() }
+        }
+
+        /// {"do": "get" | "on" | "off" | "forget"} from the page
+        func userContentController(_ uc: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard message.name == "egg", let m = message.body as? [String: Any], let what = m["do"] as? String else { return }
+            let egg = EggLink.shared
+            switch what {
+            case "on": egg.enabled = true
+            case "off": egg.enabled = false
+            case "forget": egg.forget()
+            default: break
+            }
+            sendEgg()
+        }
+
+        private func sendEgg() {
+            let egg = EggLink.shared
+            let state: [String: Any] = ["enabled": egg.enabled, "status": egg.status, "relayed": egg.relayed,
+                                        "linked": egg.linked, "known": egg.known]
+            guard let data = try? JSONSerialization.data(withJSONObject: state), let json = String(data: data, encoding: .utf8) else { return }
+            web?.evaluateJavaScript("window.eggNative && window.eggNative(\(json))")
+        }
 
         @objc func reload(_ control: UIRefreshControl) {
             web?.reload()
@@ -69,6 +101,30 @@ struct WebHome: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             parent.failed = nil
+            sendEgg()
+        }
+
+        // the page's confirm() / alert() (Forget this egg, Uninstall...): real iOS alerts
+        private func present(_ a: UIAlertController) {
+            let root = UIApplication.shared.connectedScenes.compactMap { ($0 as? UIWindowScene)?.keyWindow }.first?.rootViewController
+            var top = root
+            while let p = top?.presentedViewController { top = p }
+            top?.present(a, animated: true)
+        }
+
+        func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
+                     initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+            let a = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            a.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
+            a.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler(true) })
+            present(a)
+        }
+
+        func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
+                     initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
+            let a = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+            a.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
+            present(a)
         }
 
         // links that open a new window (target=_blank): open them here

@@ -756,3 +756,41 @@ def new_pokes() -> list:
         p = profs.get(r["sender"], {})
         out.append({"id": r["id"], "from": p.get("display_name") or p.get("username") or "A friend", "kind": r["kind"]})
     return out
+
+
+# ---------------------------------------------------------------- your egg, from the computer / phone (supabase/egg_status.sql)
+EGG_CMDS = {"sing", "find", "sync"}
+
+
+def egg_status() -> dict:
+    """What your egg last said about itself: {"ok", "setup", "egg": {...} or None, "age": seconds since it checked in}."""
+    if not state()["connected"]:
+        return {"ok": False, "setup": True, "egg": None, "why": "Connect to friends first (Friends tab)."}
+    try:
+        rows = _http("GET", "/rest/v1/egg_status?select=*", token=_token()) or []
+    except CloudError as e:
+        if _missing(e):
+            return {"ok": False, "setup": False, "egg": None, "why": "Run supabase/egg_status.sql in Supabase once."}
+        return {"ok": False, "setup": True, "egg": None, "why": str(e)}
+    if not rows:
+        return {"ok": True, "setup": True, "egg": None, "age": None}
+    import datetime as _dt
+    r = rows[0]
+    try:
+        seen = _dt.datetime.fromisoformat(str(r.get("seen_at")).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        seen = 0
+    return {"ok": True, "setup": True, "egg": r, "age": max(0, int(time.time() - seen)) if seen else None}
+
+
+def egg_command(cmd: str) -> None:
+    if cmd not in EGG_CMDS:
+        raise CloudError("Unknown egg command.")
+    try:
+        _http("POST", "/rest/v1/egg_commands", {"user_id": state()["uid"], "cmd": cmd}, token=_token(), prefer="return=minimal")
+    except CloudError as e:
+        if _missing(e):
+            raise CloudError("This needs one more setup step: run supabase/egg_status.sql in Supabase.") from None
+        if "row-level security" in str(e).lower():
+            raise CloudError("Your egg has a few commands waiting already. Give it a moment.") from None
+        raise

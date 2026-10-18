@@ -386,6 +386,8 @@ def make_handler(cfg: dict):
                     return self._send(200, cloud.state())
                 if path == "/api/cloud/friends":
                     return self._send(200, cloud.friends())
+                if path == "/api/cloud/egg":
+                    return self._send(200, cloud.egg_status())
                 if path == "/api/cloud/messages":
                     return self._send(200, cloud.messages(qs.get("with", [""])[0], int(qs.get("after", ["0"])[0] or 0)))
                 if path == "/api/cloud/unread":
@@ -412,6 +414,9 @@ def make_handler(cfg: dict):
                     disp = user["display_name"] if user else name
                     return self._send(200, cloud.connect(str(b.get("email", "")), str(b.get("password", "")), name, disp,
                                                          new=bool(b.get("new"))))
+                if path == "/api/cloud/egg/cmd":
+                    cloud.egg_command(str(b.get("cmd", "")))
+                    return self._send(200, {"ok": True})
                 if path == "/api/cloud/disconnect":
                     cloud.disconnect()
                     return self._send(200, {"ok": True})

@@ -16,3 +16,10 @@ The admin only sees counts and Mochi info, never anyone's habits; the rules live
 and deletes them) and lets friends poke each other's Mochi from the egg or the app (`pokes`, at most 10
 a minute). Paste it into the SQL editor and Run, once. Safe to run again. Everything in it is private:
 only you can see your inbox and the egg's habit list, and only friends can poke you.
+
+## Your egg in LazyTrack
+
+`egg_status.sql` (after `egg.sql`) lets the egg check in about once a minute (`egg_status`: how it's connected,
+what's on its screen, logs waiting) and take commands from LazyTrack (`egg_commands`: make him sing, find my egg,
+sync now; at most 20 waiting). LazyTrack shows it under the **Egg** button at the top. Private: only you can see or
+change your own rows. Paste it into the SQL editor and Run, once. Safe to run again.
