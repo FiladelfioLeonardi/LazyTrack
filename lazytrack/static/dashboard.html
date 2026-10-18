@@ -492,6 +492,10 @@
     width: 100%; height: 46px; padding: 0 12px; border-radius: 12px; border: 3px solid var(--line); background: var(--card); }
   .toggle { display: flex; align-items: center; gap: 10px; font-weight: 800; cursor: pointer; }
   .toggle input { width: 22px; height: 22px; accent-color: var(--today); }
+  .sharenow { display: grid; gap: 10px; margin-top: 10px; padding: 12px 14px; border: 3px solid var(--line); border-radius: 14px; background: var(--soft); }
+  .sharenow .sub2 { margin-left: 32px; font-weight: 700; }
+  .sharenow .sub2:has(input:disabled) { opacity: .45; cursor: default; }
+  .sharenow .note { margin: 0; }
   .themes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
   .th { display: grid; gap: 8px; padding: 9px; text-align: left; cursor: pointer; background: var(--card); border: 3px solid var(--line); border-radius: 14px;
         box-shadow: 3px 3px 0 var(--line); font-weight: 800; transition: transform .08s, box-shadow .08s; }
@@ -3759,9 +3763,15 @@ async function renderFriends() {
   $("fMe").innerHTML = fcardHTML(me, {me: true});
   const keys = shareKeys();
   const opts = [...HABITS.map(h => [h.k, `${h.e} ${h.n}`]), ...SHOW_SCREEN.map(k => [k, `${(INFO[k] || {}).e || ""} ${(INFO[k] || {}).n || k}`])];
-  $("fShare").innerHTML = `<div class="label">WHAT FRIENDS SEE</div><p class="note" style="margin-bottom:10px">Mochi, HP and your level always show. Green = shared.</p>
-    <div class="sharechips"><button type="button" data-sharenow aria-pressed="${!keys.includes("!now")}">👀 What I'm doing now</button><button type="button" data-sharenow="detail" aria-pressed="${!keys.includes("!now") && !keys.includes("!detail")}"${keys.includes("!now") ? " disabled" : ""}>🎮 Which game or app</button>${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>
-    <p class="note" style="margin-top:8px">"What I'm doing now" shows what you're up to, like "Playing LoL" or "Coding in VS Code" (only well-known games, apps and sites). Turn off "Which game or app" to show just the kind of thing (gaming, coding…). Window titles, chats and other sites are never shared.</p>`;
+  const nowOn = !keys.includes("!now"), detOn = nowOn && !keys.includes("!detail");
+  $("fShare").innerHTML = `<div class="label">WHAT FRIENDS SEE</div>
+    <div class="sharenow">
+      <label class="toggle"><input type="checkbox" data-sharenow${nowOn ? " checked" : ""}> 👀 Show what I'm doing right now</label>
+      <label class="toggle sub2"><input type="checkbox" data-sharenow="detail"${detOn ? " checked" : ""}${nowOn ? "" : " disabled"}> 🎮 Say which game or app</label>
+      <p class="note">On: friends see "Playing LoL" or "Coding in VS Code". Without the game or app: just "Gaming" or "Coding". Window titles, chats and other sites are never shared.</p>
+    </div>
+    <p class="note" style="margin:14px 0 10px">Stats: green = shared. Mochi, HP and your level always show.</p>
+    <div class="sharechips">${opts.map(([k, n]) => `<button type="button" data-share="${esc(k)}" aria-pressed="${keys.includes(k)}">${esc(n)}</button>`).join("")}</div>`;
   $("fReq").innerHTML = (F.incoming.length ? `<h2 class="sec">Wants to be your friend</h2><div class="card">${F.incoming.map(x =>
       `<div class="reqrow"><b>${esc(x.display_name)} <span class="note">@${esc(x.username)}</span></b>
         <button type="button" class="btn primary" data-accept="${x.id}">Accept</button><button type="button" class="btn" data-decline="${x.id}">No thanks</button></div>`).join("")}</div>` : "")
@@ -3774,6 +3784,18 @@ async function renderFriends() {
 // keep the list fresh while it's open (cards, requests, unread)
 setInterval(() => { if (document.body.dataset.view === "friends" && !route().f && !document.hidden && CLOUD.connected) { animNow = false; renderFriends(); } }, 30000);
 
+document.addEventListener("change", async e => {
+  const sn = e.target.closest("input[data-sharenow]");
+  if (!sn) return;
+  const key = sn.dataset.sharenow === "detail" ? "!detail" : "!now";
+  const next = sn.checked ? shareKeys().filter(x => x !== key) : [...new Set([...shareKeys(), key])];
+  const det = document.querySelector('input[data-sharenow="detail"]');
+  if (key === "!now" && det) { det.disabled = !sn.checked; det.checked = sn.checked && !next.includes("!detail"); }
+  SHARE = next;
+  await post("/api/habits", {share: next});
+  pushCard(true);
+  $("fMe").innerHTML = fcardHTML({...renderFriends.data.me, card: buildCard(), updated_at: new Date().toISOString()}, {me: true});
+});
 document.addEventListener("submit", async e => {
   if (e.target.id === "fAdd") {
     e.preventDefault();
@@ -3813,19 +3835,6 @@ document.addEventListener("click", async e => {
       if (r.ok) { sfx.play("poke"); toast(pk.dataset.poke === "love" ? "💖 Love sent" : pk.dataset.poke === "wave" ? "👋 Waved" : "👉 Poked!", null); }
       else toast(j.error || "Couldn't send that", null);
     } finally { setTimeout(() => { pk.disabled = false; }, 1500); }
-    return;
-  }
-  const sn = e.target.closest("[data-sharenow]");
-  if (sn) {
-    const key = sn.dataset.sharenow === "detail" ? "!detail" : "!now";
-    const keys = shareKeys(), off = keys.includes(key), next = off ? keys.filter(x => x !== key) : [...keys, key];
-    sn.setAttribute("aria-pressed", off);
-    const det = document.querySelector('[data-sharenow="detail"]');
-    if (key === "!now" && det) { det.disabled = !off; det.setAttribute("aria-pressed", off && !next.includes("!detail")); }
-    SHARE = next;
-    await post("/api/habits", {share: next});
-    pushCard(true);
-    $("fMe").innerHTML = fcardHTML({...renderFriends.data.me, card: buildCard(), updated_at: new Date().toISOString()}, {me: true});
     return;
   }
   const sh = e.target.closest("[data-share]");
