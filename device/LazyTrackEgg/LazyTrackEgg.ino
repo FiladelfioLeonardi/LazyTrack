@@ -22,6 +22,7 @@
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
+#include <nvs.h>
 #include <ArduinoJson.h>
 #include <Arduino_GFX_Library.h>
 #include <NimBLEDevice.h>   // Library Manager: "NimBLE-Arduino" (Bluetooth: the egg goes online through your phone)
@@ -99,8 +100,9 @@ class Band : public Arduino_GFX {
   int16_t oy = 0, bh = 0, ox = 0;   // ox: everything drawn is shifted sideways by this much (for slides)
   Band() : Arduino_GFX(240, 320) {}
   bool begin(int32_t) override {
-    // 40 rows = 19 KB. (It was 80, but WiFi + Bluetooth + a secure connection all need memory at once.)
-    for (int h : {40, 24}) { fb = (uint16_t *)malloc(240 * h * 2); if (fb) { bh = h; return true; } }
+    // 24 rows = 11 KB. (It was 80, then 40, but WiFi + Bluetooth + the network task + a secure connection
+    // all need memory at once: the secure connection alone wants ~45 KB.)
+    for (int h : {24, 20}) { fb = (uint16_t *)malloc(240 * h * 2); if (fb) { bh = h; return true; } }
     return false;
   }
   void writePixelPreclipped(int16_t x, int16_t y, uint16_t c) override {
@@ -626,7 +628,17 @@ void sync() {
   String body;
   int code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true);
   if (code == 401) { token = ""; if (login()) code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true); }
-  if (code == 200 && parseCard(body)) { lastSync = millis(); status = "Synced"; prefs.putBytes("card", body.c_str(), body.length()); }   // kept for offline
+  if (code == 200 && parseCard(body)) {
+    lastSync = millis(); status = "Synced";
+    // kept for offline, at most every 10 minutes: the egg's storage is small (20 KB), and writing a new copy
+    // before the old one is gone needs room for both, so the old one goes first
+    static uint32_t keptAt = 0;
+    if (!keptAt || millis() - keptAt > 600000) {
+      keptAt = millis();
+      prefs.remove("card");
+      if (!prefs.putBytes("card", body.c_str(), body.length())) Serial.println("storage full: Mochi isn't kept for offline");
+    }
+  }
   else if (code != 200) status = "Sync failed (" + String(code) + ")";
 }
 
@@ -939,7 +951,7 @@ static const int PX = (240 - 16 * SCALE) / 2, PY = FEET + 2 - 16 * SCALE;   // M
 static const int SX = PX - 10, SY = PY - 2, SW = 16 * SCALE + 20, SH = 16 * SCALE + 4;   // the part redrawn
 static const int SCENE_Y = FEET - 240 * 84 / 100;       // the scene is 240x240 (full width, like the app), ground at FEET
 uint16_t *stage;                                        // drawn here strip by strip, each sent in one go (no flicker)
-static const int STAGE_ROWS = 40;                       // the stage buffer: SW x 40 px (10 KB), Mochi's box is done in 3 strips
+static const int STAGE_ROWS = 24;                       // the stage buffer: SW x 24 px (6 KB), Mochi's box is done in strips
 
 uint16_t tierBg() {
   if (card.tier == "legend") return rgb(0xffeeb0);
@@ -1008,7 +1020,7 @@ bool asleep() {
 // (sent on its own, so nothing else on the screen moves)
 static const int ZX = 150, ZY = 58, ZW = 84, ZH = 64;
 void drawZs(uint32_t t) {
-  if (gfx != lcd || !banded) return;
+  if (gfx != lcd || !banded || 240 * band.bh < ZW * ZH) return;
   uint16_t *buf = band.fb;   // free between screens: used as scratch
   for (int y = 0; y < ZH; y++) for (int x = 0; x < ZW; x++) buf[y * ZW + x] = bgAt(ZX + x, ZY + y);
   static const char *Z5 = "XXXXX...X...X...X...XXXXX";   // a 5x5 Z
@@ -1029,7 +1041,7 @@ void drawZs(uint32_t t) {
 
 // while he sings: little music notes float up from his head (same box as the Z's)
 void drawNotes(uint32_t t) {
-  if (gfx != lcd || !banded) return;
+  if (gfx != lcd || !banded || 240 * band.bh < ZW * ZH) return;
   uint16_t *buf = band.fb;
   for (int y = 0; y < ZH; y++) for (int x = 0; x < ZW; x++) buf[y * ZW + x] = bgAt(ZX + x, ZY + y);
   static const char *N7 = "...XX...XXX..X.X..X....X...XXX..XXX.....";   // a 5x8 eighth note
@@ -1305,21 +1317,51 @@ void hint(int cx, const String &s) {   // the tiny button hints along the bottom
   text(x, 306, s, 1, CARD);
 }
 
-// a list in the app's card style, the picked row in yellow
-void drawList(const char *title, const String *items, const bool *dots, const bool *bad, int n, int sel, const char *hint) {
+// ---------------------------------------------------------------- the themed screens (menu, lists, info...)
+// All screens share the menu's look: Mochi's scene dimmed under deep purple, a title with its icon at the top,
+// dark rounded rows (the picked one yellow) and small button hints at the bottom.
+static uint16_t TDARK, TLINE, TSUB;   // row color, deep purple, lavender text (set in setup)
+static const uint8_t PHONE_ICON[8] = {0x3C, 0x24, 0x24, 0x24, 0x24, 0x3C, 0x2C, 0x3C};
+void pixIcon(const uint8_t *rows, int cx, int cy, int sc, uint16_t col);
+
+void themeBg() {
+  int16_t slide = band.ox;
+  band.ox = 0;
   drawBackground();
-  panel(8, 8, 221, 304);
-  text(20, 20, title, 2, INK);
-  int rows = 9, first = sel >= rows ? sel - rows + 1 : 0;
-  for (int i = first; i < n && i < first + rows; i++) {
-    int y = 48 + (i - first) * 27;
-    if (i == sel) { gfx->fillRoundRect(16, y - 4, 205, 24, 6, YELLOW); gfx->drawRoundRect(16, y - 4, 205, 24, 6, INK); }
-    int x = 24;
-    if (dots) { gfx->fillCircle(30, y + 7, 4, bad && bad[i] ? RED : GREEN); x = 42; }
-    text(x, y, items[i].substring(0, dots ? 14 : 15), 2, INK);
+  if (gfx == &band) {   // the scene at 25% over a deep purple (#2b2246)
+    uint16_t base = rgb(0x201a34);
+    for (int k = 0; k < 240 * band.bh; k++) band.fb[k] = ((band.fb[k] >> 2) & 0x39E7) + base;
+  } else gfx->fillScreen(TLINE);
+  band.ox = slide;
+}
+
+void themeHead(const uint8_t *icon, const String &title, const String &sub) {
+  int sz = title.length() <= 8 ? 3 : 2, tw = title.length() * 6 * sz, x = (240 - tw) / 2 + (icon ? 14 : 0);
+  if (icon) {
+    int cx = x - 18, cy = sz == 3 ? 18 : 15;
+    gfx->fillCircle(cx + 1, cy + 1, 12, INK); gfx->fillCircle(cx, cy, 12, INK); gfx->fillCircle(cx, cy, 10, YELLOW);
+    pixIcon(icon, cx, cy, 2, INK);
   }
-  if (n > first + rows) text(206, 292, "v", 1, GREY);
-  text(20, 296, hint, 1, GREY);
+  text(x, sz == 3 ? 8 : 10, title, sz, CARD);
+  if (sub.length()) { String t = sub.substring(0, 38); t.toUpperCase(); text((240 - t.length() * 6) / 2, 36, t, 1, TSUB); }
+}
+
+void themeHints(const String &h) { text((240 - h.length() * 6) / 2, 306, h, 1, rgb(0xbdb6cc)); }
+
+void pill(int x, int y, int w, int h, bool sel) {   // a row: dark, or yellow with a hard shadow when picked
+  if (sel) gfx->fillRoundRect(x + 2, y + 2, w, h, 7, INK);
+  gfx->fillRoundRect(x, y, w, h, 7, sel ? YELLOW : TDARK);
+  gfx->drawRoundRect(x, y, w, h, 7, INK); gfx->drawRoundRect(x + 1, y + 1, w - 2, h - 2, 6, INK);
+}
+
+void dcard(int x, int y, int w, int h) { pill(x, y, w, h, false); }   // a dark card for text
+
+void dotAt(int x, int y, uint16_t col) { gfx->fillCircle(x, y, 5, INK); gfx->fillCircle(x, y, 3, col); }
+
+void kv(int y, const String &k, const String &v) {   // a label left (lavender), its value right (white)
+  text(22, y, k, 1, TSUB);
+  String t = v.substring(0, 24);
+  text(218 - t.length() * 6, y, t, 1, CARD);
 }
 
 // ---------------------------------------------------------------- the menu: a ring of round buttons around Mochi
@@ -1379,14 +1421,7 @@ void ringPos(int i, int &x, int &y, float &top) {   // where button i sits right
 }
 
 void drawMenu() {
-  int16_t slide = band.ox;
-  band.ox = 0;
-  drawBackground();
-  if (gfx == &band) {   // the scene at 25% over a deep purple (#2b2246)
-    uint16_t base = rgb(0x201a34);
-    for (int k = 0; k < 240 * band.bh; k++) band.fb[k] = ((band.fb[k] >> 2) & 0x39E7) + base;
-  }
-  band.ox = slide;
+  themeBg();
   // Mochi, smaller, in the middle
   static uint16_t cell[16][16];
   mochiNow(cell, framePx(false, false), CoolF{false, 0, -1, false, false});
@@ -1424,73 +1459,74 @@ void turnRing() {   // C: the next button rolls up to the top
 
 // ---------------------------------------------------------------- today: everything you track, in pages
 void drawToday() {
-  drawBackground();
-  panel(8, 8, 221, 304);
-  text(20, 20, "TODAY", 2, INK);
+  themeBg();
+  const int per = 10;
+  int pages = max(1, (ntoday + per - 1) / per);
+  if (todaySel >= ntoday) todaySel = 0;
+  todayPage = ntoday ? todaySel / per : 0;
+  themeHead(MENU_ICONS[M_TODAY], "TODAY", pages > 1 ? "PAGE " + String(todayPage + 1) + " OF " + String(pages) : String("SO FAR TODAY"));
   if (!ntoday) {   // older LazyTrack: only what's on your friend card
-    for (int i = 0; i < card.nstats; i++) text(20, 52 + i * 28, card.stats[i], 2, INK);
-    text(20, 256, "Only what friends see. For all of", 1, GREY);
-    text(20, 270, "it: update LazyTrack + run egg.sql", 1, GREY);
-    text(20, 296, "A  back", 1, GREY);
+    dcard(12, 54, 216, 40 + card.nstats * 22);
+    for (int i = 0; i < card.nstats; i++) text(24, 66 + i * 22, card.stats[i], 2, CARD);
+    text(24, 74 + card.nstats * 22, "Update LazyTrack for all of it", 1, TSUB);
+    themeHints("A BACK");
     return;
   }
-  const int per = 10;
-  int pages = (ntoday + per - 1) / per;
-  if (todaySel >= ntoday) todaySel = 0;
-  todayPage = todaySel / per;
-  if (pages > 1) text(180, 24, String(todayPage + 1) + "/" + String(pages), 1, GREY);
   for (int i = todayPage * per, r = 0; i < ntoday && r < per; i++, r++) {
-    int y = 50 + r * 24;
-    if (i == todaySel) { gfx->fillRoundRect(14, y - 4, 209, 22, 5, YELLOW); gfx->drawRoundRect(14, y - 4, 209, 22, 5, INK); }
-    else if (r % 2 == 0) gfx->fillRoundRect(14, y - 4, 209, 22, 5, SOFT);
-    if (today[i].bad || today[i].good) gfx->fillCircle(24, y + 7, 4, today[i].bad ? RED : GREEN);
-    text(34, y, today[i].s.substring(0, 11), 2, INK);
-    text(215 - today[i].v.length() * 12, y, today[i].v, 2, INK);
+    int y = 54 + r * 24;
+    bool sel = i == todaySel;
+    pill(12, y, 216, 21, sel);
+    if (today[i].bad || today[i].good) dotAt(25, y + 10, today[i].bad ? RED : GREEN);
+    text(36, y + 3, today[i].s.substring(0, 11), 2, sel ? INK : CARD);
+    text(220 - today[i].v.length() * 12, y + 3, today[i].v, 2, sel ? INK : CARD);
   }
-  text(20, 296, "C next  B vs yesterday  A back", 1, GREY);
+  themeHints("C NEXT  B VS YESTERDAY  A BACK");
 }
 
 // ---------------------------------------------------------------- yesterday vs today, for one stat
 void cmpBar(int y, const String &label, const String &val, long v, long top, uint16_t col) {
-  text(20, y, label, 1, GREY);
-  text(215 - val.length() * 18, y + 12, val, 3, INK);
-  int w = top > 0 ? (int)(186L * v / top) : 0;
-  gfx->fillRoundRect(20, y + 44, 196, 18, 5, SOFT); gfx->drawRoundRect(20, y + 44, 196, 18, 5, INK);
-  if (w > 0) { gfx->fillRoundRect(25, y + 48, max(w, 6), 10, 3, col); }
+  dcard(12, y, 216, 74);
+  text(24, y + 10, label, 1, TSUB);
+  text(218 - val.length() * 18, y + 8, val, 3, CARD);
+  int w = top > 0 ? (int)(188L * v / top) : 0;
+  gfx->fillRoundRect(22, y + 44, 196, 18, 5, TLINE); gfx->drawRoundRect(22, y + 44, 196, 18, 5, INK);
+  if (w > 0) { gfx->fillRoundRect(26, y + 48, max(w, 6), 10, 3, col); }
 }
 
 void drawCompare() {
-  drawBackground();
-  panel(8, 8, 221, 304);
-  if (!ntoday) { text(20, 20, "NOTHING YET", 2, INK); text(20, 296, "A  back", 1, GREY); return; }
+  themeBg();
+  if (!ntoday) { themeHead(MENU_ICONS[M_TODAY], "NOTHING YET", ""); themeHints("A BACK"); return; }
   Stat &st = today[todaySel % ntoday];
-  text(20, 18, "VS YESTERDAY", 1, GREY);
-  String name = st.s; if (name.length()) name.setCharAt(0, toupper(name[0]));
-  text(20, 32, name.substring(0, 12), 3, INK);
+  String name = st.s; name.toUpperCase();
+  themeHead(MENU_ICONS[M_TODAY], name.substring(0, 16), "VS YESTERDAY");
   if (!st.hasY) {
-    text(20, 90, "Update LazyTrack on", 2, INK);
-    text(20, 112, "your computer to see", 2, INK);
-    text(20, 134, "yesterday here.", 2, INK);
-    text(20, 296, "C next  A back", 1, GREY);
+    dcard(12, 60, 216, 70);
+    text(24, 74, "Update LazyTrack on your", 1, CARD);
+    text(24, 90, "computer to see yesterday", 1, CARD);
+    text(24, 106, "here.", 1, CARD);
+    themeHints("C NEXT  A BACK");
     return;
   }
   long top = max(st.tv, st.yv);
-  cmpBar(70, "YESTERDAY", fmtVal(st.yv, st.secs), st.yv, top, rgb(0xc9b8ff));
-  cmpBar(148, "TODAY SO FAR", fmtVal(st.tv, st.secs), st.tv, top, YELLOW);
+  cmpBar(56, "YESTERDAY", fmtVal(st.yv, st.secs), st.yv, top, rgb(0xc9b8ff));
+  cmpBar(140, "TODAY SO FAR", fmtVal(st.tv, st.secs), st.tv, top, YELLOW);
   long d = st.tv - st.yv;
-  String verdict; uint16_t col = INK;
-  if (d == 0) verdict = "Same as yesterday";
+  String verdict; uint16_t col = TDARK;
+  if (d == 0) verdict = "SAME AS YESTERDAY";
   else {
-    verdict = fmtVal(d > 0 ? d : -d, st.secs) + (d > 0 ? " more" : " less");
+    verdict = fmtVal(d > 0 ? d : -d, st.secs) + (d > 0 ? " MORE" : " LESS");
     if (st.sign) {
       bool better = (d > 0) == (st.sign > 0);
       col = better ? GREEN : RED;
-      verdict += better ? " nice!" : "";
+      verdict += better ? " NICE!" : "";
     }
   }
-  gfx->fillRoundRect(14, 232, 209, 34, 8, col == INK ? SOFT : col); gfx->drawRoundRect(14, 232, 209, 34, 8, INK);
-  text(24, 242, verdict.substring(0, 16), 2, col == INK ? INK : CARD);
-  text(20, 296, "C next stat  A back", 1, GREY);
+  verdict.toUpperCase();
+  gfx->fillRoundRect(14, 230, 212, 34, 8, INK);
+  gfx->fillRoundRect(12, 228, 212, 34, 8, col); gfx->drawRoundRect(12, 228, 212, 34, 8, INK); gfx->drawRoundRect(13, 229, 210, 32, 7, INK);
+  String v = verdict.substring(0, 17);
+  text((240 - v.length() * 12) / 2, 238, v, 2, CARD);
+  themeHints("C NEXT STAT  A BACK");
 }
 
 uint16_t tierColor(const String &t) {
@@ -1499,22 +1535,17 @@ uint16_t tierColor(const String &t) {
 
 void drawFriend() {
   if (!nfriends) {
-    drawBackground();
-    panel(8, 8, 221, 120);
-    text(20, 20, "FRIENDS", 2, INK);
-    text(20, 52, online() ? "No friends yet." : "Offline right now.", 1, INK);
-    text(20, 70, "Add some in the LazyTrack app", 1, GREY);
-    text(20, 86, "(Friends tab).", 1, GREY);
-    text(20, 110, "A  back", 1, GREY);
+    themeBg();
+    themeHead(MENU_ICONS[M_FRIENDS], "FRIENDS", online() ? "NO FRIENDS YET" : "OFFLINE RIGHT NOW");
+    dcard(12, 60, 216, 64);
+    text(24, 74, "Add some in the LazyTrack", 1, CARD);
+    text(24, 90, "app (Friends tab).", 1, CARD);
+    themeHints("A BACK");
     return;
   }
   Friend &f = friends[friendSel];
   gfx->fillRect(0, 0, 240, 232, tierColor(f.tier));
   gfx->fillRect(0, 232, 240, 88, rgb(0x7cc97f));
-  panel(8, 8, 221, 50);
-  text(18, 16, f.name.substring(0, 15), 2, INK);
-  text(18, 38, "@" + f.user.substring(0, 20), 1, GREY);
-  text(196, 38, String(friendSel + 1) + "/" + String(nfriends), 1, GREY);
   // their Mochi, standing on the ground (same size as yours)
   const char *px = f.sprite ? f.px : DEFAULT_N;
   for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) {
@@ -1525,33 +1556,41 @@ void drawFriend() {
     else { col = cellColor(ch, false); if (!col) continue; }
     gfx->fillRect(PX + cx * SCALE, PY + cy * SCALE, SCALE, SCALE, col);
   }
-  panel(8, 246, 221, 66);
+  // the same HUD as your Home: their name + hearts top left, which friend top right, what they're up to at the bottom
+  String nm = f.name.substring(0, 14);
+  int nw = max(110, (int)nm.length() * 12 + 14);
+  darkBox(8, 8, nw, 44);
+  text(15, 14, nm, 2, CARD);
+  text(15, 36, "@" + f.user.substring(0, 18), 1, TSUB);
+  String nth = String(friendSel + 1) + "/" + String(nfriends);
+  darkBox(232 - (int)nth.length() * 12 - 14, 8, nth.length() * 12 + 14, 24);
+  text(232 - nth.length() * 12 - 7, 13, nth, 2, CARD);
   if (f.hasCard) {
-    text(18, 256, "HP " + String(f.hp), 2, INK);
+    darkBox(8, 56, 94, 24);
+    int halves = (f.hp + 5) / 10;
+    for (int i = 0; i < 5; i++) heart(14 + i * 17, 62, constrain(halves - i * 2, 0, 2));
     String fx = f.drunk ? (f.drunk >= 3 ? "WASTED" : f.drunk == 2 ? "DRUNK" : "TIPSY") : f.high ? (f.high >= 3 ? "SO HIGH" : f.high == 2 ? "HIGH" : "BUZZED") : f.coughy ? "COUGHING" : "";
-    if (fx.length()) {
-      int fw = 10 + fx.length() * 6;
-      gfx->fillRoundRect(110, 257, fw, 14, 4, f.drunk ? rgb(0xffd28a) : f.high ? rgb(0x9be8a9) : rgb(0xd9d2e9));
-      gfx->drawRoundRect(110, 257, fw, 14, 4, INK);
-      text(115, 261, fx, 1, INK);
-    }
-  } else text(18, 256, "No card yet", 2, INK);
-  String line;
-  if (f.online) {
+    if (fx.length()) chip(106, 60, fx, f.drunk ? rgb(0xffd28a) : f.high ? rgb(0x9be8a9) : rgb(0xd9d2e9));
+  } else chip(8, 56, "NO CARD YET", rgb(0xd9d2e9));
+  String line; uint16_t dot;
+  bool said = status.startsWith("Poked") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes");
+  if (said) { line = status; dot = status.startsWith("Poked") ? YELLOW : RED; }
+  else if (f.online) {
     String w = f.label.length() ? f.label : f.what == "coding" ? "coding" : f.what == "gaming" ? "gaming" : f.what == "youtube" ? "watching YouTube"
-             : f.what == "away" ? "away from the computer" : f.what.length() ? "on the computer" : "";
-    if (w.length()) w.setCharAt(0, toupper(w[0]));
-    line = "Online" + (w.length() ? " - " + w : String(""));
-    gfx->fillCircle(22, 281, 4, GREEN);
-  } else {
-    line = f.seen ? "Last seen " + agoText(f.seen) : "Not seen yet";
-    gfx->fillCircle(22, 281, 4, GREY);
-  }
-  text(32, 278, line.substring(0, 31), 1, INK);
-  text(18, 296, status.startsWith("Poked") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes") ? status.substring(0, 33) : "C next   B poke   A back", 1, GREY);
+             : f.what == "away" ? "away" : "";
+    line = w.length() ? w : String("online"); dot = GREEN;
+  } else { line = f.seen ? "seen " + agoText(f.seen) : String("not seen yet"); dot = GREY; }
+  line.toUpperCase();
+  gfx->fillRoundRect(8 + 3, 270 + 3, 224, 26, 7, INK);
+  gfx->fillRoundRect(8, 270, 224, 26, 7, CARD);
+  gfx->drawRoundRect(8, 270, 224, 26, 7, INK); gfx->drawRoundRect(9, 271, 222, 24, 6, INK);
+  dotAt(22, 283, dot);
+  if (line.length() <= 15) text(34, 276, line, 2, INK); else text(34, 280, line.substring(0, 32), 1, INK);
+  hint(40, "A BACK"); hint(120, "B POKE"); hint(200, "C NEXT");
 }
 
 void drawScreen();
+void drawInfo();
 void scrollSetup();
 
 void drawFrame() {   // a whole screen, without flicker: built band by band in memory, each sent in one go
@@ -1569,36 +1608,42 @@ void drawFrame() {   // a whole screen, without flicker: built band by band in m
 uint32_t forgetAsk = 0;    // C pressed once: press again within 3 s to forget all phones
 int phoneBack = V_INFO;   // where A goes back to from the Phone screen (the menu or Info)
 void drawPhone() {
-  drawBackground();
-  panel(8, 8, 221, 304);
-  text(20, 20, "PHONE", 2, INK);
+  themeBg();
   if (blePin) {   // a phone wants to pair: the same code is on its screen
     char code[8]; snprintf(code, sizeof code, "%06lu", (unsigned long)(blePin - 1000000));
-    text(20, 60, "Same number on", 2, INK);
-    text(20, 82, "your phone?", 2, INK);
-    gfx->fillRoundRect(20, 116, 197, 60, 10, YELLOW); gfx->drawRoundRect(20, 116, 197, 60, 10, INK);
-    text(36, 130, String(code).substring(0, 3) + " " + String(code).substring(3), 4, INK);
-    text(20, 196, "Then tap Pair on the phone too.", 1, GREY);
-    text(20, 296, "B yes, pair   A no", 1, INK);
+    themeHead(PHONE_ICON, "PAIR", "SAME NUMBER ON YOUR PHONE?");
+    gfx->fillRoundRect(23, 83, 196, 70, 12, INK);
+    gfx->fillRoundRect(20, 80, 196, 70, 12, YELLOW); gfx->drawRoundRect(20, 80, 196, 70, 12, INK); gfx->drawRoundRect(21, 81, 194, 68, 11, INK);
+    text(34, 99, String(code).substring(0, 3) + " " + String(code).substring(3), 4, INK);
+    dcard(12, 172, 216, 56);
+    text(24, 186, "Same? Press B here, then tap", 1, CARD);
+    text(24, 202, "Pair on the phone too.", 1, CARD);
+    themeHints("B YES, PAIR   A NO");
     return;
   }
   int n = NimBLEDevice::getNumBonds();
-  text(20, 52, "Paired phones: " + String(n), 1, INK);
-  text(20, 70, String("Now: ") + (bleLinked ? "connected" : bleConnected ? "a phone is connecting..." : "no phone"), 1, INK);
+  themeHead(PHONE_ICON, "PHONE", bleLinked ? "CONNECTED, BACKS UP WIFI" : n ? "PAIRED, NOT NEAR" : "NOT PAIRED YET");
+  dcard(12, 54, 216, 52);
+  kv(66, "PAIRED PHONES", String(n));
+  kv(84, "RIGHT NOW", bleLinked ? "connected" : bleConnected ? "connecting..." : "no phone");
   if (blePairUntil) {
     int left = (int)((blePairUntil - millis()) / 1000);
-    gfx->fillRoundRect(16, 96, 205, 78, 10, YELLOW); gfx->drawRoundRect(16, 96, 205, 78, 10, INK);
-    text(26, 106, "PAIRING MODE " + String(left / 60) + ":" + (left % 60 < 10 ? "0" : "") + String(left % 60), 2, INK);
-    text(26, 134, "On the phone: LazyTrack app >", 1, INK);
-    text(26, 148, "Egg > Keep my egg online", 1, INK);
+    gfx->fillRoundRect(14, 120, 214, 96, 10, INK);
+    gfx->fillRoundRect(12, 118, 214, 96, 10, YELLOW); gfx->drawRoundRect(12, 118, 214, 96, 10, INK); gfx->drawRoundRect(13, 119, 212, 94, 9, INK);
+    text(24, 128, "PAIRING " + String(left / 60) + ":" + (left % 60 < 10 ? "0" : "") + String(left % 60), 2, INK);
+    text(24, 156, "On the phone: LazyTrack app >", 1, INK);
+    text(24, 172, "Egg > Keep my egg online on.", 1, INK);
+    text(24, 188, "A number shows on both.", 1, INK);
   } else {
-    text(20, 100, "Only phones paired here can use", 1, GREY);
-    text(20, 114, "the egg. To add one, press B and", 1, GREY);
-    text(20, 128, "confirm the 6-digit code.", 1, GREY);
+    dcard(12, 118, 216, 80);
+    text(24, 130, "Only phones paired here can", 1, CARD);
+    text(24, 146, "use the egg. To add one, press", 1, CARD);
+    text(24, 162, "B and confirm the 6-digit code.", 1, CARD);
+    text(24, 180, "It keeps the egg online", 1, TSUB);
   }
-  text(20, 200, "When the egg has no WiFi, a paired", 1, GREY);
-  text(20, 214, "phone keeps it online.", 1, GREY);
-  text(20, 296, forgetAsk && millis() - forgetAsk < 3000 ? "C again = forget ALL phones" : "B pair a phone  C forget all  A back", 1, forgetAsk && millis() - forgetAsk < 3000 ? RED : GREY);
+  bool ask = forgetAsk && millis() - forgetAsk < 3000;
+  if (ask) { String w = "C AGAIN = FORGET ALL PHONES"; text((240 - w.length() * 6) / 2, 290, w, 1, rgb(0xff9b9b)); }
+  themeHints("B PAIR  C FORGET ALL  A BACK");
 }
 
 void drawScreen() {  // the background and everything on it; Mochi itself comes from drawStage
@@ -1607,22 +1652,30 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
   if (view == V_CMP) { drawCompare(); return; }
   if (view == V_PHONE) { drawPhone(); return; }
   if (view == V_LOG) {
+    themeBg();
+    themeHead(MENU_ICONS[M_LOG], "LOG", nhabits ? String("WHAT DID YOU JUST DO?") : String("NOTHING TO LOG YET"));
     if (!nhabits) {
-      drawBackground();
-      panel(8, 8, 221, 150);
-      text(20, 20, "LOG", 2, INK);
-      text(20, 52, "Nothing to log yet.", 1, INK);
-      text(20, 70, "Update LazyTrack on your computer,", 1, GREY);
-      text(20, 86, "and run supabase/egg.sql once.", 1, GREY);
-      text(20, 140, "A  back", 1, GREY);
+      dcard(12, 60, 216, 64);
+      text(24, 74, "Update LazyTrack on your", 1, CARD);
+      text(24, 90, "computer, run supabase/egg.sql.", 1, CARD);
+      themeHints("A BACK");
       return;
     }
-    String names[16]; bool dots[16], bad[16];
-    for (int i = 0; i < nhabits; i++) { names[i] = habits[i].n; names[i].setCharAt(0, toupper(names[i][0])); bad[i] = habits[i].bad; dots[i] = true; }
-    drawList("LOG", names, dots, bad, nhabits, logSel, "C next   B log it   A back");
+    int rows = 9, first = logSel >= rows ? logSel - rows + 1 : 0;
+    for (int i = first; i < nhabits && i < first + rows; i++) {
+      int y = 54 + (i - first) * 26;
+      bool sel = i == logSel;
+      pill(12, y, 216, 22, sel);
+      dotAt(25, y + 11, habits[i].bad ? RED : GREEN);
+      String n = habits[i].n; n.setCharAt(0, toupper(n[0]));
+      text(37, y + 4, n.substring(0, 15), 2, sel ? INK : CARD);
+    }
+    if (nhabits > first + rows) text(214, 292, "v", 1, TSUB);
+    themeHints("C NEXT  B LOG IT  A BACK");
     return;
   }
   if (view == V_FRIENDS) { drawFriend(); return; }
+  if (view == V_INFO) { drawInfo(); return; }
   drawBackground();
   if (view == V_HOME) {   // a game HUD over the scene: hearts + level top left, the clock top right, what's up at the bottom
     darkBox(8, 8, 94, 24);
@@ -1640,9 +1693,11 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     if (millis() < msgUntil) {   // a moment's message: logged, poked, fed
       int tsz = msgTitle.length() <= 10 ? 3 : 2, tw = msgTitle.length() * 6 * tsz;
       int w = constrain(max(tw, (int)min((int)msgSub.length(), 36) * 6) + 28, 120, 224);
-      panel((240 - w) / 2, 60, w, 50);
-      text((240 - tw) / 2, tsz == 3 ? 68 : 72, msgTitle, tsz, INK);
-      text((240 - (int)min((int)msgSub.length(), 36) * 6) / 2, 96, msgSub.substring(0, 36), 1, GREY);
+      int mx = (240 - w) / 2;
+      gfx->fillRoundRect(mx + 3, 63, w, 50, 10, INK);
+      gfx->fillRoundRect(mx, 60, w, 50, 10, TLINE); gfx->drawRoundRect(mx, 60, w, 50, 10, INK); gfx->drawRoundRect(mx + 1, 61, w - 2, 48, 9, INK);
+      text((240 - tw) / 2, tsz == 3 ? 68 : 72, msgTitle, tsz, YELLOW);
+      text((240 - (int)min((int)msgSub.length(), 36) * 6) / 2, 96, msgSub.substring(0, 36), 1, CARD);
     }
     // the bar: hungry, asleep, what you're doing, or how the egg is doing
     String hn = hungryNow();
@@ -1661,29 +1716,31 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     String ha = hungry ? "A FEED" : "A PET", hc = undoId && millis() < msgUntil ? "C UNDO" : "C OFF";
     hint(40, ha); hint(120, "B MENU"); hint(200, hc);
     drawStage(0, false);
-  } else {
-    panel(8, 8, 221, 304);
-    text(20, 20, "INFO", 2, INK);
-    text(20, 52, "WiFi: " + (WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 20) : String("not connected")), 1, INK);
-    text(20, 138, "Phone: " + String(bleLinked ? "paired, backs up WiFi" : bleConnected ? "pairing..." : "not connected")
-                  + (bleSeen ? " " + String((millis() - bleSeen) / 1000) + "s" : ""), 1, INK);
-    text(20, 70, "IP: " + WiFi.localIP().toString() + "   mem " + String(ESP.getFreeHeap() / 1024) + "K", 1, INK);
-    text(20, 88, "Status: " + status.substring(0, 26), 1, INK);
-    text(20, 106, "Last sync: " + (lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never")), 1, INK);
-    String q = prefs.getString("queue", "");
-    int waiting = 0; for (char ch : q) if (ch == '\n') waiting++;
-    text(20, 124, "Pets today: " + String(loveToday()) + (waiting ? "   Logs waiting: " + String(waiting) : ""), 1, INK);
-    text(20, 160, "HOME: B menu  A pet/feed  C off", 1, GREY);
-    text(20, 176, "MENUS: C next   B ok    A back", 1, GREY);
-    text(20, 200, "B here  sync now", 1, GREY);
-    text(20, 216, "C here  your phone (Bluetooth pairing)", 1, GREY);
-    if (!touchOn) text(20, 240, "Touch: not connected (buttons only)", 1, GREY);
-    else {
-      text(20, 240, "TOUCH: tap = pick, again = open,", 1, GREY);
-      text(20, 254, "top bar = back. Hold here 3 s to", 1, GREY);
-      text(20, 268, "set up touch again.", 1, GREY);
-    }
   }
+}
+
+void drawInfo() {
+  themeBg();
+  String nn = online() ? netName() : String("offline");
+  themeHead(MENU_ICONS[M_INFO], "INFO", nn);
+  String q = prefs.getString("queue", "");
+  int waiting = 0; for (char ch : q) if (ch == '\n') waiting++;
+  dcard(12, 52, 216, 152);
+  kv(64, "WIFI", WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 20) : String("not connected"));
+  kv(84, "PHONE", String(bleLinked ? "connected" : bleConnected ? "pairing..." : NimBLEDevice::getNumBonds() ? "paired, not near" : "not paired")
+                  + (bleSeen ? " " + String((millis() - bleSeen) / 1000) + "s" : ""));
+  kv(104, "STATUS", status.substring(0, 22));
+  kv(124, "LAST SYNC", lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never"));
+  kv(144, "PETS TODAY", String(loveToday()));
+  kv(164, "LOGS WAITING", waiting ? String(waiting) : String("none"));
+  kv(184, "MEMORY", String(ESP.getFreeHeap() / 1024) + " KB free");
+  if (!touchOn) text(22, 220, "Touch: not connected (buttons only)", 1, TSUB);
+  else {
+    text(22, 220, "Touch: tap = pick, again = open,", 1, TSUB);
+    text(22, 234, "top = back. Hold here 3 s to set", 1, TSUB);
+    text(22, 248, "up touch again.", 1, TSUB);
+  }
+  themeHints("B SYNC  C PAIR PHONE  A BACK");
 }
 
 // ---------------------------------------------------------------- buttons
@@ -1742,6 +1799,7 @@ void setup() {
 #endif
                 PIN_CS, PIN_DC, PIN_RST, PIN_SCK, PIN_MOSI);
   BG = rgb(0xefeaff); CARD = rgb(0xffffff); SOFT = rgb(0xf3f0fb); YELLOW = rgb(0xffe45e); GREEN = rgb(0x3fbf6f); RED = rgb(0xe0303a); GREY = rgb(0x6a6475);
+  TDARK = rgb(0x3d3456); TLINE = rgb(0x2b2246); TSUB = rgb(0xc9b8ff);
   stage = (uint16_t *)malloc(SW * STAGE_ROWS * 2);
   banded = band.begin(0);   // before WiFi takes its share of memory
   scrollSetup();
@@ -1775,6 +1833,13 @@ void setup() {
   size_t n = prefs.getBytesLength("card");
   if (n > 0 && n < 16384) { char *buf = (char *)malloc(n + 1); prefs.getBytes("card", buf, n); buf[n] = 0; saved = buf; free(buf); }
   if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, false); }
+  {   // the egg's small storage: say how full it is (full = WiFi can't save its calibration, offline Mochi isn't kept)
+    nvs_stats_t ns;
+    if (nvs_get_stats(nullptr, &ns) == ESP_OK) {
+      Serial.printf("storage: %u of %u entries free\n", (unsigned)ns.free_entries, (unsigned)ns.total_entries);
+      if (ns.free_entries < ns.total_entries / 4) { prefs.remove("card"); Serial.println("storage: made room (the offline Mochi is saved again on the next sync)"); }
+    }
+  }
   String hs = prefs.getString("habits", "");   // the Log menu works before the first sync too
   if (hs.length()) parseSetup(hs);
   WiFi.mode(WIFI_STA);
@@ -1988,7 +2053,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
         logSel = 0; transition(V_LOG, true);
       } else if (menuSel == M_FRIENDS) {
         friendSel = 0;
-        if (!friendsAt) { panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK); loadFriends(); }   // the first time only
+        if (!friendsAt) { gfx->fillRoundRect(40, 140, 160, 40, 10, TLINE); gfx->drawRoundRect(40, 140, 160, 40, 10, INK); text(62, 154, "Loading...", 2, CARD); loadFriends(); }   // the first time only
         else if (millis() - friendsAt > 60000) friendsKick = true;
         status = ""; transition(V_FRIENDS, true);
       } else if (menuSel == M_TODAY) {
@@ -2143,7 +2208,7 @@ void onTap(int x, int y) {
     }
     case V_LOG: {
       if (top || !nhabits) { act(2); return; }
-      int first = logSel >= 9 ? logSel - 8 : 0, i = first + (y - 44) / 27;
+      int first = logSel >= 9 ? logSel - 8 : 0, i = first + (y - 52) / 26;
       if (y > 290 || i >= nhabits) return;
       if (i == logSel) act(1); else { logSel = i; tuneClick(); drawFrame(); }
       return;
@@ -2154,8 +2219,8 @@ void onTap(int x, int y) {
       act(0); return;                                                                             // next friend
     case V_STATS: {
       if (top || !ntoday) { act(2); return; }
-      int r = (y - 46) / 24, i = (todaySel / 10) * 10 + r;
-      if (y < 46 || r >= 10 || i >= ntoday) return;
+      int r = (y - 52) / 24, i = (todaySel / 10) * 10 + r;
+      if (y < 52 || r >= 10 || i >= ntoday) return;
       if (i == todaySel) act(1); else { todaySel = i; tuneClick(); drawFrame(); }
       return;
     }
