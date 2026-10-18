@@ -23,6 +23,7 @@
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <nvs.h>
+#include <esp_task_wdt.h>
 #include <ArduinoJson.h>
 #include <Arduino_GFX_Library.h>
 #include <NimBLEDevice.h>   // Library Manager: "NimBLE-Arduino" (Bluetooth: the egg goes online through your phone)
@@ -1870,7 +1871,14 @@ void setup() {
   drawFrame();
   // WiFi, logging in and syncing happen in the background from here: the buttons work right away
   UNLOCK();
-  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 0);
+  // The watchdog restarts the egg when core 0 gets no idle time for a while. Pairing does heavy math (the code)
+  // on core 0 while a secure connection may be starting there too, which took longer than the default 5 s and
+  // restarted the egg. So: 20 s, and the network task runs at the lowest priority (it shares, never hogs).
+#if ESP_IDF_VERSION_MAJOR >= 5
+  esp_task_wdt_config_t wdt = {.timeout_ms = 20000, .idle_core_mask = 1 << 0, .trigger_panic = true};
+  esp_task_wdt_reconfigure(&wdt);
+#endif
+  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 0, nullptr, 0);
 }
 
 // ---------------------------------------------------------------- the network task (core 0)
@@ -1963,7 +1971,9 @@ void netTask(void *) {
       wifiTry = millis();
       if (wifi.run(3000) == WL_CONNECTED) { configTime(0, 0, "pool.ntp.org"); netKick = true; }
     }
-    if (bleLinked && !wasLinked) netKick = true;   // the phone just connected: catch up right away
+    static uint32_t linkedAt = 0;   // the phone just connected: catch up in a moment (once pairing is done)
+    if (bleLinked && !wasLinked) linkedAt = millis();
+    if (linkedAt && millis() - linkedAt > 4000) { linkedAt = 0; netKick = true; }
     wasLinked = bleLinked;
     bool due = millis() - last > 30000;              // every 30 s: LazyTrack's changes arrive within a minute
     if (due || netKick || habitsKick || friendsKick) {
