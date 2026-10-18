@@ -86,7 +86,8 @@ class Band : public Arduino_GFX {
   int16_t oy = 0, bh = 0, ox = 0;   // ox: everything drawn is shifted sideways by this much (for slides)
   Band() : Arduino_GFX(240, 320) {}
   bool begin(int32_t) override {
-    for (int h : {80, 40}) { fb = (uint16_t *)malloc(240 * h * 2); if (fb) { bh = h; return true; } }   // 80 rows = 38 KB: plenty left for WiFi + HTTPS
+    // 40 rows = 19 KB. (It was 80, but WiFi + Bluetooth + a secure connection all need memory at once.)
+    for (int h : {40, 24}) { fb = (uint16_t *)malloc(240 * h * 2); if (fb) { bh = h; return true; } }
     return false;
   }
   void writePixelPreclipped(int16_t x, int16_t y, uint16_t c) override {
@@ -250,19 +251,27 @@ void tuneLove() { beep(1047, 80); beep(1319, 80); beep(1568, 80); beep(2093, 160
 NimBLECharacteristic *bleTx = nullptr;
 volatile bool bleLinked = false;      // a phone is connected, paired (encrypted) and listening
 volatile bool bleConnected = false;   // a phone is connected (maybe not paired yet)
+volatile uint32_t bleConnAt = 0;      // when it connected (not paired 20 s later: drop it, so it can try again)
+volatile bool bleBadPair = false;     // pairing failed: forget old pairings (the phone may have "forgotten" the egg)
+NimBLEServer *bleSrv = nullptr;
 volatile uint16_t bleMtu = 23;
 String bleBuf, bleResp;
 volatile bool bleRespReady = false;
 uint32_t bleSeen = 0;                 // last time the phone relayed something (for Info)
 
 class EggServerCb : public NimBLEServerCallbacks {
-  void onConnect(NimBLEServer *s, NimBLEConnInfo &c) override { bleConnected = true; NimBLEDevice::startSecurity(c.getConnHandle()); }
+  void onConnect(NimBLEServer *s, NimBLEConnInfo &c) override {
+    bleConnected = true;
+    bleConnAt = millis();
+    NimBLEDevice::startSecurity(c.getConnHandle());
+  }
   void onDisconnect(NimBLEServer *s, NimBLEConnInfo &c, int reason) override { bleLinked = bleConnected = false; }
   void onMTUChange(uint16_t mtu, NimBLEConnInfo &c) override { bleMtu = mtu; }
   void onAuthenticationComplete(NimBLEConnInfo &c) override {
     bleLinked = c.isEncrypted();
     bleMtu = max((uint16_t)23, c.getMTU());
-    Serial.printf("Bluetooth: phone %s\n", bleLinked ? "paired, online through it" : "pairing failed");
+    if (!bleLinked) bleBadPair = true;
+    Serial.printf("Bluetooth: phone %s\n", bleLinked ? "paired, online through it" : "pairing failed: forgetting old pairings, try again");
   }
 };
 
@@ -290,7 +299,7 @@ void bleSetup() {
   NimBLEDevice::init("LazyTrack Egg");
   NimBLEDevice::setMTU(247);
   NimBLEDevice::setSecurityAuth(true, false, true);   // bonded, LE Secure Connections: encrypted, paired once
-  NimBLEServer *srv = NimBLEDevice::createServer();
+  NimBLEServer *srv = bleSrv = NimBLEDevice::createServer();
   srv->setCallbacks(new EggServerCb());
   NimBLEService *svc = srv->createService(EGG_SVC);
   bleTx = svc->createCharacteristic(EGG_TX, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::READ_ENC);
@@ -342,6 +351,19 @@ int bleHttp(const String &method, const String &url, const String &payload, Stri
   body = nl < 0 ? "" : bleResp.substring(nl + 1);
   bleResp = "";
   return code;
+}
+
+// pairing went wrong (often: the phone "forgot" the egg but the egg still had the old pairing):
+// forget all pairings and drop the phone, so its next try pairs fresh. Called from loop().
+void bleCheck() {
+  if (!bleSrv) return;
+  bool stuck = bleConnected && !bleLinked && millis() - bleConnAt > 20000;
+  if (!bleBadPair && !stuck) return;
+  bleBadPair = false;
+  NimBLEDevice::deleteAllBonds();
+  for (uint16_t h : bleSrv->getPeerDevices()) bleSrv->disconnect(h);
+  bleConnected = bleLinked = false;
+  Serial.println("Bluetooth: dropped the phone and forgot pairings, waiting for a fresh pairing");
 }
 
 bool online() { return WiFi.status() == WL_CONNECTED || bleLinked; }
@@ -819,7 +841,8 @@ static const int SCALE = 7;                             // 16 px sprite -> 112 p
 static const int PX = (240 - 16 * SCALE) / 2, PY = FEET + 2 - 16 * SCALE;   // Mochi's top-left when standing still
 static const int SX = PX - 10, SY = PY - 2, SW = 16 * SCALE + 20, SH = 16 * SCALE + 4;   // the part redrawn
 static const int SCENE_Y = FEET - 240 * 84 / 100;       // the scene is 240x240 (full width, like the app), ground at FEET
-uint16_t *stage;                                        // drawn here, then sent in one go (no flicker)
+uint16_t *stage;                                        // drawn here strip by strip, each sent in one go (no flicker)
+static const int STAGE_ROWS = 40;                       // the stage buffer: SW x 40 px (10 KB), Mochi's box is done in 3 strips
 
 uint16_t tierBg() {
   if (card.tier == "legend") return rgb(0xffeeb0);
@@ -850,7 +873,7 @@ void drawBackground() {  // full screen, in strips through the stage buffer
     for (int y = 0; y < band.bh; y++) for (int x = 0; x < 240; x++) band.fb[y * 240 + x] = bgAt(x, band.oy + y);
     return;
   }
-  int rows = (SW * SH) / 240;
+  int rows = (SW * STAGE_ROWS) / 240;
   for (int y0 = 0; y0 < 320; y0 += rows) {
     int h = min(rows, 320 - y0);
     for (int y = 0; y < h; y++) for (int x = 0; x < 240; x++) stage[y * 240 + x] = bgAt(x, y0 + y);
@@ -987,37 +1010,37 @@ const char *framePx(bool blink, bool coughing) {
 
 void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) {
   if (view != V_HOME && !anyView) return;
-  for (int y = 0; y < SH; y++) for (int x = 0; x < SW; x++) stage[y * SW + x] = bgAt(SX + x, SY + y);
   bool petting = millis() < petUntil;
   static uint16_t cell[16][16];
   mochiNow(cell, framePx(blink, coughing), CoolF{false, 0, -1, false, false});
   int ox = PX - SX + dx, oy = PY - SY;
-  for (int cy = 0; cy < 16; cy++) for (int cx = 0; cx < 16; cx++) {
-    uint16_t col = cell[cy][cx];
-    if (!col) continue;
-    for (int y = 0; y < SCALE; y++) {
-      int yy = oy + cy * SCALE + y;
-      if (yy < 0 || yy >= SH) continue;
-      for (int x = 0; x < SCALE; x++) {
-        int xx = ox + cx * SCALE + x;
-        if (xx >= 0 && xx < SW) stage[yy * SW + xx] = col;
-      }
-    }
-  }
-  if (petting) {   // little hearts floating up on both sides
-    static const char *H = ".X.X.XXXXXXXXXX.XXX...X..";   // 5x5 heart
-    uint32_t left = petUntil - millis();
-    for (int k = 0; k < 3; k++) {
-      int life = (int)((1800 - left + k * 600) % 1800);
-      int hy = 70 - life * 70 / 1800, hx = (k % 2 ? SW - 26 : 8) + (k == 2 ? 6 : 0);
-      for (int i = 0; i < 25; i++) if (H[i] == 'X')
-        for (int y = 0; y < 3; y++) for (int x = 0; x < 3; x++) {
-          int yy = hy + (i / 5) * 3 + y, xx = hx + (i % 5) * 3 + x;
-          if (yy >= 0 && yy < SH && xx >= 0 && xx < SW) stage[yy * SW + xx] = RED;
+  static const char *H = ".X.X.XXXXXXXXXX.XXX...X..";   // 5x5 heart (petting: little hearts floating up on both sides)
+  uint32_t left = petting ? petUntil - millis() : 0;
+  for (int y0 = 0; y0 < SH; y0 += STAGE_ROWS) {   // strip by strip: a small buffer, still no flicker
+    int h = min(STAGE_ROWS, SH - y0);
+    for (int y = 0; y < h; y++) {
+      int yy = y0 + y;
+      uint16_t *row = stage + y * SW;
+      for (int x = 0; x < SW; x++) row[x] = bgAt(SX + x, SY + yy);
+      int cy = (yy - oy) / SCALE;
+      if (yy >= oy && cy < 16)
+        for (int cx = 0; cx < 16; cx++) {
+          uint16_t col = cell[cy][cx];
+          if (!col) continue;
+          for (int x = 0; x < SCALE; x++) { int xx = ox + cx * SCALE + x; if (xx >= 0 && xx < SW) row[xx] = col; }
+        }
+      if (petting)
+        for (int k = 0; k < 3; k++) {
+          int life = (int)((1800 - left + k * 600) % 1800);
+          int hy = 70 - life * 70 / 1800, hx = (k % 2 ? SW - 26 : 8) + (k == 2 ? 6 : 0);
+          int r = (yy - hy) / 3;
+          if (yy < hy || r >= 5) continue;
+          for (int c = 0; c < 5; c++) if (H[r * 5 + c] == 'X')
+            for (int x = 0; x < 3; x++) { int xx = hx + c * 3 + x; if (xx >= 0 && xx < SW) row[xx] = RED; }
         }
     }
+    gfx->draw16bitRGBBitmap(SX, SY + y0, stage, SW, h);
   }
-  gfx->draw16bitRGBBitmap(SX, SY, stage, SW, SH);
 }
 
 // The epic part: pixel fire (the classic "Doom fire": heat rises cell by cell, cooling and drifting at random)
@@ -1521,7 +1544,7 @@ void setup() {
 #endif
                 PIN_CS, PIN_DC, PIN_RST, PIN_SCK, PIN_MOSI);
   BG = rgb(0xefeaff); CARD = rgb(0xffffff); SOFT = rgb(0xf3f0fb); YELLOW = rgb(0xffe45e); GREEN = rgb(0x3fbf6f); RED = rgb(0xe0303a); GREY = rgb(0x6a6475);
-  stage = (uint16_t *)malloc(SW * SH * 2);
+  stage = (uint16_t *)malloc(SW * STAGE_ROWS * 2);
   banded = band.begin(0);   // before WiFi takes its share of memory
   scrollSetup();
   Serial.printf("screen buffer: %d rows per band\n", banded ? band.bh : 0);
@@ -1840,6 +1863,7 @@ void pollTouch() {
 void loop() {
   static uint32_t tick = 0, nextBlink = 4000, blinkEnd = 0;
   songTick();
+  bleCheck();
   int b = pressed();
   if (b >= 0) onButton(b);
   pollTouch();

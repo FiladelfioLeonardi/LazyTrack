@@ -150,8 +150,10 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
 
     func peripheral(_ p: CBPeripheral, didUpdateValueFor ch: CBCharacteristic, error: Error?) {
         guard ch.uuid == Self.txUUID else { return }
-        if let error {   // the encrypted read failed: not paired
-            status = "Not paired yet (\(error.localizedDescription)). Turn Bluetooth off and on to try again."
+        if let error {   // the encrypted read failed: not paired. Start over with a fresh pairing.
+            status = "Pairing didn't work, trying again… If it keeps saying this: iPhone Settings → Bluetooth → ⓘ LazyTrack Egg → Forget This Device."
+            savedEgg = nil
+            central.cancelPeripheralConnection(p)
             return
         }
         if !paired {   // the first answer (to the encrypted read): the link is encrypted now
