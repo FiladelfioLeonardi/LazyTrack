@@ -576,6 +576,8 @@
   @keyframes wrInR { from { transform: translateX(56px); opacity: 0; } to { transform: none; opacity: 1; } }
   @keyframes wrInL { from { transform: translateX(-56px); opacity: 0; } to { transform: none; opacity: 1; } }
   .writems.settled .writem { animation: none; }
+  .wrsec { grid-column: 1 / -1; font: 700 12px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin: 10px 0 0; }
+  .wrsec:first-child { margin-top: 0; }
   .writems .writem { animation: wrTile .3s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--n, 0) * 18ms); }
   @keyframes wrTile { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
   .wrstage .pet.wrpop { animation: wrPop .32s cubic-bezier(.3, 1.6, .5, 1); }
@@ -2107,6 +2109,57 @@ Object.assign(MOCHI.outfits, {
   diaper: {n: "Diaper", rows: ["................", "wwwwwwwwwwwwwwww", "wwwwwwwSwwwwwwww"]},
 });
 
+// ---- girl styles (g: 1): hair, bows and tiaras, lashes, lips, dresses, bags. They also have their own
+// wardrobe category ("Girl styles"). Hair sits exactly where it's drawn (float), framing the face.
+Object.assign(MOCHI.hats, {
+  longhair: {n: "Long hair", g: 1, float: true, tint: "#5a3825", rows: ["................", "....kkkkkkkk....", "...khhhhhhhhk...", "..khjhhhhhhhhk..", ".khjhhhhhhhhhhk.",
+    ".khhhhhhhhhhhhk.", ".khk........khk.", ".khk........khk.", ".khk........khk.", ".khk........khk.", ".khhk......khhk.", "..khk......khk..", "...k........k..."]},
+  bob: {n: "Bob", g: 1, float: true, tint: "#1d1b20", rows: ["................", "................", "....kkkkkkkk....", "...khhhhhhhhk...", "..khjhhhhhhhhk..",
+    ".khhhhhhhhhhhhk.", ".khk........khk.", ".khk........khk.", ".khhk......khhk.", "..kk........kk.."]},
+  ponytail: {n: "Ponytail", g: 1, float: true, tint: "#ffd36e", rows: ["................", "................", "....kkkkkkkk....", "...khhhhhhhhkkk.", "..khjhhhhhhhkphk",
+    "..khhhhhhhhhkhhk", ".............khk", ".............khk", ".............khk", "............khk.", "............kk.."]},
+  pigtails: {n: "Pigtails", g: 1, float: true, tint: "#a8693e", rows: ["................", "................", "....kkkkkkkk....", "...khhhhhhhhk...", "..khjhhhhhhhhk..",
+    "kkkhhhhhhhhhhkkk", "khpk........kphk", "khhk........khhk", "kjhk........kjhk", ".khk........khk.", "..k..........k.."]},
+  buns: {n: "Space buns", g: 1, float: true, tint: "#ff8fb1", rows: ["................", "..kkk......kkk..", ".khjhk....khjhk.", ".khhhkkkkkkhhhk.", "..kkhhhhhhhhkk..", "...khhhhhhhhk..."]},
+  bow: {n: "Hair bow", g: 1, float: true, tint: "#ff5aa0", rows: ["................", "........kk...kk.", "........khk.khk.", "........khhkhhk.", "........khk.khk.", "........kk...kk."]},
+  tiara: {n: "Tiara", g: 1, float: true, tint: "#dfe3ea", rows: ["................", "....k..kk..k....", "...khkkhhkkhk...", "...khjhpphjhk...", "...kkkkkkkkkk..."]},
+  flowerclip: {n: "Flower clip", g: 1, float: true, rows: ["................", "................", "................", "...p............", "..pyp...........", "...pE..........."]},
+});
+Object.assign(MOCHI.eyes, {
+  lashes: {n: "Lashes", g: 1, y: 5, rows: ["....k......k....", ".....k....k.....", ".....k....k....."]},
+  doe: {n: "Doe eyes", g: 1, y: 5, rows: ["....kk....kk....", "....kw....kw....", "....kk....kk...."]},
+});
+Object.assign(MOCHI.mouthItems, {
+  lips: {n: "Red lips", g: 1, rows: ["......rrrr......", ".......RR......."]},
+  gloss: {n: "Pink gloss", g: 1, rows: [".......pp.......", "......pPPp......"]},
+});
+Object.assign(MOCHI.outfits, {
+  dress: {n: "Dress", g: 1, tint: "#ff8fb1", rows: ["hhhhhhjjhhhhhhhh", "HHHHHHwwHHHHHHHH", "hjhjhjhjhjhjhjhj"]},
+  sundress: {n: "Sundress", g: 1, tint: "#ffd84a", rows: ["hhhwhhhhhhhhwhhh", "hhhhhhhhhhhhhhhh", "hphhhEhhhphhhEhh"]},
+  croptop: {n: "Crop top", g: 1, tint: "#ff5aa0", rows: ["hhhhhhhhhhhhhhhh", "hhhhhhhwwhhhhhhh", "................"]},
+  tutu: {n: "Tutu skirt", g: 1, tint: "#ffb3e6", rows: ["................", "hhhhhhhhhhhhhhhh", "hjhjhjhjhjhjhjhj"]},
+  cardigan: {n: "Cardigan", g: 1, tint: "#c9b8ff", rows: ["hhhhhkwwwwkhhhhh", "hhhhhkwwwwkhhhhh", "HHHHHkwwwwkHHHHH"]},
+  cheer: {n: "Cheer outfit", g: 1, tint: "#e0303a", rows: ["hhhhhhwhhwhhhhhh", "hhhhhhhwwhhhhhhh", "hwhwhwhwhwhwhwhw"]},
+});
+Object.assign(MOCHI.necks, {
+  pearls: {n: "Pearls", g: 1, rows: ["....s......s....", ".....s....s.....", "......ssss......"]},
+  heart: {n: "Heart necklace", g: 1, tint: "#ff5aa0", rows: ["....S......S....", ".....S....S.....", "......SSSS......", ".......hh......."]},
+});
+Object.assign(MOCHI.held, {
+  handbag: {n: "Handbag", g: 1, tint: "#ff5aa0", rows: {9: "............kk..", 10: "...........k..k.", 11: "..........khhhhk", 12: "..........khjhhk", 13: "..........kHHHHk", 14: "..........kkkkkk"}},
+  wand: {n: "Magic wand", g: 1, rows: {3: "............y...", 4: "...........yyy..", 5: "............y...", 6: "............k...", 7: "............p...", 8: "............p...", 9: "............p...", 10: "............p...", 11: "............k..."}},
+  boba: {n: "Bubble tea", g: 1, rows: {7: ".............k..", 8: "............kk..", 9: "...........kkkk.", 10: "...........kppk.", 11: "...........kppk.", 12: "...........knnk.", 13: "............kk.."}},
+});
+Object.assign(MOCHI.looks, {
+  princess: {n: "Princess", g: 1, look: {body: "blob", skin: "pink", eyes: "lashes", mouth: "gloss", hat: "tiara", neck: "pearls", outfit: "dress", held: "wand"}},
+  popstar: {n: "Pop star", g: 1, look: {body: "blob", skin: "lilac", eyes: "doe", mouth: "lips", hat: "ponytail", neck: "heart", outfit: "croptop", held: "mic"}},
+  baddie: {n: "Baddie", g: 1, look: {body: "cat", skin: "choco", eyes: "lashes", mouth: "lips", hat: "longhair", hatColor: "#1d1b20", glasses: "shades", neck: "chain", outfit: "croptop", outfitColor: "#2b2733", held: "handbag"}},
+  cottage: {n: "Cottagecore", g: 1, look: {body: "bunny", skin: "peach", eyes: "doe", mouth: "kiss", hat: "flowers", outfit: "sundress", held: "flower"}},
+  witch: {n: "Cute witch", g: 1, look: {body: "blob", skin: "mint", eyes: "lashes", mouth: "gloss", hat: "wizard", hatColor: "#2b2733", outfit: "dress", outfitColor: "#6250d6", held: "wand"}},
+  cheerleader: {n: "Cheerleader", g: 1, look: {body: "blob", skin: "sun", eyes: "happy", hat: "pigtails", outfit: "cheer", held: "none"}},
+  bobagirl: {n: "Boba girl", g: 1, look: {body: "blob", skin: "cloud", eyes: "doe", mouth: "smile", hat: "buns", outfit: "cardigan", held: "boba"}},
+});
+
 /**
  * Hats are drawn one row higher than their rows say, so the brim sits on the head's top outline
  * instead of covering the forehead: an empty top row is dropped, otherwise the bottom outline row is.
@@ -3231,9 +3284,9 @@ async function loadSettings() {
 }
 // ---------------------------------------------------------------- the wardrobe
 // the categories on the right; the stage on the left always shows the look you're making
-const WR_CATS = [["looks", "✨", "Ready-made looks"], ["body", "🫧", "Body"], ["skin", "🎨", "Color"], ["eyes", "👀", "Eyes"], ["mouth", "👄", "Mouth"],
+const WR_CATS = [["looks", "✨", "Ready-made looks"], ["girl", "🎀", "Girl styles"], ["body", "🫧", "Body"], ["skin", "🎨", "Color"], ["eyes", "👀", "Eyes"], ["mouth", "👄", "Mouth"],
                  ["hat", "🎩", "Head"], ["glasses", "🕶️", "Glasses"], ["neck", "📿", "Neck"], ["outfit", "👕", "Outfit"], ["held", "✋", "Holding"], ["place", "🏞️", "Place"]];
-const WR_HINT = {looks: "Whole outfits in one tap. You can change any part after.", body: "Mochi's shape.", skin: "Mochi's color, or pick any color.",
+const WR_HINT = {looks: "Whole outfits in one tap. You can change any part after.", girl: "Girl characters, hair, dresses, bags and more. Pick any piece, or a whole look.", body: "Mochi's shape.", skin: "Mochi's color, or pick any color.",
   eyes: "Pick the eyes, then any color for them.", mouth: "Moods still change it now and then.", hat: "Sits on top without squashing Mochi. Any color.",
   glasses: "", neck: "", outfit: "", held: "Something to hold.", place: "Where Mochi lives. Friends see it too."};
 const WR_COLORS = ["#1d1b20", "#ffffff", "#8a8f9c", "#e0303a", "#ff8fb1", "#f2b705", "#3fae69", "#7ad3ff", "#2a78d6", "#6250d6", "#c99a6e"];
@@ -3249,6 +3302,7 @@ const wardrobe = {
   },
   close() { clearInterval(this.blink); $("wardrobe").hidden = true; },
   nameOf(slot) {
+    if (slot === "girl") return "Hair, dresses…";
     if (slot === "looks") { const m = Object.entries(MOCHI.looks).find(([, v]) => { const l = {...LOOK_DEFAULT, ...v.look, place: this.look.place}; return Object.keys(LOOK_DEFAULT).every(s => l[s] === this.look[s]); }); return m ? m[1].n : "Your own"; }
     if (slot === "skin" && isHex(this.look.skin)) return "Custom";
     const it = MOCHI[SLOTS[slot]][this.look[slot]]; return it ? it.n : "–";
@@ -3284,14 +3338,27 @@ const wardrobe = {
     $("wrHead").innerHTML = `<h2 id="wrTitle">${cat[1]} ${cat[2]}</h2>${WR_HINT[this.tab] ? `<p>${WR_HINT[this.tab]}</p>` : ""}`;
     $("wrBackBtn").hidden = false; $("wrKeys").hidden = true;   // the way back: a big button at the bottom, next to Save
     let items;
-    if (this.tab === "looks") {
+    if (this.tab === "girl") {   // the girl pieces from every category, in sections; each tile changes its own part
+      const SEC = [["looks", "Characters"], ["hat", "Hair & head"], ["eyes", "Eyes"], ["mouth", "Lips"], ["outfit", "Outfits"], ["neck", "Necklaces"], ["held", "Holding"]];
+      items = [];
+      for (const [slot, title] of SEC) {
+        items.push({sec: title});
+        const src = slot === "looks" ? MOCHI.looks : MOCHI[SLOTS[slot]];
+        for (const [k, v] of Object.entries(src)) {
+          if (!v.g) continue;
+          if (slot === "looks") { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
+            items.push({k: "looks:" + k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}); }
+          else items.push({k: slot + ":" + k, n: v.n, look: {...this.look, [slot]: k}, on: this.look[slot] === k});
+        }
+      }
+    } else if (this.tab === "looks") {
       items = Object.entries(MOCHI.looks).map(([k, v]) => { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
         return {k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}; });
     } else {
       items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
     }
     const fresh = !!dir;   // the tiles drop in only when the page opens, not on every pick
-    $("wrList").innerHTML = `<div class="writems ${fresh ? "" : "settled"}">${items.map((it, n) => { const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
+    $("wrList").innerHTML = `<div class="writems ${fresh ? "" : "settled"}">${items.map((it, n) => { if (it.sec) return `<div class="wrsec">${esc(it.sec)}</div>`; const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
       return `<button type="button" class="writem" style="--n:${Math.min(n, 20)}" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
         <span class="wrscene" style="background-image:url(${bg})"><span class="pet">${mochiCells(it.look)}</span></span><span>${esc(it.n)}</span></button>`; }).join("")}</div>`;
     this.drawColors();
@@ -3325,7 +3392,11 @@ const wardrobe = {
   },
   pick(k) {
     this.remember();
-    if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look, place: this.look.place};
+    if (this.tab === "girl") {   // "slot:key"
+      const [slot, key] = k.split(":");
+      if (slot === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[key].look, place: this.look.place};
+      else { this.look = {...this.look, [slot]: key}; if (!COLOR_SLOTS.includes(slot)) delete this.look[slot + "Color"]; }
+    } else if (this.tab === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[k].look, place: this.look.place};
     else {
       this.look = {...this.look, [this.tab]: k};
       if (!COLOR_SLOTS.includes(this.tab)) delete this.look[this.tab + "Color"];   // these keep their own colors
