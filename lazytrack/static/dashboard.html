@@ -1662,6 +1662,14 @@ applyTheme();
         <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="bkNow">Back up now</button><span class="note" id="bkNote"></span></div>
       </section>
 
+      <section class="card pad" data-cat="app" id="sUninstall" hidden>
+        <h2>Uninstall LazyTrack</h2>
+        <div class="form">
+          <p class="hint">Removes LazyTrack from this computer. It asks first, and asks whether to keep your data (so a reinstall picks up where you left off). No admin rights needed.</p>
+          <div><button type="button" class="btn" id="uninstallBtn">Uninstall LazyTrack…</button></div>
+        </div>
+      </section>
+
       <section class="card pad" data-cat="app" id="sLogin" hidden>
         <h2>Start with your computer</h2>
         <div class="form">
@@ -3280,6 +3288,7 @@ async function loadSettings() {
     f.querySelectorAll(`[name="${k}"]`).forEach(el => { if (el.type === "checkbox") el.checked = !!v; else if (el.type === "radio") el.checked = el.value === v; else el.value = v; });
   }
   $("sLogin").hidden = !s.start_at_login_supported;   // only for an installed LazyTrack
+  $("sUninstall").hidden = !s.uninstall_supported;    // Windows
   settingsLoaded = true;
 }
 // ---------------------------------------------------------------- the wardrobe
@@ -3887,6 +3896,11 @@ document.addEventListener("submit", async e => {
   }
 });
 document.addEventListener("click", async e => {
+  if (e.target.closest("#uninstallBtn")) {
+    const r = await post("/api/uninstall", {}), j = await r.json().catch(() => ({}));
+    toast(r.ok ? "Check the window that just opened (it may be behind this one)." : j.error || "Couldn't start the uninstaller.", null);
+    return;
+  }
   if (e.target.closest("[data-edit-account]")) { editAccount.open = true; go({tab: "settings"}); return; }
   const fr = e.target.closest("[data-friend]"); if (fr) { go({tab: "friends", f: fr.dataset.friend}); return; }
   if (e.target.closest("[data-go-friends]")) { go({tab: "friends"}); renderFriends(); return; }

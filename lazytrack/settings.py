@@ -17,6 +17,14 @@ SENSITIVITY = {"low": 6.0, "normal": 4.0, "high": 2.5}
 SECRET_MASK = "••••••••"
 
 
+def _uninstall_ok() -> bool:
+    try:
+        from . import uninstall
+        return uninstall.supported()
+    except Exception:
+        return False
+
+
 def _raw() -> dict:
     try:
         return json.loads(config.CONFIG_PATH.read_text())
@@ -43,6 +51,7 @@ def get(cfg: dict) -> dict:
         "keep_running": bool(cfg.get("app", {}).get("keep_running", True)),
         "start_at_login": _autostart()[1],
         "start_at_login_supported": _autostart()[0],
+        "uninstall_supported": _uninstall_ok(),
         "test_versions": cfg.get("update", {}).get("branch", "stable") == "main",
         "smoke_enabled": bool(s.get("enabled", False)),
         "smoke_asked": bool(s.get("asked", False)),

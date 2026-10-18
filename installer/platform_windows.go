@@ -201,7 +201,7 @@ func makeShortcuts(dir string) error {
 	for _, v := range [][]string{
 		{"DisplayName", "REG_SZ", "LazyTrack"}, {"DisplayIcon", "REG_SZ", dir + `\assets\lazytrack.ico`},
 		{"Publisher", "REG_SZ", "LazyTrack"}, {"InstallLocation", "REG_SZ", dir},
-		{"UninstallString", "REG_SZ", `"` + dir + `\Uninstall LazyTrack.exe" --uninstall`},
+		{"UninstallString", "REG_SZ", uninstallCmd(dir)},
 		{"NoModify", "REG_DWORD", "1"}, {"NoRepair", "REG_DWORD", "1"}, {"EstimatedSize", "REG_DWORD", "2500000"},
 	} {
 		runTimed(dir, 20*time.Second, "reg", "add", uninstallKey, "/v", v[0], "/t", v[1], "/d", v[2], "/f")
@@ -215,8 +215,26 @@ func launch(dir string) error {
 	return cmd.Start()
 }
 
+// Settings > Apps runs windows\uninstall.ps1: a script, so antivirus can't block it (it does that to unsigned
+// .exe files, and Windows then says you don't have the rights), and it needs no admin rights.
+func psExe() string {
+	return filepath.Join(os.Getenv("WINDIR"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+}
+
+func uninstallCmd(dir string) string {
+	return `"` + psExe() + `" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "` + filepath.Join(dir, "windows", "uninstall.ps1") + `"`
+}
+
 func uninstall() {
 	dir := appDir()
+	if ps := filepath.Join(dir, "windows", "uninstall.ps1"); fileExists(ps) {   // the script does it all (and asks)
+		cmd := exec.Command(psExe(), "-NoProfile", "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-File", ps)
+		cmd.Dir = os.TempDir()
+		hideWindow(cmd)
+		if cmd.Start() == nil {
+			return
+		}
+	}
 	if !ask("Uninstall LazyTrack", "Remove LazyTrack from this computer?") {
 		return
 	}

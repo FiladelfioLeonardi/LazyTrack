@@ -266,6 +266,15 @@ def make_handler(cfg: dict):
                 if u.path == "/api/setup" and user:
                     accounts.set_setup_done(user["id"])
                 return self._send(200, out)
+            if u.path == "/api/uninstall":
+                if not self._local():
+                    return self._send(403, {"error": "only on the computer itself"})
+                from . import uninstall
+                try:
+                    uninstall.start()
+                except Exception as e:
+                    return self._send(400, {"error": str(e)})
+                return self._send(200, {"ok": True})
             if u.path in ("/api/settings", "/api/restart"):
                 if not self._local():
                     return self._send(403, {"error": "settings can only be changed on the Mac itself"})

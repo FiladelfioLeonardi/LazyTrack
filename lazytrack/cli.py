@@ -83,6 +83,11 @@ def cmd_run(cfg: dict, args) -> None:
     from .window import fix_mac_app
     fix_mac_app()
     dashboard.start(cfg)
+    try:
+        from .uninstall import fix_apps_entry
+        fix_apps_entry()   # Windows: Settings > Apps > Uninstall runs the script, not the old .exe
+    except Exception:
+        log.exception("uninstall entry")
     if cfg["dashboard"].get("open_on_start", True) and not os.environ.get("LAZYTRACK_RESTARTED"):
         from .window import open_app
         open_app(cfg)   # LazyTrack's own window (or the browser if windows aren't supported here)
