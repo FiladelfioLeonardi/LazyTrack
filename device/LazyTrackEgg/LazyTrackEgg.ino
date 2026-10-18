@@ -493,7 +493,12 @@ int http(const String &method, const String &path, const String &payload, String
   if (held) UNLOCK();                                   // let the screen keep going while we wait for the network
   xSemaphoreTakeRecursive(httpLock, portMAX_DELAY);
   String got;
+  uint32_t t0 = millis();
   int code = httpRaw(method, path, payload, got, auth, prefer);
+  // every request in the Serial Monitor: what, the answer, how long (the token never shows)
+  int q = path.indexOf('?');
+  Serial.printf("  %s %s -> %d (%lu ms)%s%s\n", method.c_str(), path.substring(0, q < 0 ? path.length() : q).c_str(), code, (unsigned long)(millis() - t0),
+                code >= 400 ? ": " : "", code >= 400 ? got.substring(0, 120).c_str() : "");
   xSemaphoreGiveRecursive(httpLock);
   if (held) LOCK();
   body = got;
