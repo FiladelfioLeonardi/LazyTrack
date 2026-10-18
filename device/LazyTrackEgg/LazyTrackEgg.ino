@@ -553,11 +553,10 @@ int httpRaw(const String &method, const String &path, const String &payload, Str
 
 int httpOnce(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer) {
   if (WiFi.status() != WL_CONNECTED) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // through the phone
-  // A fresh secure connection per request, closed right after: kept open, it held ~40 KB of memory all the time,
-  // which left too little for Bluetooth pairing and crashed in the middle of a connection.
+  // (HTTPClient's defaults, as when it worked. Closing the connection after every request made the library stop
+  // reading when the server hung up: 200 with an empty answer.)
   HTTPClient h;
-  h.setReuse(false);
-  h.setTimeout(8000);
+  h.setTimeout(12000);
   if (!h.begin(tls, String(SUPA_URL) + path)) { tls.stop(); return -1; }
   h.addHeader("apikey", SUPA_KEY);
   h.addHeader("Content-Type", "application/json");
@@ -566,7 +565,7 @@ int httpOnce(const String &method, const String &path, const String &payload, St
   int code = method == "POST" ? h.POST(payload) : method == "GET" ? h.GET() : h.sendRequest(method.c_str(), payload);
   body = code > 0 ? h.getString() : "";
   h.end();
-  tls.stop();   // memory back right away
+  if (code < 0) tls.stop();   // a broken connection: start fresh next time
   if (code < 0 && bleLinked) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // WiFi without internet: try the phone
   return code;
 }
@@ -2013,7 +2012,7 @@ void setup() {
   esp_task_wdt_reconfigure(&wdt);
 #endif
   // Core 1, next to the screen: the watchdog only watches core 0, where a slow connection restarted the egg.
-  xTaskCreatePinnedToCore(netTask, "net", 16384, nullptr, 1, nullptr, 1);
+  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 1);   // 12 KB: with 16 KB the secure connection didn't fit
 }
 
 // ---------------------------------------------------------------- the network task (core 0)
