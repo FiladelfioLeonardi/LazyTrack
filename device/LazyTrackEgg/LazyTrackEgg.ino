@@ -63,6 +63,17 @@ int tcSwap = 0, tcX0 = 0, tcX1 = 1, tcY0 = 0, tcY1 = 1;   // raw readings at scr
 // (types used in function parameters live up here: Arduino IDE declares all functions near the top)
 struct Note { uint16_t f, ms; };   // a song note; f = 0: a short rest
 struct CoolF { bool on; int shades; int glint; bool smirk, nod; };   // one moment of the legendary cool move
+// The network runs in its own task (on the other core), so the screen and buttons never wait for WiFi or the
+// server. One lock keeps them from touching the same things at once; while a request waits for the network,
+// the lock is let go (see http()), so the screen keeps going.
+SemaphoreHandle_t dataLock;
+volatile TaskHandle_t lockOwner = nullptr;
+inline void LOCK() { xSemaphoreTake(dataLock, portMAX_DELAY); lockOwner = xTaskGetCurrentTaskHandle(); }
+inline void UNLOCK() { lockOwner = nullptr; xSemaphoreGive(dataLock); }
+SemaphoreHandle_t httpLock;            // one request at a time (they share the secure connection / Bluetooth link)
+volatile bool needRedraw = false;      // the network task got news: the screen redraws it
+volatile bool netKick = false;         // do a sync right away (after a log, Info B, the phone connecting...)
+volatile bool habitsKick = false, friendsKick = false;
 
 // the friends server (same as the app; this key is the public one made to sit in apps)
 static const char *SUPA_URL = "https://zmrzumltciteeznzjwaw.supabase.co";
@@ -265,7 +276,10 @@ class EggServerCb : public NimBLEServerCallbacks {
     bleConnAt = millis();
     NimBLEDevice::startSecurity(c.getConnHandle());
   }
-  void onDisconnect(NimBLEServer *s, NimBLEConnInfo &c, int reason) override { bleLinked = bleConnected = false; }
+  void onDisconnect(NimBLEServer *s, NimBLEConnInfo &c, int reason) override {
+    bleLinked = bleConnected = false;
+    Serial.printf("Bluetooth: phone gone (reason %d), findable again\n", reason);
+  }
   void onMTUChange(uint16_t mtu, NimBLEConnInfo &c) override { bleMtu = mtu; }
   void onAuthenticationComplete(NimBLEConnInfo &c) override {
     bleLinked = c.isEncrypted();
@@ -300,6 +314,7 @@ void bleSetup() {
   NimBLEDevice::setMTU(247);
   NimBLEDevice::setSecurityAuth(true, false, true);   // bonded, LE Secure Connections: encrypted, paired once
   NimBLEServer *srv = bleSrv = NimBLEDevice::createServer();
+  srv->advertiseOnDisconnect(true);   // after the phone goes away, be findable again (off by default!)
   srv->setCallbacks(new EggServerCb());
   NimBLEService *svc = srv->createService(EGG_SVC);
   bleTx = svc->createCharacteristic(EGG_TX, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::READ_ENC);
@@ -357,6 +372,15 @@ int bleHttp(const String &method, const String &url, const String &payload, Stri
 // forget all pairings and drop the phone, so its next try pairs fresh. Called from loop().
 void bleCheck() {
   if (!bleSrv) return;
+  static uint32_t advCheck = 0;   // nobody connected and not findable (shouldn't happen, but never get stuck): advertise again
+  if (millis() - advCheck > 5000) {
+    advCheck = millis();
+    if (bleSrv->getConnectedCount() == 0 && !NimBLEDevice::getAdvertising()->isAdvertising()) {
+      bleConnected = bleLinked = false;
+      NimBLEDevice::startAdvertising();
+      Serial.println("Bluetooth: advertising again");
+    }
+  }
   bool stuck = bleConnected && !bleLinked && millis() - bleConnAt > 20000;
   if (!bleBadPair && !stuck) return;
   bleBadPair = false;
@@ -376,7 +400,21 @@ String netName() {
 WiFiClientSecure tls;
 
 // POST/GET with the right headers. Returns the HTTP status (or a negative error), fills body.
+int httpRaw(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer);
+
 int http(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer = nullptr) {
+  bool held = lockOwner == xTaskGetCurrentTaskHandle();
+  if (held) UNLOCK();                                   // let the screen keep going while we wait for the network
+  xSemaphoreTakeRecursive(httpLock, portMAX_DELAY);
+  String got;
+  int code = httpRaw(method, path, payload, got, auth, prefer);
+  xSemaphoreGiveRecursive(httpLock);
+  if (held) LOCK();
+  body = got;
+  return code;
+}
+
+int httpRaw(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer) {
   if (WiFi.status() != WL_CONNECTED) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // through the phone
   HTTPClient h;
   h.setTimeout(12000);
@@ -405,7 +443,15 @@ bool takeSession(const String &body) {
   return true;
 }
 
-bool login() {
+bool loginNow();
+bool login() {   // the session (token) only changes while holding the request lock, so requests never see half of it
+  xSemaphoreTakeRecursive(httpLock, portMAX_DELAY);
+  bool ok = loginNow();
+  xSemaphoreGiveRecursive(httpLock);
+  return ok;
+}
+
+bool loginNow() {
   String body;
   if (refresh.length()) {  // stay logged in without sending the password again
     if (http("POST", "/auth/v1/token?grant_type=refresh_token", "{\"refresh_token\":\"" + refresh + "\"}", body, false) == 200 && takeSession(body)) return true;
@@ -693,7 +739,8 @@ void doLog(int i) {
 // Mochi is hungry: A feeds him (it goes to LazyTrack like a log, waiting if there's no WiFi)
 void feed() {
   time_t t = clockOk() ? time(nullptr) : 0;
-  if (!sendLog("feed", t, nullptr)) queueLog("feed", t);
+  queueLog("feed", t);   // goes out from the network task in a moment
+  netKick = true;
   String meal = hungryNow();
   if (clockOk()) {   // remember it here too, so Mochi isn't hungry again before LazyTrack hears about it
     if (prefs.getLong("fedDay", -1) != dayNow()) { prefs.putLong("fedDay", dayNow()); prefs.putInt("fedMask", 0); }
@@ -1532,8 +1579,13 @@ void setScreen(bool on) {
 }
 
 // ---------------------------------------------------------------- main
+void netTask(void *);
+
 void setup() {
   Serial.begin(115200);
+  dataLock = xSemaphoreCreateMutex();
+  httpLock = xSemaphoreCreateRecursiveMutex();
+  LOCK();   // setup draws; loop() takes it from here
   for (auto &b : btns) { pinMode(b.pin, INPUT_PULLUP); attachInterruptArg(digitalPinToInterrupt(b.pin), btnEdge, &b, CHANGE); }
   if (PIN_BL >= 0) { pinMode(PIN_BL, OUTPUT); digitalWrite(PIN_BL, HIGH); }
   // 27 MHz like TFT_eSPI: fast enough, and steady over jumper wires (faster can give a white screen)
@@ -1589,12 +1641,62 @@ void setup() {
 #ifdef WIFI3_SSID
   wifi.addAP(WIFI3_SSID, WIFI3_PASS);
 #endif
-  for (int i = 0; i < 20 && wifi.run(1000) != WL_CONNECTED; i++) {}
-  configTime(0, 0, "pool.ntp.org");  // the clock, for "coding for 25 min"
-  sync();
-  if (WiFi.status() == WL_CONNECTED) { flushQueue(); loadHabits(); loadFriends(); checkPokes(); }
   bleSetup();   // the phone can take over when there's no WiFi
   drawFrame();
+  // WiFi, logging in and syncing happen in the background from here: the buttons work right away
+  UNLOCK();
+  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 1, nullptr, 0);
+}
+
+// ---------------------------------------------------------------- the network task (core 0)
+void netSync(bool all) {   // with the lock held: card, queued logs, pokes (+ habits / friends when due)
+  int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy;
+  String tb = card.tierName, what = card.nowWhat + card.nowLabel, rh = hungryNow() + String(asleep());
+  sync();
+  if (online()) {
+    flushQueue();
+    checkPokes();
+    if (all || habitsKick || !nhabits || millis() - habitsAt > 120000) { habitsKick = false; loadHabits(); }
+    if (all || friendsKick || (view == V_FRIENDS && millis() - friendsAt > 60000)) {
+      friendsKick = false; loadFriends(); if (friendSel >= nfriends) friendSel = 0;
+      if (view == V_FRIENDS) needRedraw = true;
+    }
+  }
+  if (view == V_HOME && (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx
+                         || card.nowWhat + card.nowLabel != what || hungryNow() + String(asleep()) != rh)) needRedraw = true;
+  if (view == V_INFO || view == V_LOG || view == V_STATS) needRedraw = true;
+}
+
+void netTask(void *) {
+  LOCK(); status = "Connecting to WiFi..."; UNLOCK();
+  for (int i = 0; i < 20 && wifi.run(1000) != WL_CONNECTED && !bleLinked; i++) {}
+  configTime(0, 0, "pool.ntp.org");  // the clock, for "coding for 25 min"
+  LOCK(); netSync(true); needRedraw = true; UNLOCK();
+  uint32_t last = millis(), wifiTry = millis();
+  bool wasLinked = bleLinked;
+  for (;;) {
+    vTaskDelay(pdMS_TO_TICKS(200));
+    // no WiFi: look for it every 15 s (every 2 min while the phone covers for it)
+    if (WiFi.status() != WL_CONNECTED && millis() - wifiTry > (bleLinked ? 120000UL : 15000UL)) {
+      wifiTry = millis();
+      if (wifi.run(3000) == WL_CONNECTED) { configTime(0, 0, "pool.ntp.org"); netKick = true; }
+    }
+    if (bleLinked && !wasLinked) netKick = true;   // the phone just connected: catch up right away
+    wasLinked = bleLinked;
+    bool due = millis() - last > 30000;              // every 30 s: LazyTrack's changes arrive within a minute
+    if (due || netKick || habitsKick || friendsKick) {
+      bool full = due || netKick;
+      netKick = false;
+      last = millis();
+      LOCK();
+      if (full) netSync(false);
+      else if (online()) {
+        if (habitsKick) { habitsKick = false; loadHabits(); needRedraw = true; }
+        if (friendsKick) { friendsKick = false; loadFriends(); if (friendSel >= nfriends) friendSel = 0; needRedraw = true; }
+      }
+      UNLOCK();
+    }
+  }
 }
 
 // Screen changes slide vertically using the screen's own hardware scrolling: the screen shifts its
@@ -1674,14 +1776,15 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       if (b == 0) { menuSel = (menuSel + 1) % 4; drawFrame(); }
       else if (b == 2) transition(V_HOME, false);
       else if (menuSel == 0) {
-        if (!nhabits || millis() - habitsAt > 20000) loadHabits();   // fresh list: habits you removed in the app are gone
+        if (!nhabits) loadHabits(); else if (millis() - habitsAt > 20000) habitsKick = true;   // fresh list in the background
         logSel = 0; transition(V_LOG, true);
       } else if (menuSel == 1) {
         friendSel = 0;
-        if (millis() - friendsAt > 60000 || !nfriends) { panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK); loadFriends(); }
+        if (!friendsAt) { panel(40, 140, 160, 40); text(62, 154, "Loading...", 2, INK); loadFriends(); }   // the first time only
+        else if (millis() - friendsAt > 60000) friendsKick = true;
         status = ""; transition(V_FRIENDS, true);
       } else if (menuSel == 2) {
-        if (millis() - habitsAt > 20000) loadHabits();   // fresh numbers (and only what you track now)
+        if (!ntoday) loadHabits(); else if (millis() - habitsAt > 20000) habitsKick = true;   // fresh numbers in the background
         todaySel = 0; transition(V_STATS, true);
       } else transition(V_INFO, true);
       break;
@@ -1696,7 +1799,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       else if (b == 2) { status = ""; transition(V_MENU, false); }
       break;
     case V_INFO:
-      if (b == 1) { status = "Syncing..."; drawFrame(); sync(); checkPokes(); tuneClick(); if (view == V_INFO) drawFrame(); break; }
+      if (b == 1) { status = "Syncing..."; drawFrame(); netKick = true; break; }   // the network task does it (Info updates when done)
       if (b == 0) { transition(V_HOME, false); playCool(); break; }   // C: try the legendary cool move
       if (b == 2 || b == 0) transition(V_MENU, false);
       break;
@@ -1862,40 +1965,32 @@ void pollTouch() {
   }
 }
 
-void loop() {
+void uiLoop();
+void loop() {   // the screen and buttons; the network has its own task
+  LOCK();
+  uiLoop();
+  UNLOCK();
+  vTaskDelay(1);   // a moment for the network task to get its turn
+}
+
+void uiLoop() {
   static uint32_t tick = 0, nextBlink = 4000, blinkEnd = 0;
+  if (needRedraw && !coolStart && screenOn) { needRedraw = false; drawFrame(); }
   songTick();
   bleCheck();
   int b = pressed();
   if (b >= 0) onButton(b);
   pollTouch();
 
-  if (millis() - lastTry > 30000) {   // every 30 s: LazyTrack sends changes (drunk, high, sober...) within a minute
-    int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat + card.nowLabel, rh = hungryNow() + String(asleep());
-    sync();
-    if (online()) {
-      flushQueue();
-      checkPokes();
-      if (!nhabits || millis() - habitsAt > 120000) loadHabits();
-      if (view == V_FRIENDS && millis() - friendsAt > 60000) { loadFriends(); if (friendSel >= nfriends) friendSel = 0; drawFrame(); }
-    }
-    if (view == V_HOME && (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat + card.nowLabel != what
-                          || hungryNow() + String(asleep()) != rh)) drawFrame();
-    static String lastHungry = "";   // a meal started (online or offline): a little rumble
+  static uint32_t hungryCheck = 0;   // a meal started (online or offline): a little rumble
+  if (millis() - hungryCheck > 30000) {
+    hungryCheck = millis();
+    static String lastHungry = "";
     String hNow = hungryNow();
     if (hNow.length() && hNow != lastHungry && !asleep() && card.ok) tuneHungry();
+    if (hNow != lastHungry && view == V_HOME) needRedraw = true;
     lastHungry = hNow;
-    if (view == V_INFO) drawFrame();
   }
-  // no WiFi: look for it every 15 s (every 2 min while the phone covers for it, so the screen stays smooth)
-  static uint32_t wifiTry = 0;
-  if (WiFi.status() != WL_CONNECTED && millis() - wifiTry > (bleLinked ? 120000UL : 15000UL)) {
-    wifiTry = millis();
-    if (wifi.run(3000) == WL_CONNECTED) sync();
-  }
-  static bool wasLinked = false;   // the phone just connected: catch up right away
-  if (bleLinked && !wasLinked && WiFi.status() != WL_CONNECTED) { wasLinked = true; flushQueue(); sync(); if (view == V_HOME) drawFrame(); }
-  if (!bleLinked) wasLinked = false;
   if (msgUntil && millis() > msgUntil) { msgUntil = 0; undoId = 0; if (view == V_HOME) drawFrame(); }   // the message is done
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
