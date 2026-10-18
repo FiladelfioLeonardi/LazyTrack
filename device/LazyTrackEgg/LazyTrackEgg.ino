@@ -182,6 +182,7 @@ struct Card {
   char scene[56 * 56 + 1];
   String stats[8];
   int nstats = 0;
+  String look = "";   // what Mochi looks like (outfit, colors, mood, level): when it changes, the pictures are fetched again
 } card;
 
 // (Arduino IDE declares every function near the top of the sketch, so no function takes these as a parameter)
@@ -303,6 +304,7 @@ volatile bool bleOldBond = false;     // a phone from the old no-code pairing: f
 NimBLEAddress bleOldAddr;
 volatile uint32_t bleNewPairing = 0;  // a phone just paired with the code (the screen says so)
 volatile uint32_t blePairUntil = 0;   // pairing mode: new phones accepted until then
+volatile bool pairWanted = false;     // B pressed: pairing mode starts as soon as the sync running now is done
 volatile uint32_t blePin = 0, blePinAt = 0;   // the code waiting for your OK on the egg
 volatile uint16_t blePinConn = 0xFFFF;
 NimBLEServer *bleSrv = nullptr;
@@ -627,14 +629,17 @@ int mealBit(const String &name);
 
 bool parseCard(const String &body) {
   JsonDocument filter;
-  JsonObject f = filter[0]["card"].to<JsonObject>();
-  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built", "mood", "tzo", "asleep", "hungry", "plan"}) f[k] = true;
-  f["stats"][0]["s"] = true;
-  f["stats"][0]["v"] = true;
-  f["stats"][0]["unit"] = true;
+  for (int flat = 0; flat < 2; flat++) {   // the whole card ({"card": {...}}) or just its small part (flat)
+    JsonObject f = flat ? filter[0].to<JsonObject>() : filter[0]["card"].to<JsonObject>();
+    for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built", "mood", "tzo", "asleep", "hungry", "plan", "pet", "palette"}) f[k] = true;
+    f["stats"][0]["s"] = true;
+    f["stats"][0]["v"] = true;
+    f["stats"][0]["unit"] = true;
+  }
   JsonDocument d;
   if (deserializeJson(d, body, DeserializationOption::Filter(filter))) return false;
   JsonObject c = d[0]["card"];
+  if (c.isNull() && !d[0]["hp"].isNull()) c = d[0];
   if (c.isNull()) { status = "No card yet: open LazyTrack once"; return false; }
   String oldTier = card.tier;
   bool first = !card.ok;
@@ -704,6 +709,9 @@ bool parseCard(const String &body) {
     String val = String(s["unit"] | "") == "seconds" ? String(v / 3600) + "h " + String((v % 3600) / 60) + "m" : String(v);
     card.stats[card.nstats++] = String(s["s"] | "?") + "  " + val;
   }
+  card.look = "";
+  serializeJson(c["pet"], card.look);
+  card.look += String("|") + (const char *)(c["palette"] | "") + "|" + card.mood + "|" + card.tier;
   card.ok = true;
   if (!first && oldTier != card.tier) {  // Mochi got better or worse: let you know
     static const char *order[] = {"sick", "tired", "okay", "shiny", "legend"};
@@ -718,19 +726,27 @@ void sync() {
   lastTry = millis();
   if (!online()) { status = card.ok ? "Offline: Mochi runs on his own" : "No WiFi or phone"; return; }
   if (!token.length() || millis() / 1000 > tokenUntil) { status = "Logging in..."; if (!login()) return; }
-  String body;
-  int code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true);
-  if (code == 401) { token = ""; if (login()) code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true); }
-  if (code == 200 && parseCard(body)) {
+  // The whole card is ~8 KB, mostly Mochi's pictures (sprite + scene). Together with a secure connection that
+  // didn't fit in memory (answers came back empty). So every 30 s just the small part that changes (~1-2 KB);
+  // the pictures the first time, when his look changes, and every 15 minutes.
+  static String fullLook = "";
+  static uint32_t fullAt = 0;
+  for (int pass = 0; pass < 2; pass++) {
+    bool full = !card.sprite || !fullAt || millis() - fullAt > 900000;
+    String sel = full ? String("card,updated_at")
+      : String("updated_at");
+    if (!full) for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "offline", "built", "mood", "tzo", "asleep", "hungry", "plan", "stats", "pet", "palette"})
+      sel += String(",") + k + ":card-%3E" + k;   // "card->hp" ('>' written as %3E so it passes through the phone too)
+    String body, path = "/rest/v1/cards?user_id=eq." + uid + "&select=" + sel;
+    int code = http("GET", path, "", body, true);
+    if (code == 401) { token = ""; if (login()) code = http("GET", path, "", body, true); }
+    if (code != 200) { status = "Sync failed (" + String(code) + ")"; return; }
+    if (!parseCard(body)) return;
     lastSync = millis(); status = "Synced";
-    // kept for offline (in a file), at most every 10 minutes
-    static uint32_t keptAt = 0;
-    if (!keptAt || millis() - keptAt > 600000) {
-      keptAt = millis();
-      writeFile("/card.json", body);
-    }
+    if (full) { fullAt = millis(); fullLook = card.look; writeFile("/card.json", body); return; }   // kept for offline too
+    if (card.look == fullLook) return;
+    fullAt = 0;   // his look changed: fetch the pictures now
   }
-  else if (code != 200) status = "Sync failed (" + String(code) + ")";
 }
 
 // a logged-in request: logs in (again) when needed. Returns the HTTP status or a negative error.
@@ -972,8 +988,8 @@ bool loadFriends() {   // false: couldn't load (the list stays as it was)
     Serial.println("friends: couldn't load their names");
     return false;
   }
-  bool cards = api("GET", "/rest/v1/cards?user_id=in." + in + "&select=user_id,updated_at,hp:card->hp,tier:card->>tier,fx:card->fx,"
-                   "now:card->now,offline:card->offline,built:card->built,pal:card->sprite->p,px:card->sprite->n", "", cb) == 200
+  bool cards = api("GET", "/rest/v1/cards?user_id=in." + in + "&select=user_id,updated_at,hp:card-%3Ehp,tier:card-%3E%3Etier,fx:card-%3Efx,"
+                   "now:card-%3Enow,offline:card-%3Eoffline,built:card-%3Ebuilt,pal:card-%3Esprite-%3Ep,px:card-%3Esprite-%3En", "", cb) == 200
                && !deserializeJson(cd, cb);
   int k = 0;
   for (JsonObject p : pd.as<JsonArray>()) {
@@ -1753,7 +1769,12 @@ void drawPhone() {
   dcard(12, 54, 216, 52);
   kv(66, "PAIRED PHONES", String(n));
   kv(84, "RIGHT NOW", bleLinked ? "connected" : bleConnected ? "connecting..." : "no phone");
-  if (blePairUntil) {
+  if (pairWanted && !blePairUntil) {
+    gfx->fillRoundRect(14, 120, 214, 64, 10, INK);
+    gfx->fillRoundRect(12, 118, 214, 64, 10, YELLOW); gfx->drawRoundRect(12, 118, 214, 64, 10, INK); gfx->drawRoundRect(13, 119, 212, 62, 9, INK);
+    text(24, 128, "ONE MOMENT", 2, INK);
+    text(24, 156, "Finishing the sync, then pairing.", 1, INK);
+  } else if (blePairUntil) {
     int left = (int)((blePairUntil - millis()) / 1000);
     gfx->fillRoundRect(14, 120, 214, 96, 10, INK);
     gfx->fillRoundRect(12, 118, 214, 96, 10, YELLOW); gfx->drawRoundRect(12, 118, 214, 96, 10, INK); gfx->drawRoundRect(13, 119, 212, 94, 9, INK);
@@ -2018,7 +2039,7 @@ void setup() {
   esp_task_wdt_config_t wdt = {.timeout_ms = 20000, .idle_core_mask = 1 << 0, .trigger_panic = true};
   esp_task_wdt_reconfigure(&wdt);
 #endif
-  xTaskCreatePinnedToCore(netTask, "net", 16384, nullptr, 0, nullptr, 0);   // a secure connection needs a deep stack
+  xTaskCreatePinnedToCore(netTask, "net", 12288, nullptr, 0, nullptr, 0);
 }
 
 // ---------------------------------------------------------------- the network task (core 0)
@@ -2117,7 +2138,9 @@ void netTask(void *) {
     if (bleLinked && !wasLinked) linkedAt = millis();
     if (linkedAt && millis() - linkedAt > 4000) { linkedAt = 0; netKick = true; }
     wasLinked = bleLinked;
-    // a phone is pairing: no server traffic until it's done (pairing and a secure connection at once was too much)
+    // pairing: only between syncs (never in the middle of one), and no server traffic until it's done
+    // (pairing and a secure connection at once didn't fit in memory)
+    if (pairWanted) { pairWanted = false; blePairMode(); needRedraw = true; }
     if (blePairUntil || blePin || (bleConnected && !bleLinked)) continue;
     if (pokeReq >= 0 || undoReq) {   // asked by the screen
       LOCK();
@@ -2260,7 +2283,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       break;
     case V_PHONE:
       if (blePin) { bleAnswer(b == 1); drawFrame(); break; }                       // the code: B yes, A no
-      if (b == 1) { blePairMode(); drawFrame(); }
+      if (b == 1) { pairWanted = true; drawFrame(); }   // the network task starts it once it's not in the middle of a sync
       else if (b == 0) {
         if (forgetAsk && millis() - forgetAsk < 3000) { forgetAsk = 0; bleForgetAll(); showMsg("FORGOTTEN", "no phones paired now", 3000); }
         else { forgetAsk = millis(); drawFrame(); }
