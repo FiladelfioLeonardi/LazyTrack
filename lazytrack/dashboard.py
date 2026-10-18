@@ -123,7 +123,9 @@ def make_handler(cfg: dict):
             if u.path == "/api/camera/question":
                 from . import smoke
                 if self._local() and qs.get("visible", [""])[0] == "1":
-                    smoke.APP_SEEN["t"] = time.time()   # the app is on screen here: it asks, not the system popup
+                    smoke.APP_SEEN["t"] = time.time()   # a LazyTrack page/window is open here
+                    if qs.get("focus", [""])[0] == "1":
+                        smoke.APP_FOCUS["t"] = time.time()   # ...and you're actually using it
                 q = smoke.QUESTION
                 return self._send(200, {"open": q["open"], "id": q["id"], "source": q["source"], "asked_at": q["asked_at"],
                                         "text": smoke.question_text(), "buttons": smoke.buttons(),

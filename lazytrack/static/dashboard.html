@@ -3339,7 +3339,7 @@ const question = {
   async poll() {
     if (!AUTH.logged_in || document.hidden || this.shown < 0) return;   // < 0: the Test lab's popup
     try {
-      const r = await api("/api/camera/question?visible=1"); if (!r.ok) return;
+      const r = await api(`/api/camera/question?visible=1&focus=${document.hasFocus() ? 1 : 0}`); if (!r.ok) return;
       const q = await r.json();
       if (q.open && !this.done.has(q.id)) this.show(q); else if (!q.open && this.shown) this.hide();
     } catch (_) {}
@@ -3360,7 +3360,8 @@ const question = {
     $("qBtns").innerHTML = q.buttons.map(b => `<button type="button" class="btn ${b === q.buttons[0] ? "primary" : ""}" data-qa="${esc(b)}" data-qid="${q.id}">${esc(Q_LABEL[b] || b)}</button>`).join("");
     $("qModal").hidden = false;
     if (navigator.vibrate) navigator.vibrate([120, 60, 120]);
-    try { if (window.pywebview && window.pywebview.api && window.pywebview.api.front) window.pywebview.api.front(); } catch (_) {}   // the app window comes to the front
+    // never pulls the window to the front: when you're not using LazyTrack, LazyTrack sends a notification instead
+    if (document.hasFocus()) sfx.play("msg");
   },
   hide() { this.shown = 0; $("qModal").hidden = true; },
   async answer(id, a) {

@@ -147,22 +147,31 @@ def last_line() -> str:
     return " · ".join(parts)
 
 
+USE_SYSTEM_DIALOG = False   # the old way: a system dialog that pops up over everything (off: just a notification)
 APP_SEEN = {"t": 0.0}   # last time a LazyTrack page or window on this computer was on screen (it polls every 3 s)
+
+
+APP_FOCUS = {"t": 0.0}  # last time you were actually using LazyTrack (its window in front)
 
 
 def app_on_screen() -> bool:
     return time.time() - APP_SEEN["t"] < 7
 
 
+def app_in_use() -> bool:
+    return time.time() - APP_FOCUS["t"] < 7
+
+
 def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
-    """Asks "cigarette or joint?" on every open LazyTrack page, and with the system popup when the
-    computer's own camera noticed it. Returns the first answer, or None. Only one question at a time."""
+    """Asks "cigarette or joint?" on every open LazyTrack page (it never jumps to the front: when you're not
+    using LazyTrack you get a notification with a sound instead, and answer when you open it).
+    Returns the first answer, or None. Only one question at a time."""
     with _question_lock:
         if QUESTION["open"]:
             return None
         QUESTION.update(id=QUESTION["id"] + 1, open=True, source=source, asked_at=time.time(), answer=None)
         _answered.clear()
-    if source == "computer":
+    if source == "computer" and USE_SYSTEM_DIALOG:
         def popup():
             # LazyTrack open on this computer shows the question itself (and comes to the front):
             # no system popup then. If it gets closed or hidden before an answer, the popup takes over.
@@ -758,8 +767,10 @@ class SmokeDetector(threading.Thread):
         _set("off")
 
     def _ask(self, crop) -> str:
-        system.notify("LazyTrack 👀", "Looks like you're smoking")
-        ans = ask_everywhere("computer", timeout=120)
+        if not app_in_use():   # not in LazyTrack right now: a notification with a sound, no window popping up
+            line = last_line()
+            system.notify("LazyTrack 👀", "Looks like you're smoking. Open LazyTrack to say what it was." + (f" {line}" if line else ""))
+        ans = ask_everywhere("computer", timeout=300)   # 5 minutes to open LazyTrack and answer
         return handle_answer(ans, crop, self.scfg, self.device_name, "camera")
 
 
