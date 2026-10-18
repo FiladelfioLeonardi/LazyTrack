@@ -24,6 +24,14 @@ def _raw() -> dict:
         return {}
 
 
+def _autostart():
+    try:
+        from . import autostart
+        return autostart.supported(), autostart.enabled()
+    except Exception:
+        return False, False
+
+
 def get(cfg: dict) -> dict:
     s, f, g = cfg["smoke"], cfg["fortytwo"], cfg.get("github", {})
     trigger = float(s.get("trigger_score", 4.0))
@@ -33,6 +41,8 @@ def get(cfg: dict) -> dict:
         "idle_minutes": max(1, round(int(cfg["activity"].get("idle_seconds", 300)) / 60)),
         "open_dashboard_on_start": bool(cfg["dashboard"].get("open_on_start", True)),
         "keep_running": bool(cfg.get("app", {}).get("keep_running", True)),
+        "start_at_login": _autostart()[1],
+        "start_at_login_supported": _autostart()[0],
         "test_versions": cfg.get("update", {}).get("branch", "stable") == "main",
         "smoke_enabled": bool(s.get("enabled", False)),
         "smoke_asked": bool(s.get("asked", False)),
@@ -69,6 +79,12 @@ def save(body: dict) -> dict:
         section("activity")["idle_seconds"] = 60 * max(1, min(60, int(body["idle_minutes"])))
     if "keep_running" in body:
         section("app")["keep_running"] = bool(body["keep_running"])
+    if "start_at_login" in body:   # lives in the computer's own login items, not in config.json
+        try:
+            from . import autostart
+            autostart.set_enabled(bool(body["start_at_login"]))
+        except Exception as e:
+            log.warning("start at login: %s", e)
     if "test_versions" in body:   # main = every change right away; otherwise the stable versions
         if body["test_versions"]:
             section("update")["branch"] = "main"

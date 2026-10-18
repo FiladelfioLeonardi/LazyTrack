@@ -101,7 +101,7 @@
     background: var(--card); color: var(--text); border: 3px solid var(--line); border-radius: 12px; padding: 6px 10px; font: 800 14px/1 var(--body);
     box-shadow: 3px 3px 0 var(--line); opacity: 0; pointer-events: none; transition: opacity .15s, translate .15s; }
   .ideabtn:hover::after, .ideabtn:focus-visible::after { opacity: 1; translate: 0 -50%; }
-  .ideahint { position: fixed; right: 22px; bottom: 92px; z-index: 30; max-width: 240px; background: var(--card); color: var(--text);
+  .ideahint { position: fixed; right: 22px; bottom: 92px; z-index: 25; max-width: 240px; background: var(--card); color: var(--text);
     border: 3px solid var(--line); border-radius: 14px; padding: 10px 34px 10px 12px; box-shadow: 4px 4px 0 var(--line); font-weight: 700; font-size: 14px; line-height: 1.35; }
   .ideahint::after { content: ""; position: absolute; right: 20px; bottom: -11px; width: 16px; height: 16px; background: var(--card);
     border-right: 3px solid var(--line); border-bottom: 3px solid var(--line); rotate: 45deg; }
@@ -572,6 +572,10 @@
   @keyframes wrPop { 0% { transform: scale(1); } 40% { transform: translateY(-8px) scale(1.04); } 100% { transform: none; } }
   html.still .wrin-r, html.still .wrin-l, html.still .writems .writem, html.still .wrstage .pet.wrpop { animation: none; }
   .wrbtm .keys { margin-right: auto; font: 400 11px var(--pixel); color: var(--ink-3); }
+  .wrbtm .btn { white-space: nowrap; }
+  .wrbtm .wrbackbig { margin-right: auto; font-size: 16px; padding: 12px 18px; border-width: 3px; }
+  .wrbtm .wrbackbig[hidden], .wrbtm .keys[hidden] { display: none; }
+  @media (max-width: 600px) { .wrbtm { flex-wrap: wrap; } .wrbtm .wrbackbig { flex: 1 1 100%; margin-right: 0; } }
   @media (max-width: 720px) {
     .wrcard { grid-template-columns: 1fr; grid-template-rows: 40% minmax(0, 1fr); height: calc(100dvh - 24px); }
     .wrstage { border-right: 0; border-bottom: 3px solid var(--line); } .wrstage .pet { grid-template-columns: repeat(16, 9px); grid-auto-rows: 9px; }
@@ -967,7 +971,7 @@ applyTheme();
       <div class="wrlist" id="wrList"></div>
       <div>
         <div class="wrcolors" id="wrColors" hidden></div>
-        <div class="wrbtm"><span class="keys">↑↓ move · ⏎ choose · esc back</span><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save look</button></div>
+        <div class="wrbtm"><button type="button" class="btn wrbackbig" id="wrBackBtn" data-wrback hidden>‹ Back to all categories</button><span class="keys" id="wrKeys">↑↓ move · ⏎ choose · esc back</span><button type="button" class="btn" id="wrCancel">Cancel</button><button type="button" class="btn primary" id="wrSave">Save look</button></div>
       </div>
     </div>
   </div>
@@ -1635,6 +1639,15 @@ applyTheme();
           <b>LazyTrack Backups</b> folder in your home folder. The last 14 are kept. Uninstalling LazyTrack never touches that folder.</p>
         <div id="bkList"><p class="note">Loading…</p></div>
         <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="bkNow">Back up now</button><span class="note" id="bkNote"></span></div>
+      </section>
+
+      <section class="card pad" data-cat="app" id="sLogin" hidden>
+        <h2>Start with your computer</h2>
+        <div class="form">
+          <label class="toggle"><input type="checkbox" name="start_at_login" data-autosave> Start LazyTrack when I turn on my computer</label>
+          <p class="hint">On: LazyTrack starts quietly in the background when you log in (no window pops up), so your day is tracked from the start and friends see you online.
+            Off: it only runs when you open it.</p>
+        </div>
       </section>
 
       <section class="card pad" data-cat="app">
@@ -3194,6 +3207,7 @@ async function loadSettings() {
   for (const [k, v] of Object.entries(s)) {
     f.querySelectorAll(`[name="${k}"]`).forEach(el => { if (el.type === "checkbox") el.checked = !!v; else if (el.type === "radio") el.checked = el.value === v; else el.value = v; });
   }
+  $("sLogin").hidden = !s.start_at_login_supported;   // only for an installed LazyTrack
   settingsLoaded = true;
 }
 // ---------------------------------------------------------------- the wardrobe
@@ -3244,10 +3258,12 @@ const wardrobe = {
       $("wrList").innerHTML = WR_CATS.map(([k, ic, n], i) => `<button type="button" class="wrrow" data-wrtab="${k}" aria-current="${i === this.focus}">
         <span class="ic" aria-hidden="true">${ic}</span><span>${n}</span><span class="now">${esc(this.nameOf(k))}</span><span class="go" aria-hidden="true">›</span></button>`).join("");
       $("wrColors").hidden = true;
+      $("wrBackBtn").hidden = true; $("wrKeys").hidden = false;
       return;
     }
     const cat = WR_CATS.find(c => c[0] === this.tab);
-    $("wrHead").innerHTML = `<button type="button" class="wrback" data-wrback>‹ All categories</button><h2 id="wrTitle">${cat[1]} ${cat[2]}</h2>${WR_HINT[this.tab] ? `<p>${WR_HINT[this.tab]}</p>` : ""}`;
+    $("wrHead").innerHTML = `<h2 id="wrTitle">${cat[1]} ${cat[2]}</h2>${WR_HINT[this.tab] ? `<p>${WR_HINT[this.tab]}</p>` : ""}`;
+    $("wrBackBtn").hidden = false; $("wrKeys").hidden = true;   // the way back: a big button at the bottom, next to Save
     let items;
     if (this.tab === "looks") {
       items = Object.entries(MOCHI.looks).map(([k, v]) => { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
