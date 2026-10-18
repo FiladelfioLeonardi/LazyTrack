@@ -220,6 +220,13 @@ struct SetupView: View {
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
+                        .onChange(of: serverURL) { _, v in
+                            // pasted the whole link from the Mac (…?token=…): split it into address + token
+                            if v.contains("token=") || v.hasPrefix("lazytrack://"), Settings.applyPasted(v) {
+                                serverURL = Settings.serverURL
+                                token = Settings.token
+                            }
+                        }
                     SecureField("Token", text: $token)
                     TextField("Device name", text: $deviceName)
                         .textInputAutocapitalization(.never)
@@ -234,7 +241,7 @@ struct SetupView: View {
                 } header: {
                     Text("Your Mac")
                 } footer: {
-                    Text("Easiest: run ./lt phone on the Mac and scan the QR code with the iPhone Camera app. Tailscale must be on on both devices.")
+                    Text("Easiest: on the Mac open LazyTrack → Settings → Account → Your phone, and scan the \"iPhone app\" QR code with the iPhone Camera. Or paste the phone link here. Tailscale must be on on both devices.")
                 }
 
                 Section {

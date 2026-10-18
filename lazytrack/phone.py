@@ -89,4 +89,7 @@ def status(running_cfg: dict) -> dict:
     if ip and saved_open and live_open:
         out["url"] = f"http://{ip}:{port}/?token={quote(token)}"
         out["qr"] = _qr_svg(out["url"])
+        # the LazyTrack iPhone app: this link opens the app and connects it to this computer
+        out["app_url"] = f"lazytrack://setup?url={quote(f'http://{ip}:{port}', safe='')}&token={quote(token, safe='')}"
+        out["app_qr"] = _qr_svg(out["app_url"])
     return out

@@ -30,6 +30,19 @@ enum Settings {
         token = items.first(where: { $0.name == "token" })?.value ?? ""
         return true
     }
+
+    /// A pasted LazyTrack link (http://100.x.y.z:8042/?token=abc, what Settings → Your phone shows on the Mac):
+    /// splits it into the server address and the token. Returns false if it isn't one.
+    static func applyPasted(_ text: String) -> Bool {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let u = URL(string: t), u.scheme == "lazytrack" { return apply(setupURL: u) }
+        guard let c = URLComponents(string: t), let scheme = c.scheme, scheme.hasPrefix("http"), let host = c.host,
+              let tok = c.queryItems?.first(where: { $0.name == "token" })?.value, !tok.isEmpty
+        else { return false }
+        serverURL = "\(scheme)://\(host)" + (c.port.map { ":\($0)" } ?? "")
+        token = tok
+        return true
+    }
 }
 
 // MARK: - Outbox: every request is saved first, then sent. Offline? It waits and retries.

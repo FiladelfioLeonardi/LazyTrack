@@ -4237,7 +4237,11 @@ const phoneSetup = {
           <li>Scan this with your phone's <b>camera</b> and open the link.</li>
           <li>iPhone: <b>Share → Add to Home Screen</b>. Android: <b>⋮ → Add to Home screen</b>. Now it's an app icon.</li></ol></div>
       <p class="note" style="margin-top:10px">Or open this on the phone: <code>${esc(s.url)}</code><br>
-        Keep this computer on with LazyTrack running: the phone shows what this computer tracks.</p>`;
+        Keep this computer on with LazyTrack running: the phone shows what this computer tracks.</p>
+      ${s.app_qr ? `<h3 style="margin:18px 0 6px">Got the LazyTrack iPhone app?</h3>
+      <div class="phqr"><div class="qr" aria-label="QR code for the iPhone app">${s.app_qr}</div>
+        <ol class="phsteps"><li>Scan this one with the iPhone <b>camera</b> instead.</li><li>Tap the link: it opens the LazyTrack app and connects it to this computer.</li>
+          <li>The app then shows LazyTrack, plus the phone-only parts (egg over Bluetooth, gym, Apple Health).</li></ol></div>` : ""}`;
   },
 };
 document.addEventListener("click", async e => {
