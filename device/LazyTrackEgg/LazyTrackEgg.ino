@@ -24,6 +24,7 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <Arduino_GFX_Library.h>
+#include <NimBLEDevice.h>   // Library Manager: "NimBLE-Arduino" (Bluetooth: the egg goes online through your phone)
 #include "secrets.h"
 
 // ---------------------------------------------------------------- your hardware
@@ -60,6 +61,7 @@ int tcSwap = 0, tcX0 = 0, tcX1 = 1, tcY0 = 0, tcY1 = 1;   // raw readings at scr
 #define SPI_HZ 27000000
 
 // (types used in function parameters live up here: Arduino IDE declares all functions near the top)
+struct Note { uint16_t f, ms; };   // a song note; f = 0: a short rest
 struct CoolF { bool on; int shades; int glint; bool smirk, nod; };   // one moment of the legendary cool move
 
 // the friends server (same as the app; this key is the public one made to sit in apps)
@@ -123,6 +125,12 @@ struct Card {
   String mood = "happy";
   bool hasAsleep = false, asleepNow = false;   // LazyTrack says when Mochi sleeps (your learned bedtime, never while you're up)
   String hungry = "";                          // "breakfast" / "lunch" / "dinner" while Mochi is hungry, else ""
+  // offline mode: the day plan LazyTrack sent (meals today + tomorrow, your sleep window), run on the egg's own clock
+  bool hasPlan = false;
+  long planDay = 0;                            // days since 1970 (your date)
+  int planBed = 30, planWake = 510;            // minutes after midnight
+  struct Meal { char n; int s, e; bool fed; } meals[2][3];
+  int nmeals[2] = {0, 0};
   int tzo = 60;             // your time zone, minutes from UTC (the app sends it)
   int drunk = 0, high = 0, coughy = 0;
   bool sprite = false;
@@ -190,13 +198,155 @@ void tuneBad() { beep(659, 80); beep(523, 120); }                               
 void tunePoke() { for (int i = 0; i < 2; i++) { beep(784, 50); beep(1175, 70); } }          // boop-boop, same as the app
 void tuneHungry() { beep(330, 90); beep(294, 90); beep(330, 90); beep(392, 160); }       // tummy rumble
 void tuneYum() { beep(1047, 60); beep(1319, 60); beep(1047, 60); beep(1568, 140); }        // fed
+// ---- little songs: an old handheld-game sound on the buzzer (square wave, one note at a time).
+// Played in the background note by note (song tick in loop), so the screen keeps moving. All original tunes.
+#define N_C5 523
+#define N_D5 587
+#define N_E5 659
+#define N_F5 698
+#define N_G5 784
+#define N_A5 880
+#define N_B5 988
+#define N_C6 1047
+#define N_D6 1175
+#define N_E6 1319
+#define N_G4 392
+#define N_A4 440
+static const Note SONG_MOCHI[] = {   // Mochi's song: bouncy, a bit proud of himself
+  {N_G5, 130}, {N_E5, 130}, {N_G5, 130}, {N_C6, 260}, {N_B5, 130}, {N_A5, 130}, {N_G5, 260}, {0, 130},
+  {N_E5, 130}, {N_F5, 130}, {N_G5, 130}, {N_A5, 130}, {N_G5, 130}, {N_E5, 130}, {N_D5, 260}, {0, 130},
+  {N_C5, 130}, {N_E5, 130}, {N_G5, 130}, {N_C6, 130}, {N_E6, 130}, {N_D6, 130}, {N_C6, 390}};
+static const Note SONG_LULLABY[] = {   // falling asleep: slow and soft
+  {N_E5, 380}, {N_G5, 380}, {N_E5, 380}, {N_D5, 760}, {0, 120}, {N_C5, 380}, {N_D5, 380}, {N_E5, 380}, {N_G4, 760}, {0, 120},
+  {N_A4, 380}, {N_C5, 380}, {N_E5, 380}, {N_D5, 570}, {N_C5, 900}};
+static const Note SONG_WAKE[] = {{N_C5, 90}, {N_G5, 90}, {N_C6, 90}, {0, 60}, {N_E6, 220}};   // good morning!
+const Note *songNotes = nullptr;
+int songLen = 0, songAt = 0;
+uint32_t songNext = 0, songStart = 0;
+
+void sing(const Note *notes, int n) { songNotes = notes; songLen = n; songAt = 0; songNext = millis(); songStart = millis(); }
+bool singing() { return songNotes != nullptr; }
+void songTick() {
+  if (!songNotes || millis() < songNext) return;
+  if (songAt >= songLen) { songNotes = nullptr; noTone(PIN_BUZZ); return; }
+  const Note &x = songNotes[songAt++];
+  if (x.f) tone(PIN_BUZZ, x.f, x.ms * 9 / 10); else noTone(PIN_BUZZ);   // a tiny gap between notes, like the old games
+  songNext = millis() + x.ms;
+}
+#define SING(s) sing(s, sizeof(s) / sizeof(s[0]))
+
 void tuneLove() { beep(1047, 80); beep(1319, 80); beep(1568, 80); beep(2093, 160); }
+
+// ---------------------------------------------------------------- Bluetooth: online through your phone
+// No WiFi? The LazyTrack iPhone app connects over Bluetooth (in the background, like a watch) and passes the
+// egg's requests to the server and the answers back. The link is encrypted (paired once, iOS asks), and the
+// phone only ever forwards to the LazyTrack server. The phone also tells the egg the time.
+// Messages are split into Bluetooth-sized pieces: 1st byte 'C' = more follows, 'E' = the last piece.
+//   egg -> phone (notify):  {"m": "GET", "u": "https://...", "h": {headers}, "b": "body"}
+//   phone -> egg (write):   "R<status>\n<body>" (an answer) or "T<unix time>" (the clock)
+#define EGG_SVC "6c740001-8f3b-4a2e-9d1c-3b5a7e0f4c21"
+#define EGG_TX "6c740002-8f3b-4a2e-9d1c-3b5a7e0f4c21"
+#define EGG_RX "6c740003-8f3b-4a2e-9d1c-3b5a7e0f4c21"
+NimBLECharacteristic *bleTx = nullptr;
+volatile bool bleLinked = false;      // a phone is connected, paired (encrypted) and listening
+volatile uint16_t bleMtu = 23;
+String bleBuf, bleResp;
+volatile bool bleRespReady = false;
+uint32_t bleSeen = 0;                 // last time the phone relayed something (for Info)
+
+class EggServerCb : public NimBLEServerCallbacks {
+  void onConnect(NimBLEServer *s, NimBLEConnInfo &c) override { NimBLEDevice::startSecurity(c.getConnHandle()); }
+  void onDisconnect(NimBLEServer *s, NimBLEConnInfo &c, int reason) override { bleLinked = false; }
+  void onMTUChange(uint16_t mtu, NimBLEConnInfo &c) override { bleMtu = mtu; }
+  void onAuthenticationComplete(NimBLEConnInfo &c) override { bleLinked = c.isEncrypted(); bleMtu = max((uint16_t)23, c.getMTU()); }
+};
+
+class EggRxCb : public NimBLECharacteristicCallbacks {
+  void onWrite(NimBLECharacteristic *ch, NimBLEConnInfo &c) override {
+    std::string v = ch->getValue();
+    if (v.empty() || !c.isEncrypted()) return;
+    bleBuf += String(v.c_str() + 1).substring(0, v.size() - 1);
+    if (v[0] != 'E') return;
+    if (bleBuf.startsWith("T")) {               // the phone's clock: set ours if it's missing or off
+      time_t t = (time_t)atoll(bleBuf.c_str() + 1);
+      if (t > 1700000000 && (time(nullptr) < 1700000000 || abs((long)(time(nullptr) - t)) > 5)) {
+        struct timeval tv = {t, 0};
+        settimeofday(&tv, nullptr);
+      }
+    } else if (bleBuf.startsWith("R")) {
+      bleResp = bleBuf.substring(1);
+      bleRespReady = true;
+    }
+    bleBuf = "";
+  }
+};
+
+void bleSetup() {
+  NimBLEDevice::init("LazyTrack Egg");
+  NimBLEDevice::setMTU(247);
+  NimBLEDevice::setSecurityAuth(true, false, true);   // bonded, LE Secure Connections: encrypted, paired once
+  NimBLEServer *srv = NimBLEDevice::createServer();
+  srv->setCallbacks(new EggServerCb());
+  NimBLEService *svc = srv->createService(EGG_SVC);
+  bleTx = svc->createCharacteristic(EGG_TX, NIMBLE_PROPERTY::NOTIFY | NIMBLE_PROPERTY::READ | NIMBLE_PROPERTY::READ_ENC);
+  NimBLECharacteristic *rx = svc->createCharacteristic(EGG_RX, NIMBLE_PROPERTY::WRITE | NIMBLE_PROPERTY::WRITE_NR | NIMBLE_PROPERTY::WRITE_ENC);
+  rx->setCallbacks(new EggRxCb());
+  svc->start();
+  NimBLEAdvertising *adv = NimBLEDevice::getAdvertising();
+  adv->addServiceUUID(EGG_SVC);    // so the phone can find it even in the background
+  adv->setName("LazyTrack Egg");
+  adv->start();
+}
+
+// One request through the phone. Returns the HTTP status (negative = no phone / no answer), fills body.
+int bleHttp(const String &method, const String &url, const String &payload, String &body, bool auth, const char *prefer) {
+  if (!bleLinked || !bleTx) return -4;
+  JsonDocument q;
+  q["m"] = method;
+  q["u"] = url;
+  q["h"]["apikey"] = SUPA_KEY;
+  q["h"]["Content-Type"] = "application/json";
+  if (auth && token.length()) q["h"]["Authorization"] = "Bearer " + token;
+  if (prefer) q["h"]["Prefer"] = prefer;
+  if (payload.length()) q["b"] = payload;
+  String msg;
+  serializeJson(q, msg);
+  bleRespReady = false;
+  bleResp = "";
+  int chunk = max(19, (int)bleMtu - 4);   // a piece + its 1-byte header fits one Bluetooth packet
+  uint8_t buf[260];
+  for (int i = 0; i < (int)msg.length(); i += chunk) {
+    int n = min(chunk, (int)msg.length() - i);
+    buf[0] = i + n >= (int)msg.length() ? 'E' : 'C';
+    memcpy(buf + 1, msg.c_str() + i, n);
+    bool ok = false;
+    for (int tries = 0; tries < 40 && !ok && bleLinked; tries++) {   // the radio's queue can be full for a moment
+      ok = bleTx->notify(buf, n + 1);
+      if (!ok) delay(10);
+    }
+    if (!ok) return -5;
+    delay(4);
+  }
+  uint32_t t0 = millis();
+  while (!bleRespReady && bleLinked && millis() - t0 < 20000) delay(10);
+  if (!bleRespReady) return -6;
+  bleSeen = millis();
+  int nl = bleResp.indexOf('\n');
+  int code = bleResp.substring(0, nl < 0 ? bleResp.length() : nl).toInt();
+  body = nl < 0 ? "" : bleResp.substring(nl + 1);
+  bleResp = "";
+  return code;
+}
+
+bool online() { return WiFi.status() == WL_CONNECTED || bleLinked; }
+String netName() { return WiFi.status() == WL_CONNECTED ? WiFi.SSID() : bleLinked ? String("phone (Bluetooth)") : String("offline"); }
 
 // ---------------------------------------------------------------- talking to the friends server
 WiFiClientSecure tls;
 
 // POST/GET with the right headers. Returns the HTTP status (or a negative error), fills body.
 int http(const String &method, const String &path, const String &payload, String &body, bool auth, const char *prefer = nullptr) {
+  if (WiFi.status() != WL_CONNECTED) return bleHttp(method, String(SUPA_URL) + path, payload, body, auth, prefer);   // through the phone
   HTTPClient h;
   h.setTimeout(12000);
   if (!h.begin(tls, String(SUPA_URL) + path)) return -1;
@@ -241,10 +391,17 @@ bool login() {
 
 uint16_t hexColor(const char *s) { return (s && s[0] == '#') ? rgb(strtoul(s + 1, nullptr, 16)) : INK; }
 
+// (used before they're written below)
+time_t parseIso(const char *s);
+String hungryNow();
+long dayNow();
+int minuteNow();
+int mealBit(const String &name);
+
 bool parseCard(const String &body) {
   JsonDocument filter;
   JsonObject f = filter[0]["card"].to<JsonObject>();
-  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built", "mood", "tzo", "asleep", "hungry"}) f[k] = true;
+  for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built", "mood", "tzo", "asleep", "hungry", "plan"}) f[k] = true;
   f["stats"][0]["s"] = true;
   f["stats"][0]["v"] = true;
   f["stats"][0]["unit"] = true;
@@ -274,9 +431,24 @@ bool parseCard(const String &body) {
   card.tzo = c["tzo"] | 60;
   card.hasAsleep = !c["asleep"].isNull();
   card.asleepNow = c["asleep"] | false;
-  String wasHungry = card.hungry;
   card.hungry = c["hungry"] | "";
-  if (card.hungry.length() && card.hungry != wasHungry && !first) tuneHungry();   // a meal started: a little rumble
+  JsonObject pl = c["plan"];
+  if (!pl.isNull()) {
+    const char *pd = pl["day"] | "";
+    char iso[32]; snprintf(iso, sizeof iso, "%sT00:00:00", pd);
+    card.planDay = parseIso(iso) / 86400;
+    card.planBed = pl["bed"] | 30; card.planWake = pl["wake"] | 510;
+    for (int d = 0; d < 2; d++) {
+      int k = 0;
+      for (JsonArray m : pl[d ? "m2" : "m"].as<JsonArray>()) {
+        if (k >= 3) break;
+        const char *n = m[0] | "?";
+        card.meals[d][k++] = {n[0], m[1] | 0, m[2] | 0, (m[3] | 0) != 0};
+      }
+      card.nmeals[d] = k;
+    }
+    card.hasPlan = card.planDay > 0;
+  }
   JsonObject sp = c["sprite"];
   const char *n = sp["n"], *b = sp["b"];
   if (n && strlen(n) == 256) {
@@ -317,7 +489,7 @@ bool parseCard(const String &body) {
 
 void sync() {
   lastTry = millis();
-  if (WiFi.status() != WL_CONNECTED) { status = card.ok ? "Offline: your Mochi from earlier" : "No WiFi"; return; }
+  if (!online()) { status = card.ok ? "Offline: Mochi runs on his own" : "No WiFi or phone"; return; }
   if (!token.length() || millis() / 1000 > tokenUntil) { status = "Logging in..."; if (!login()) return; }
   String body;
   int code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true);
@@ -328,7 +500,7 @@ void sync() {
 
 // a logged-in request: logs in (again) when needed. Returns the HTTP status or a negative error.
 int api(const String &method, const String &path, const String &payload, String &body, const char *prefer = nullptr) {
-  if (WiFi.status() != WL_CONNECTED) return -2;
+  if (!online()) return -2;
   if (!token.length() || millis() / 1000 > tokenUntil) { if (!login()) return -3; }
   int code = http(method, path, payload, body, true, prefer);
   if (code == 401) { token = ""; if (login()) code = http(method, path, payload, body, true, prefer); }
@@ -486,8 +658,11 @@ void doLog(int i) {
 void feed() {
   time_t t = clockOk() ? time(nullptr) : 0;
   if (!sendLog("feed", t, nullptr)) queueLog("feed", t);
-  String meal = card.hungry;
-  card.hungry = "";
+  String meal = hungryNow();
+  if (clockOk()) {   // remember it here too, so Mochi isn't hungry again before LazyTrack hears about it
+    if (prefs.getLong("fedDay", -1) != dayNow()) { prefs.putLong("fedDay", dayNow()); prefs.putInt("fedMask", 0); }
+    prefs.putInt("fedMask", prefs.getInt("fedMask", 0) | mealBit(meal));
+  }
   tuneYum();
   petUntil = millis() + 1500;   // happy closed eyes for a moment
   showMsg("YUM!", meal.length() ? "Thanks for the " + meal + "!" : "Thanks!", 3000);
@@ -616,6 +791,9 @@ void pet() {   // hearts, closed happy eyes, a little wiggle and a chirp; no tex
   prefs.putLong("loveDay", day);
   prefs.putInt("love", n);
   petUntil = millis() + 1800;
+  static uint32_t pets[3] = {0, 0, 0};   // petted 3 times in 20 seconds: he sings for you
+  pets[0] = pets[1]; pets[1] = pets[2]; pets[2] = millis();
+  if (pets[0] && pets[2] - pets[0] < 20000 && !singing()) { pets[0] = pets[1] = pets[2] = 0; SING(SONG_MOCHI); return; }
   tunePet();
 }
 
@@ -681,6 +859,10 @@ bool stale();
 // with an older LazyTrack: late at night where you are (1 to 7), or when the app says Mochi is sleepy
 bool asleep() {
   if (card.hasAsleep && !stale()) return card.asleepNow;
+  if (card.hasPlan && clockOk()) {   // offline: your usual sleep window (from LazyTrack's plan)
+    int m = minuteNow(), b = card.planBed, w = card.planWake;
+    return b < w ? (m >= b && m < w) : (m >= b || m < w);
+  }
   if (card.mood == "sleepy") return true;
   if (!clockOk()) return false;
   long local = (long)(time(nullptr) % 86400) + card.tzo * 60L;
@@ -705,6 +887,26 @@ void drawZs(uint32_t t) {
     for (int i = 0; i < 25; i++) if (Z5[i] == 'X')
       for (int y = 0; y < sc; y++) for (int x = 0; x < sc; x++) {
         int yy = zy + (i / 5) * sc + y, xx = zx + (i % 5) * sc + x;
+        if (yy >= 0 && yy < ZH && xx >= 0 && xx < ZW) buf[yy * ZW + xx] = col;
+      }
+  }
+  lcd->draw16bitRGBBitmap(ZX, ZY, buf, ZW, ZH);
+}
+
+// while he sings: little music notes float up from his head (same box as the Z's)
+void drawNotes(uint32_t t) {
+  if (gfx != lcd || !banded) return;
+  uint16_t *buf = band.fb;
+  for (int y = 0; y < ZH; y++) for (int x = 0; x < ZW; x++) buf[y * ZW + x] = bgAt(ZX + x, ZY + y);
+  static const char *N7 = "...XX...XXX..X.X..X....X...XXX..XXX.....";   // a 5x8 eighth note
+  for (int k = 0; k < 3; k++) {
+    uint32_t life = (t + k * 900) % 2700;
+    int zy = ZH - 14 - (int)(life * (ZH - 10) / 2700);
+    int zx = 6 + k * 22 + (int)(sin((t + k * 500) / 300.0) * 6);
+    uint16_t col = k == 1 ? rgb(0xe0303a) : rgb(0x3d3650);
+    for (int i = 0; i < 40; i++) if (N7[i] == 'X')
+      for (int y = 0; y < 2; y++) for (int x = 0; x < 2; x++) {
+        int yy = zy + (i / 5) * 2 + y, xx = zx + (i % 5) * 2 + x;
         if (yy >= 0 && yy < ZH && xx >= 0 && xx < ZW) buf[yy * ZW + xx] = col;
       }
   }
@@ -881,6 +1083,33 @@ bool stale() {   // LazyTrack closed or the computer asleep: what it last sent i
   return card.offline || (t > 1700000000 && card.built && t - (time_t)card.built > 600);
 }
 
+// ---------------------------------------------------------------- offline mode: Mochi's day on the egg's own clock
+long localNow() { return (long)time(nullptr) + card.tzo * 60L; }   // seconds, your time
+long dayNow() { return localNow() / 86400; }
+int minuteNow() { return (int)((localNow() % 86400) / 60); }
+
+const char *mealName(char n) { return n == 'b' ? "breakfast" : n == 'l' ? "lunch" : n == 'd' ? "dinner" : "meal"; }
+int mealBit(const String &name) { return name == "breakfast" ? 1 : name == "lunch" ? 2 : name == "dinner" ? 4 : 0; }
+
+bool fedHere(const String &name) {   // fed on this egg today (LazyTrack may not know yet)
+  return prefs.getLong("fedDay", -1) == dayNow() && (prefs.getInt("fedMask", 0) & mealBit(name));
+}
+
+// Hungry right now? LazyTrack's word while it's fresh; otherwise worked out from the plan it sent.
+String hungryNow() {
+  if (!stale()) return card.hungry.length() && !fedHere(card.hungry) ? card.hungry : "";
+  if (!card.hasPlan || !clockOk()) return "";
+  long d = dayNow() - card.planDay;
+  if (d < 0 || d > 1) return "";                   // the plan is too old: no meals rather than wrong ones
+  int m = minuteNow();
+  for (int i = 0; i < card.nmeals[d]; i++) {
+    const Card::Meal &x = card.meals[d][i];
+    String n = mealName(x.n);
+    if (m >= x.s && m < x.e && !x.fed && !fedHere(n)) return n;
+  }
+  return "";
+}
+
 String doing() {   // bottom line: what you're doing right now, like "Playing LoL - 25m"
   const String &w = card.nowWhat;
   if (stale() || !w.length()) return "";
@@ -973,12 +1202,12 @@ void drawMenu() {
   gfx->drawRoundRect(-11, 5, W + 10, 310, 13, INK);
   text(16, 18, "MENU", 3, INK);
   text(16, 46, card.name.substring(0, 24), 1, GREY);
-  int online = 0; for (int i = 0; i < nfriends; i++) online += friends[i].online;
+  int onl = 0; for (int i = 0; i < nfriends; i++) onl += friends[i].online;
   static const char *names[] = {"Log", "Friends", "Today", "Info"};
   String subs[4] = {nhabits ? String(nhabits) + " habits" : String("set up in the app"),
-                    nfriends ? String(online) + " online" : String("add some in the app"),
+                    nfriends ? String(onl) + " online" : String("add some in the app"),
                     "HP " + String(card.hp) + " - " + card.tierName,
-                    WiFi.status() == WL_CONNECTED ? WiFi.SSID().substring(0, 18) : String("no WiFi")};
+                    online() ? netName().substring(0, 18) : String("offline")};
   for (int i = 0; i < 4; i++) {
     int y = 66 + i * 58;
     bool on = i == menuSel;
@@ -1075,7 +1304,7 @@ void drawFriend() {
     drawBackground();
     panel(8, 8, 221, 120);
     text(20, 20, "FRIENDS", 2, INK);
-    text(20, 52, WiFi.status() == WL_CONNECTED ? "No friends yet." : "No WiFi right now.", 1, INK);
+    text(20, 52, online() ? "No friends yet." : "Offline right now.", 1, INK);
     text(20, 70, "Add some in the LazyTrack app", 1, GREY);
     text(20, 86, "(Friends tab).", 1, GREY);
     text(20, 110, "A  back", 1, GREY);
@@ -1194,19 +1423,20 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     gfx->fillRoundRect(26 + bw, 276, fw, 14, 4, fcol);
     gfx->drawRoundRect(26 + bw, 276, fw, 14, 4, INK);
     text(31 + bw, 280, fx, 1, INK);
-    bool hungryNow = card.hungry.length() && !asleep();
+    String hn = hungryNow();
+    bool hungryNow = hn.length() && !asleep();
     if (hungryNow && 34 + bw + fw + 46 <= 226) {   // HUNGRY chip, when it fits
       int hx = 34 + bw + fw;
       gfx->fillRoundRect(hx, 276, 46, 14, 4, YELLOW);
       gfx->drawRoundRect(hx, 276, 46, 14, 4, INK);
       text(hx + 5, 280, "HUNGRY", 1, INK);
     }
-    text(18, 297, (hungryNow ? "Hungry! A = feed (" + card.hungry + ")" : doing().length() ? doing() : status).substring(0, 33), 1, hungryNow ? INK : GREY);
+    text(18, 297, (hungryNow ? "Hungry! A = feed (" + hn + ")" : doing().length() ? doing() : status).substring(0, 33), 1, hungryNow ? INK : GREY);
     drawStage(0, false);
   } else {
     panel(8, 8, 221, 304);
     text(20, 20, "INFO", 2, INK);
-    text(20, 52, "WiFi: " + (WiFi.status() == WL_CONNECTED ? WiFi.SSID() : String("not connected")), 1, INK);
+    text(20, 52, "Online via: " + netName() + (bleLinked && bleSeen ? "  (" + String((millis() - bleSeen) / 1000) + "s)" : ""), 1, INK);
     text(20, 70, "IP: " + WiFi.localIP().toString(), 1, INK);
     text(20, 88, "Status: " + status.substring(0, 26), 1, INK);
     text(20, 106, "Last sync: " + (lastSync ? String((millis() - lastSync) / 1000) + "s ago" : String("never")), 1, INK);
@@ -1324,6 +1554,7 @@ void setup() {
   configTime(0, 0, "pool.ntp.org");  // the clock, for "coding for 25 min"
   sync();
   if (WiFi.status() == WL_CONNECTED) { flushQueue(); loadHabits(); loadFriends(); checkPokes(); }
+  bleSetup();   // the phone can take over when there's no WiFi
   drawFrame();
 }
 
@@ -1396,7 +1627,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
   switch (view) {
     case V_HOME:
       if (b == 0) { menuSel = 0; transition(V_MENU, true); }
-      else if (b == 1) { if (card.hungry.length() && !asleep()) feed(); else pet(); }
+      else if (b == 1) { if (hungryNow().length() && !asleep()) feed(); else pet(); }
       else if (undoId && millis() < msgUntil) undoLog();
       else setScreen(false);
       break;
@@ -1594,24 +1825,37 @@ void pollTouch() {
 
 void loop() {
   static uint32_t tick = 0, nextBlink = 4000, blinkEnd = 0;
+  songTick();
   int b = pressed();
   if (b >= 0) onButton(b);
   pollTouch();
 
   if (millis() - lastTry > 30000) {   // every 30 s: LazyTrack sends changes (drunk, high, sober...) within a minute
-    int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat + card.nowLabel, rh = card.hungry + String(asleep());
+    int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy; String tb = card.tierName, what = card.nowWhat + card.nowLabel, rh = hungryNow() + String(asleep());
     sync();
-    if (WiFi.status() == WL_CONNECTED) {
+    if (online()) {
       flushQueue();
       checkPokes();
       if (!nhabits || millis() - habitsAt > 120000) loadHabits();
       if (view == V_FRIENDS && millis() - friendsAt > 60000) { loadFriends(); if (friendSel >= nfriends) friendSel = 0; drawFrame(); }
     }
     if (view == V_HOME && (card.hp != before || card.tierName != tb || card.drunk * 100 + card.high * 10 + card.coughy != fx || card.nowWhat + card.nowLabel != what
-                          || card.hungry + String(asleep()) != rh)) drawFrame();
+                          || hungryNow() + String(asleep()) != rh)) drawFrame();
+    static String lastHungry = "";   // a meal started (online or offline): a little rumble
+    String hNow = hungryNow();
+    if (hNow.length() && hNow != lastHungry && !asleep() && card.ok) tuneHungry();
+    lastHungry = hNow;
     if (view == V_INFO) drawFrame();
   }
-  if (WiFi.status() != WL_CONNECTED && millis() - lastTry > 15000) { lastTry = millis(); if (wifi.run(3000) == WL_CONNECTED) sync(); }
+  // no WiFi: look for it every 15 s (every 2 min while the phone covers for it, so the screen stays smooth)
+  static uint32_t wifiTry = 0;
+  if (WiFi.status() != WL_CONNECTED && millis() - wifiTry > (bleLinked ? 120000UL : 15000UL)) {
+    wifiTry = millis();
+    if (wifi.run(3000) == WL_CONNECTED) sync();
+  }
+  static bool wasLinked = false;   // the phone just connected: catch up right away
+  if (bleLinked && !wasLinked && WiFi.status() != WL_CONNECTED) { wasLinked = true; flushQueue(); sync(); if (view == V_HOME) drawFrame(); }
+  if (!bleLinked) wasLinked = false;
   if (msgUntil && millis() > msgUntil) { msgUntil = 0; undoId = 0; if (view == V_HOME) drawFrame(); }   // the message is done
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
@@ -1633,7 +1877,24 @@ void loop() {
     return;   // nothing else draws while it plays
   }
   static uint32_t zTick = 0;
-  if (screenOn && view == V_HOME && millis() > msgUntil && asleep() && millis() - zTick > 90) { zTick = millis(); drawZs(zTick); }
+  if (screenOn && view == V_HOME && millis() > msgUntil && asleep() && !singing() && millis() - zTick > 90) { zTick = millis(); drawZs(zTick); }
+  static uint32_t nTick = 0;   // singing: notes float up
+  if (screenOn && view == V_HOME && singing() && millis() - nTick > 90) { nTick = millis(); drawNotes(millis() - songStart); }
+  static bool wasSinging = false;
+  if (wasSinging && !singing() && screenOn && view == V_HOME) drawFrame();   // song over: clear the notes
+  wasSinging = singing();
+  // now and then he just sings a little (awake, not hungry, you're looking at him): every 1-3 hours
+  static uint32_t nextSong = 0;
+  if (!nextSong) nextSong = millis() + (60 + random(121)) * 60000UL;
+  if (millis() > nextSong) {
+    nextSong = 0;
+    if (screenOn && view == V_HOME && !asleep() && !hungryNow().length() && !coolStart && !singing()) SING(SONG_MOCHI);
+  }
+  // falling asleep: a lullaby; waking up: a little good-morning jingle
+  static int sleptBefore = -1;
+  int sleepsNow = asleep();
+  if (card.ok && sleptBefore >= 0 && sleepsNow != sleptBefore && screenOn && !singing()) { if (sleepsNow) SING(SONG_LULLABY); else SING(SONG_WAKE); }
+  if (card.ok) sleptBefore = sleepsNow;
   static int lastDx = 99; static bool lastBlink = false;
   if (screenOn && view == 0 && millis() - tick > 120) {
     tick = millis();

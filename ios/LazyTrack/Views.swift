@@ -207,6 +207,7 @@ struct SetupView: View {
     @AppStorage("token") private var token = ""
     @AppStorage("deviceName") private var deviceName = "iphone"
     @ObservedObject private var gym = GymManager.shared
+    @ObservedObject private var egg = EggLink.shared
     @State private var testResult = ""
     @State private var healthResult = ""
     @State private var healthOn = HealthSync.enabled
@@ -234,6 +235,16 @@ struct SetupView: View {
                     Text("Your Mac")
                 } footer: {
                     Text("Easiest: run ./lt phone on the Mac and scan the QR code with the iPhone Camera app. Tailscale must be on on both devices.")
+                }
+
+                Section {
+                    Toggle("Keep my egg online", isOn: $egg.enabled)
+                    Text(egg.status).font(.footnote)
+                    if egg.relayed > 0 { Text("\(egg.relayed) requests passed on since the app started").font(.footnote).foregroundStyle(.secondary) }
+                } header: {
+                    Text("LazyTrack Egg (Bluetooth)")
+                } footer: {
+                    Text("When the egg has no WiFi, it goes online through your phone, even with the app closed. The first time, iOS asks to pair: tap Pair. Only the LazyTrack server is reached, nothing else.")
                 }
 
                 Section {

@@ -219,6 +219,21 @@ def now_state() -> dict:
             "fed_hp": FED_HP, "missed_hp": MISSED_HP}
 
 
+def device_plan() -> dict:
+    """For the egg's offline mode (no internet, or LazyTrack closed): today's and tomorrow's meals and your sleep
+    window, so it can keep Mochi's day going on its own clock. Meals: [letter, start, end (minutes after
+    midnight, your time), fed 0/1]; bed/wake in minutes after midnight."""
+    sch = schedule()
+    t = time.time()
+    today = date.today()
+
+    def rows(d: date) -> list:
+        base = _midnight(d)
+        return [[m["n"][0], int((m["start"] - base) // 60), int((m["end"] - base) // 60), 1 if m["state"] == "fed" else 0]
+                for m in meals(d, t)]
+    return {"day": today.isoformat(), "bed": sch["bed"], "wake": sch["wake"], "m": rows(today), "m2": rows(today + timedelta(days=1))}
+
+
 def tick(notify) -> None:
     """Every ~30 s (from the sync worker): when a meal starts, tells you once (notification + sound)."""
     since()

@@ -7,6 +7,7 @@ struct LazyTrackApp: App {
 
     init() {
         _ = GymManager.shared  // must exist at launch so iOS can deliver gym enter/exit in the background
+        _ = EggLink.shared     // same for the egg: iOS relaunches the app in the background when the egg needs internet
         Notifier.requestAuth()
     }
 

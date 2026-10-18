@@ -52,12 +52,13 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 1. **Board support:** Arduino IDE → Settings → "Additional boards manager URLs", add
    `https://espressif.github.io/arduino-esp32/package_esp32_index.json`. Then Tools → Board → Boards Manager,
    search **esp32** (by Espressif) and install it.
-2. **Libraries:** Tools → Manage Libraries, install **GFX Library for Arduino** (by Moon On Our Nation) and **ArduinoJson** (by Benoit Blanchon).
+2. **Libraries:** Tools → Manage Libraries, install **GFX Library for Arduino** (by Moon On Our Nation), **ArduinoJson** (by Benoit Blanchon) and **NimBLE-Arduino** (by h2zero, for Bluetooth).
 3. **Open** `device/LazyTrackEgg/LazyTrackEgg.ino`.
 4. **Your secrets:** copy `secrets.example.h` to `secrets.h` (same folder) and fill in your WiFi and LazyTrack email + password.
    `secrets.h` is ignored by git, so it never goes to GitHub.
 5. **Your screen chip:** the sketch is set to ST7789 (what most 2.0" 240x320 screens use). For an ILI9341, switch the two lines at the top.
-6. Tools → Board → **ESP32 Dev Module**, Tools → Port → the USB port that appears when you plug it in. Press **Upload** (→).
+6. Tools → Board → **ESP32 Dev Module**, Tools → **Partition Scheme → "Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)"**
+   (the sketch is too big for the default one since Bluetooth came in), Tools → Port → the USB port that appears when you plug it in. Press **Upload** (→).
    If it says "Connecting....___" for a long time, hold the **BOOT** button on the ESP32 until it starts writing.
 7. Tools → Serial Monitor at 115200 shows what it's doing if something's off.
 
@@ -87,3 +88,19 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 - The bottom line shows what you're doing (or the status); Menu → Info has WiFi, IP and the last sync (B there syncs now).
 
 Compiled and checked with ESP32 board package 3.3.12, GFX Library for Arduino 1.6.9 and ArduinoJson 7.4.2.
+
+## No WiFi? Bluetooth through your phone, or fully offline
+
+- **Through your iPhone:** when the egg has no WiFi, the LazyTrack iPhone app keeps it online over Bluetooth, even
+  with the app closed (like a watch). Setup tab → "LazyTrack Egg (Bluetooth)" → on. The first time, iOS asks to
+  pair: tap **Pair**. The phone only passes the egg's requests to the LazyTrack server (encrypted link), and gives it
+  the time. Info on the egg says "Online via: phone (Bluetooth)". Rebuild the iPhone app once (./setup.sh, ▶ in Xcode).
+- **Fully offline:** LazyTrack sends the egg today's and tomorrow's meal times and your sleep window. With no
+  connection at all, the egg keeps Mochi's day going on its own clock: he gets hungry, A feeds him, he sleeps at
+  your usual time. Logs and meals wait on the egg and go out when it's back online.
+
+## Songs
+
+An old handheld-game sound on the buzzer: Mochi sings his little song now and then (every 1-3 hours while you're
+around), when you pet him 3 times within 20 seconds, a lullaby when he falls asleep and a jingle when he wakes up.
+Little notes float up from his head while he sings.

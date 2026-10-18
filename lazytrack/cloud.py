@@ -235,6 +235,8 @@ def _with_now(card: dict) -> dict:
     try:   # sleeping (when you sleep, never while you're up) and hungry (meal times): for friends and the egg
         r = _rhythm()
         card["asleep"], card["hungry"] = r
+        from . import rhythm
+        card["plan"] = rhythm.device_plan()   # the egg keeps Mochi's day going offline
         if r[0]:
             card["mood"] = "sleepy"
         elif card.get("mood") == "sleepy":

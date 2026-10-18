@@ -42,6 +42,8 @@ targets:
         NSLocationWhenInUseUsageDescription: Save where your gym is.
         NSLocationAlwaysAndWhenInUseUsageDescription: Log gym visits automatically when you stay at your gym for 30+ minutes, even when the app is closed.
         NSHealthShareUsageDescription: Read your sleep and step count for your weekly stats.
+        NSBluetoothAlwaysUsageDescription: Keeps your LazyTrack Egg online through your phone when it has no WiFi.
+        UIBackgroundModes: [bluetooth-central]
     entitlements:
       path: LazyTrack/LazyTrack.entitlements
       properties:
