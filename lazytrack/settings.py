@@ -17,6 +17,15 @@ SENSITIVITY = {"low": 6.0, "normal": 4.0, "high": 2.5}
 SECRET_MASK = "••••••••"
 
 
+
+def _admin() -> bool:
+    """Developer settings (test versions) are for the admin only, as the server decides."""
+    try:
+        from . import cloud
+        return cloud.is_admin()
+    except Exception:
+        return False
+
 def _uninstall_ok() -> bool:
     try:
         from . import uninstall
@@ -94,7 +103,7 @@ def save(body: dict) -> dict:
             autostart.set_enabled(bool(body["start_at_login"]))
         except Exception as e:
             log.warning("start at login: %s", e)
-    if "test_versions" in body:   # main = every change right away; otherwise the stable versions
+    if "test_versions" in body and _admin():   # main = every change right away (the admin only); otherwise stable
         if body["test_versions"]:
             section("update")["branch"] = "main"
         else:

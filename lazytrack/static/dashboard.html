@@ -724,7 +724,9 @@
   /* ------------------------------------------------------------ views */
   /* ---- admin page */
   .showsm { display: none; } @media (max-width: 560px) { .hidesm { display: none; } .showsm { display: inline; } }
-  .admin-only { display: none; text-decoration: none; } body.is-admin .admin-only { display: inline-flex; align-items: center; }
+  .admin-only { text-decoration: none; } body.is-admin .admin-only { display: inline-flex; align-items: center; }
+  body:not(.is-admin) .admin-only { display: none !important; }   /* wins over every other display rule (a.tourbtn showed it to everyone) */
+  body.is-admin .form.admin-only { display: grid; }
   #admin > .card { margin-top: 16px; } #admin [data-as].offcat { display: none; }
   .admtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   .admtile { border: 3px solid var(--line); border-radius: 14px; padding: 10px 12px; background: var(--soft); }
@@ -1602,7 +1604,7 @@ applyTheme();
         <p class="note" id="uStatus"></p>
         <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="uCheck">Check for updates</button>
           <button type="button" class="btn primary" id="uInstall" hidden>Update now</button></div>
-        <div class="form" style="margin-top:14px">
+        <div class="form admin-only" style="margin-top:14px">
           <label class="toggle"><input type="checkbox" name="test_versions" data-autosave> Test versions</label>
           <p class="hint">On: you get every change as soon as it's made, before everyone else (it may be unfinished now and then).
             Off: you get the versions marked ready for everyone.</p>
@@ -4687,6 +4689,7 @@ const admin = {
     document.querySelectorAll("#admCats [data-goas]").forEach(b => b.setAttribute("aria-pressed", b.dataset.goas === sec));
     await refreshCloud();
     const ok = await this.check(true);
+    if (!ok && this.why !== "offline") { go({tab: "home"}); return; }   // not the admin: nothing to see here, not even how to become one
     $("admNo").hidden = ok;
     document.querySelectorAll("#admin [data-as]").forEach(s => s.classList.toggle("offcat", !ok || s.dataset.as !== sec));
     $("admCats").hidden = !ok;
