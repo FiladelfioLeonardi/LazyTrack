@@ -23,6 +23,7 @@
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <nvs.h>
+#include <esp_partition.h>   // big things (the offline Mochi, your habits) live in the spare flash area, not the small settings storage
 #include <esp_task_wdt.h>
 #include <ArduinoJson.h>
 #include <Arduino_GFX_Library.h>
@@ -294,6 +295,7 @@ class EggServerCb : public NimBLEServerCallbacks {
   void onConnect(NimBLEServer *s, NimBLEConnInfo &c) override {
     bleConnected = true;
     bleConnAt = millis();
+    Serial.printf("Bluetooth: a phone connected (free memory %u)\n", (unsigned)ESP.getFreeHeap());
     NimBLEDevice::startSecurity(c.getConnHandle());
   }
   void onDisconnect(NimBLEServer *s, NimBLEConnInfo &c, int reason) override {
@@ -303,7 +305,7 @@ class EggServerCb : public NimBLEServerCallbacks {
   void onMTUChange(uint16_t mtu, NimBLEConnInfo &c) override { bleMtu = mtu; }
   // a new phone wants to pair: the code shows on the egg, but only in pairing mode
   void onConfirmPassKey(NimBLEConnInfo &c, uint32_t pin) override {
-    if (millis() < blePairUntil) { blePinConn = c.getConnHandle(); blePinAt = millis(); blePin = pin + 1000000; }   // +1e6: "000123" stays 6 digits
+    if (millis() < blePairUntil) { blePinConn = c.getConnHandle(); blePinAt = millis(); blePin = pin + 1000000; Serial.println("Bluetooth: pairing code shown"); }   // +1e6: "000123" stays 6 digits
     else { NimBLEDevice::injectConfirmPasskey(c, false); Serial.println("Bluetooth: a phone tried to pair (not in pairing mode): refused"); }
   }
   void onAuthenticationComplete(NimBLEConnInfo &c) override {
@@ -434,6 +436,7 @@ void blePairMode() {   // B on the Phone screen: new phones can pair for 2 minut
 
 void bleAnswer(bool yes) {   // the code on the screen: same as on the phone?
   if (!blePin || !bleSrv) return;
+  Serial.printf("Bluetooth: code %s on the egg\n", yes ? "confirmed" : "refused");
   NimBLEDevice::injectConfirmPasskey(bleSrv->getPeerInfoByHandle(blePinConn), yes);
   blePin = 0;
 }
@@ -448,6 +451,35 @@ bool online() { return WiFi.status() == WL_CONNECTED || bleLinked; }
 String netName() {
   return WiFi.status() == WL_CONNECTED ? WiFi.SSID() : bleLinked ? String("phone (Bluetooth)")
        : bleConnected ? String("phone: pairing...") : String("offline");
+}
+
+// ---------------------------------------------------------------- files: the offline Mochi and your habit list
+// The settings storage is tiny (20 KB) and also holds WiFi's calibration and the paired phones: when it filled up,
+// pairing a phone froze the egg. So the big things go in the spare flash area (190 KB, "Minimal SPIFFS" scheme).
+// Written straight into the "spiffs" flash area (no file system: that didn't fit in the chip's fast memory).
+// Slots: card at 0 (up to 60 KB), habits at 64 KB (up to 12 KB). Each: 4-byte length, then the text.
+const esp_partition_t *store = nullptr;
+bool fsOk = false;
+uint32_t slotOf(const char *path) { return path[1] == 'c' ? 0 : 65536; }
+uint32_t slotMax(const char *path) { return path[1] == 'c' ? 61440 : 12288; }
+String readFile(const char *path) {
+  if (!fsOk) return "";
+  uint32_t off = slotOf(path), n = 0;
+  if (esp_partition_read(store, off, &n, 4) != ESP_OK || n == 0 || n > slotMax(path)) return "";   // empty flash reads 0xFFFFFFFF
+  char *buf = (char *)malloc(n + 1);
+  if (!buf) return "";
+  String out;
+  if (esp_partition_read(store, off + 4, buf, n) == ESP_OK) { buf[n] = 0; out = buf; }
+  free(buf);
+  return out;
+}
+void writeFile(const char *path, const String &s) {
+  uint32_t off = slotOf(path), n = s.length();
+  if (!fsOk || n > slotMax(path)) return;
+  uint32_t span = ((n + 4 + 4095) / 4096) * 4096;
+  if (esp_partition_erase_range(store, off, span) != ESP_OK) return;
+  esp_partition_write(store, off, &n, 4);
+  esp_partition_write(store, off + 4, s.c_str(), n);
 }
 
 // ---------------------------------------------------------------- talking to the friends server
@@ -632,13 +664,11 @@ void sync() {
   if (code == 401) { token = ""; if (login()) code = http("GET", "/rest/v1/cards?user_id=eq." + uid + "&select=card,updated_at", "", body, true); }
   if (code == 200 && parseCard(body)) {
     lastSync = millis(); status = "Synced";
-    // kept for offline, at most every 10 minutes: the egg's storage is small (20 KB), and writing a new copy
-    // before the old one is gone needs room for both, so the old one goes first
+    // kept for offline (in a file), at most every 10 minutes
     static uint32_t keptAt = 0;
     if (!keptAt || millis() - keptAt > 600000) {
       keptAt = millis();
-      prefs.remove("card");
-      if (!prefs.putBytes("card", body.c_str(), body.length())) Serial.println("storage full: Mochi isn't kept for offline");
+      writeFile("/card.json", body);
     }
   }
   else if (code != 200) status = "Sync failed (" + String(code) + ")";
@@ -744,7 +774,7 @@ void loadHabits() {   // your habits + today's numbers, put in egg_setup by Lazy
   String body;
   if (api("GET", "/rest/v1/egg_setup?select=habits", "", body) != 200) return;
   parseSetup(body);
-  if (nhabits) prefs.putString("habits", body);
+  if (nhabits) writeFile("/habits.json", body);
 }
 
 // logs made without WiFi wait here ("kind,time" lines) and go out on the next sync
@@ -1791,7 +1821,9 @@ void setup() {
     case ESP_RST_POWERON: resetWhy = "power on"; break;
     case ESP_RST_SW: resetWhy = "restarted"; break;
     case ESP_RST_PANIC: resetWhy = "CRASH"; break;
-    case ESP_RST_INT_WDT: case ESP_RST_TASK_WDT: case ESP_RST_WDT: resetWhy = "FROZE"; break;
+    case ESP_RST_INT_WDT: resetWhy = "FROZE (int)"; break;
+    case ESP_RST_TASK_WDT: resetWhy = "FROZE (task)"; break;
+    case ESP_RST_WDT: resetWhy = "FROZE (other)"; break;
     case ESP_RST_BROWNOUT: resetWhy = "POWER DIP"; break;
     case ESP_RST_EXT: resetWhy = "reset button"; break;
     default: resetWhy = "other " + String((int)esp_reset_reason());
@@ -1842,18 +1874,23 @@ void setup() {
   drawStage(0, false);
   tuneBoot();
   // the last Mochi it saw, so it shows up even without WiFi (outside, no hotspot)
-  String saved;
-  size_t n = prefs.getBytesLength("card");
-  if (n > 0 && n < 16384) { char *buf = (char *)malloc(n + 1); prefs.getBytes("card", buf, n); buf[n] = 0; saved = buf; free(buf); }
-  if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, false); }
-  {   // the egg's small storage: say how full it is (full = WiFi can't save its calibration, offline Mochi isn't kept)
-    nvs_stats_t ns;
-    if (nvs_get_stats(nullptr, &ns) == ESP_OK) {
-      Serial.printf("storage: %u of %u entries free\n", (unsigned)ns.free_entries, (unsigned)ns.total_entries);
-      if (ns.free_entries < ns.total_entries / 4) { prefs.remove("card"); Serial.println("storage: made room (the offline Mochi is saved again on the next sync)"); }
-    }
+  store = esp_partition_find_first(ESP_PARTITION_TYPE_DATA, ESP_PARTITION_SUBTYPE_DATA_SPIFFS, nullptr);
+  fsOk = store && store->size >= 81920;
+  String saved = readFile("/card.json");
+  if (!saved.length() && prefs.isKey("card")) {   // older egg code kept it in the small settings storage: move it out
+    size_t n = prefs.getBytesLength("card");
+    if (n > 0 && n < 16384) { char *buf = (char *)malloc(n + 1); if (buf) { prefs.getBytes("card", buf, n); buf[n] = 0; saved = buf; free(buf); } }
+    writeFile("/card.json", saved);
   }
-  String hs = prefs.getString("habits", "");   // the Log menu works before the first sync too
+  String hs = readFile("/habits.json");
+  if (!hs.length() && prefs.isKey("habits")) { hs = prefs.getString("habits", ""); writeFile("/habits.json", hs); }
+  prefs.remove("card"); prefs.remove("habits");   // frees the settings storage (WiFi calibration, paired phones need it)
+  if (saved.length()) { parseCard(saved); status = "Offline: last seen Mochi"; drawFrame(); drawStage(0, false); }
+  {
+    nvs_stats_t ns;
+    if (nvs_get_stats(nullptr, &ns) == ESP_OK)
+      Serial.printf("storage: settings %u of %u entries free, flash area %s\n", (unsigned)ns.free_entries, (unsigned)ns.total_entries, fsOk ? "ok" : "MISSING (Tools > Partition Scheme > Minimal SPIFFS)");
+  }
   if (hs.length()) parseSetup(hs);
   WiFi.mode(WIFI_STA);
   WiFi.onEvent([](WiFiEvent_t e, WiFiEventInfo_t info) {   // why WiFi drops, in the Serial Monitor
@@ -1883,6 +1920,7 @@ void setup() {
 
 // ---------------------------------------------------------------- the network task (core 0)
 void netSync(bool all) {   // with the lock held: card, queued logs, pokes (+ habits / friends when due)
+  Serial.printf("net: sync (%s, free memory %u)\n", WiFi.status() == WL_CONNECTED ? "WiFi" : bleLinked ? "phone" : "offline", (unsigned)ESP.getFreeHeap());
   int before = card.hp, fx = card.drunk * 100 + card.high * 10 + card.coughy;
   String tb = card.tierName, what = card.nowWhat + card.nowLabel, rh = hungryNow() + String(asleep());
   String wasHungry = hungryNow();
@@ -1931,6 +1969,7 @@ void eggReport() {   // about once a minute: what LazyTrack shows under "Your eg
   String pl, body;
   serializeJson(d, pl);
   int code = api("POST", "/rest/v1/egg_status", pl, body, "resolution=merge-duplicates,return=minimal");
+  Serial.printf("net: checked in with LazyTrack (%d)%s\n", code, code == 404 ? ": run supabase/egg_status.sql" : "");
   if (code == 404) eggCmdOff = millis() + 600000;   // egg_status.sql not run yet
 }
 
