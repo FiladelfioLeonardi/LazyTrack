@@ -77,9 +77,28 @@ SemaphoreHandle_t httpLock;            // one request at a time (they share the 
 volatile bool needRedraw = false;      // the network task got news: the screen redraws it
 volatile bool netKick = false;         // do a sync right away (after a log, Info B, the phone connecting...)
 volatile bool habitsKick = false, friendsKick = false;
+volatile int pokeReq = -1;             // the screen asks the network task to poke friend #n
+volatile bool undoReq = false;         // ...or to take back the last log
+volatile bool friendsDone = false;     // the friend list was loaded once (the Friends screen says "loading" until then)
 volatile uint8_t eggCmd = 0;           // from LazyTrack on your computer / phone: 1 = sing, 2 = find my egg
 #define FW_VERSION "2026.10.18"
 String resetWhy = "";                  // why the egg (re)started: shown on Info, so a crash or power dip is easy to spot
+// What the egg was doing, kept through a restart (this memory survives a reset, not a power cut): if it ever
+// freezes or crashes, the next start says what it was busy with.
+RTC_NOINIT_ATTR char crumb[48];
+RTC_NOINIT_ATTR char frozeIn[48];
+RTC_NOINIT_ATTR uint32_t crumbMagic;
+void setCrumb(const char *what) { strncpy(crumb, what, sizeof crumb - 1); crumb[sizeof crumb - 1] = 0; crumbMagic = 0xC0FFEE42; }
+// the watchdog fired: note which tasks were running on each core (the restart follows right after)
+extern "C" void esp_task_wdt_isr_user_handler(void) {
+  const char *a = pcTaskGetName(xTaskGetCurrentTaskHandleForCore(0)), *b = pcTaskGetName(xTaskGetCurrentTaskHandleForCore(1));
+  int k = 0;
+  for (const char *p = "core0 "; *p && k < 47; ) frozeIn[k++] = *p++;
+  for (const char *p = a ? a : "?"; *p && k < 47; ) frozeIn[k++] = *p++;
+  for (const char *p = ", core1 "; *p && k < 47; ) frozeIn[k++] = *p++;
+  for (const char *p = b ? b : "?"; *p && k < 47; ) frozeIn[k++] = *p++;
+  frozeIn[k] = 0;
+}
 
 // the friends server (same as the app; this key is the public one made to sit in apps)
 static const char *SUPA_URL = "https://zmrzumltciteeznzjwaw.supabase.co";
@@ -424,6 +443,7 @@ void bleCheck() {
     }
   }
   if (blePin && millis() - blePinAt > 30000) blePin = 0;          // the code wasn't confirmed in time
+  if (bleConnected && !bleLinked) setCrumb(blePin ? "Bluetooth: waiting for the code" : "Bluetooth: phone connecting");
   if (blePairUntil && millis() > blePairUntil) blePairUntil = 0;  // pairing mode over
   bool stuck = bleConnected && !bleLinked && !blePin && millis() - bleConnAt > 30000;
   if (bleOldBond) { bleOldBond = false; NimBLEDevice::deleteBond(bleOldAddr); }
@@ -441,6 +461,7 @@ void blePairMode() {   // B on the Phone screen: new phones can pair for 2 minut
 void bleAnswer(bool yes) {   // the code on the screen: same as on the phone?
   if (!blePin || !bleSrv) return;
   Serial.printf("Bluetooth: code %s on the egg\n", yes ? "confirmed" : "refused");
+  setCrumb("Bluetooth: confirming the code");
   NimBLEDevice::injectConfirmPasskey(bleSrv->getPeerInfoByHandle(blePinConn), yes);
   blePin = 0;
 }
@@ -498,11 +519,17 @@ int http(const String &method, const String &path, const String &payload, String
   xSemaphoreTakeRecursive(httpLock, portMAX_DELAY);
   String got;
   uint32_t t0 = millis();
+  {
+    char c[48]; int q = path.indexOf('?');
+    snprintf(c, sizeof c, "%s %s", method.c_str(), path.substring(0, q < 0 ? path.length() : q).c_str());
+    setCrumb(c);
+  }
   int code = httpRaw(method, path, payload, got, auth, prefer);
   // every request in the Serial Monitor: what, the answer, how long (the token never shows)
   int q = path.indexOf('?');
   Serial.printf("  %s %s -> %d (%lu ms)%s%s\n", method.c_str(), path.substring(0, q < 0 ? path.length() : q).c_str(), code, (unsigned long)(millis() - t0),
                 code >= 400 ? ": " : "", code >= 400 ? got.substring(0, 120).c_str() : "");
+  setCrumb("net: between requests");
   xSemaphoreGiveRecursive(httpLock);
   if (held) LOCK();
   body = got;
@@ -528,7 +555,7 @@ int httpOnce(const String &method, const String &path, const String &payload, St
   // two every time, which with Bluetooth on often didn't fit (-1) or timed out (-11).
   static HTTPClient h;
   static bool ready = false;
-  if (!ready) { h.setReuse(true); h.setTimeout(12000); ready = true; }
+  if (!ready) { h.setReuse(true); h.setTimeout(8000); ready = true; }
   if (!h.begin(tls, String(SUPA_URL) + path)) { tls.stop(); return -1; }
   h.addHeader("apikey", SUPA_KEY);
   h.addHeader("Content-Type", "application/json");
@@ -742,7 +769,6 @@ String agoText(time_t t) {
 // ---------------------------------------------------------------- what's on top of Home for a moment
 String msgTitle, msgSub;
 uint32_t msgUntil = 0, petUntil = 0, shakeUntil = 0;
-long undoId = 0;            // the last log, while it can still be taken back (C)
 void drawFrame();
 
 void showMsg(const String &title, const String &sub, uint32_t ms) {
@@ -821,8 +847,23 @@ bool sendLog(const String &k, time_t t, long *id) {
   return true;
 }
 
-void flushQueue() {
-  String q = prefs.getString("queue", ""), left;
+String lastLog = "";   // the last log made on the egg ("kind,time"), while C can still take it back
+long undoId = 0;       // ...and its id once it reached the server
+
+int queueAt(const String &q, const String &line) {   // where this whole line is in the queue, or -1
+  if (q.startsWith(line + "\n")) return 0;
+  int at = q.indexOf("\n" + line + "\n");
+  return at < 0 ? -1 : at + 1;
+}
+
+void dropFromQueue(const String &line) {   // removes one line (re-read first: the screen may have added logs meanwhile)
+  String q = prefs.getString("queue", "");
+  int at = queueAt(q, line);
+  if (at >= 0) prefs.putString("queue", q.substring(0, at) + q.substring(at + line.length() + 1));
+}
+
+void flushQueue() {   // network task only
+  String q = prefs.getString("queue", "");
   if (!q.length()) return;
   int start = 0;
   while (start < (int)q.length()) {
@@ -831,10 +872,14 @@ void flushQueue() {
     String line = q.substring(start, nl);
     start = nl + 1;
     int comma = line.indexOf(',');
-    if (comma <= 0) continue;
-    if (!sendLog(line.substring(0, comma), (time_t)line.substring(comma + 1).toInt(), nullptr)) left += line + "\n";
+    if (comma <= 0) { dropFromQueue(line); continue; }
+    if (queueAt(prefs.getString("queue", ""), line) < 0) continue;   // taken back meanwhile
+    long id = 0;
+    if (sendLog(line.substring(0, comma), (time_t)line.substring(comma + 1).toInt(), &id)) {
+      dropFromQueue(line);
+      if (line == lastLog) undoId = id;
+    }
   }
-  prefs.putString("queue", left);
 }
 
 // Mochi reacts right away; LazyTrack's real numbers follow within a minute
@@ -844,16 +889,16 @@ void reactTo(const String &k) {
   else if (k == "cigarette" || k == "vape") card.coughy = max(1, card.coughy);
 }
 
-void doLog(int i) {
+void doLog(int i) {   // from the screen: queued, the network task sends it right away (the screen never waits for the server)
   const Habit &h = habits[i];
   time_t t = clockOk() ? time(nullptr) : 0;
-  long id = 0;
-  bool sent = sendLog(h.k, t, &id);
-  if (!sent) queueLog(h.k, t);
+  queueLog(h.k, t);
+  lastLog = h.k + "," + String((long)t);
+  undoId = 0;
+  netKick = true;
   reactTo(h.k);
-  undoId = sent ? id : 0;
   h.bad ? tuneBad() : tuneGood();
-  showMsg(h.bad ? "LOGGED" : "NICE!", "1 " + h.n + (sent ? "   C = undo" : "   (sends once online)"), 5000);
+  showMsg(h.bad ? "LOGGED" : "NICE!", "1 " + h.n + "   C = undo", 5000);
 }
 
 // Mochi is hungry: A feeds him (it goes to LazyTrack like a log, waiting if there's no WiFi)
@@ -871,11 +916,23 @@ void feed() {
   showMsg("YUM!", meal.length() ? "Thanks for the " + meal + "!" : "Thanks!", 3000);
 }
 
-void undoLog() {
+bool canUndo() { return lastLog.length() && millis() < msgUntil; }
+
+void undoLog() {   // from the screen
+  tuneClick();
+  String q = prefs.getString("queue", "");
+  if (queueAt(q, lastLog) >= 0) {   // not sent yet: just drop it
+    dropFromQueue(lastLog);
+    lastLog = ""; undoId = 0;
+    showMsg("UNDONE", "Taken back", 3000);
+  } else if (undoId) { undoReq = true; lastLog = ""; showMsg("UNDOING...", "", 3000); }
+  else { lastLog = ""; showMsg("TOO LATE", "Undo it in the app", 3000); }
+}
+
+void undoNow() {   // network task: the log already reached the server
   String body;
   int code = api("DELETE", "/rest/v1/egg_inbox?id=eq." + String(undoId), "", body, "return=representation");
   undoId = 0;
-  tuneClick();
   showMsg("UNDONE", code == 200 && body.length() > 4 ? "Taken back" : "Already saved: undo it in the app", 3000);
   sync();
 }
@@ -1594,7 +1651,8 @@ uint16_t tierColor(const String &t) {
 void drawFriend() {
   if (!nfriends) {
     themeBg();
-    themeHead(MENU_ICONS[M_FRIENDS], "FRIENDS", online() ? "NO FRIENDS YET" : "OFFLINE RIGHT NOW");
+    themeHead(MENU_ICONS[M_FRIENDS], "FRIENDS", !online() ? "OFFLINE RIGHT NOW" : !friendsDone ? "LOADING..." : "NO FRIENDS YET");
+    if (!friendsDone && online()) { themeHints("A BACK"); return; }
     dcard(12, 60, 216, 64);
     text(24, 74, "Add some in the LazyTrack", 1, CARD);
     text(24, 90, "app (Friends tab).", 1, CARD);
@@ -1631,7 +1689,7 @@ void drawFriend() {
     if (fx.length()) chip(106, 60, fx, f.drunk ? rgb(0xffd28a) : f.high ? rgb(0x9be8a9) : rgb(0xd9d2e9));
   } else chip(8, 56, "NO CARD YET", rgb(0xd9d2e9));
   String line; uint16_t dot;
-  bool said = status.startsWith("Poked") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes");
+  bool said = status.startsWith("Poked") || status.startsWith("Poking") || status.startsWith("Easy") || status.startsWith("Couldn") || status.startsWith("Pokes");
   if (said) { line = status; dot = status.startsWith("Poked") ? YELLOW : RED; }
   else if (f.online) {
     String w = f.label.length() ? f.label : f.what == "coding" ? "coding" : f.what == "gaming" ? "gaming" : f.what == "youtube" ? "watching YouTube"
@@ -1771,7 +1829,7 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     gfx->drawRoundRect(8, 270, 224, 26, 7, INK); gfx->drawRoundRect(9, 271, 222, 24, 6, INK);
     gfx->fillCircle(22, 283, 5, INK); gfx->fillCircle(22, 283, 3, dot);
     if (line.length() <= 15) text(34, 276, line, 2, INK); else text(34, 280, line.substring(0, 32), 1, INK);
-    String ha = hungry ? "A FEED" : "A PET", hc = undoId && millis() < msgUntil ? "C UNDO" : "C OFF";
+    String ha = hungry ? "A FEED" : "A PET", hc = canUndo() ? "C UNDO" : "C OFF";
     hint(40, ha); hint(120, "B MENU"); hint(200, hc);
     drawStage(0, false);
   }
@@ -1855,6 +1913,14 @@ void setup() {
     default: resetWhy = "other " + String((int)esp_reset_reason());
   }
   Serial.printf("\n=== LazyTrack Egg %s: started because: %s ===\n", FW_VERSION, resetWhy.c_str());
+  if (crumbMagic == 0xC0FFEE42 && (resetWhy.startsWith("CRASH") || resetWhy.startsWith("FROZE"))) {
+    crumb[sizeof crumb - 1] = 0; frozeIn[sizeof frozeIn - 1] = 0;
+    Serial.printf("=== it was busy with: %s ===\n", crumb);
+    if (resetWhy == "FROZE (task)") Serial.printf("=== running then: %s ===\n", frozeIn);
+    resetWhy += String(" in ") + crumb;
+  }
+  frozeIn[0] = 0;
+  setCrumb("starting");
   dataLock = xSemaphoreCreateMutex();
   httpLock = xSemaphoreCreateRecursiveMutex();
   LOCK();   // setup draws; loop() takes it from here
@@ -1959,7 +2025,7 @@ void netSync(bool all) {   // with the lock held: card, queued logs, pokes (+ ha
     checkPokes();
     if (all || habitsKick || !nhabits || millis() - habitsAt > 120000) { habitsKick = false; loadHabits(); }
     if (all || friendsKick || (view == V_FRIENDS && millis() - friendsAt > 60000)) {
-      friendsKick = false; loadFriends(); if (friendSel >= nfriends) friendSel = 0;
+      friendsKick = false; loadFriends(); friendsDone = true; if (friendSel >= nfriends) friendSel = 0;
       if (view == V_FRIENDS) needRedraw = true;
     }
   }
@@ -2040,6 +2106,15 @@ void netTask(void *) {
     if (bleLinked && !wasLinked) linkedAt = millis();
     if (linkedAt && millis() - linkedAt > 4000) { linkedAt = 0; netKick = true; }
     wasLinked = bleLinked;
+    // a phone is pairing: no server traffic until it's done (pairing and a secure connection at once was too much)
+    if (blePairUntil || blePin || (bleConnected && !bleLinked)) continue;
+    if (pokeReq >= 0 || undoReq) {   // asked by the screen
+      LOCK();
+      if (pokeReq >= 0 && pokeReq < nfriends) { sendPoke(pokeReq); if (view == V_FRIENDS) needRedraw = true; }
+      pokeReq = -1;
+      if (undoReq) { undoReq = false; undoNow(); }
+      UNLOCK();
+    }
     bool due = millis() - last > 30000;              // every 30 s: LazyTrack's changes arrive within a minute
     if (due || netKick || habitsKick || friendsKick) {
       bool full = due || netKick;
@@ -2049,7 +2124,7 @@ void netTask(void *) {
       if (full) netSync(false);
       else if (online()) {
         if (habitsKick) { habitsKick = false; loadHabits(); needRedraw = true; }
-        if (friendsKick) { friendsKick = false; loadFriends(); if (friendSel >= nfriends) friendSel = 0; needRedraw = true; }
+        if (friendsKick) { friendsKick = false; loadFriends(); friendsDone = true; if (friendSel >= nfriends) friendSel = 0; needRedraw = true; }
       }
       UNLOCK();
     }
@@ -2129,7 +2204,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
     case V_HOME:
       if (b == 0) { menuSel = 0; transition(V_MENU, true); }
       else if (b == 1) { if (hungryNow().length() && !asleep()) feed(); else pet(); }
-      else if (undoId && millis() < msgUntil) undoLog();
+      else if (canUndo()) undoLog();
       else setScreen(false);
       break;
     case V_MENU:
@@ -2140,15 +2215,14 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
         if (hungryNow().length() && !asleep()) feed();
         else { String n = nextMeal(); showMsg(asleep() ? "SHH..." : "NOT HUNGRY", asleep() ? "he's sleeping" : n.length() ? n : "he'll tell you when", 3000); }
       } else if (menuSel == M_LOG) {
-        if (!nhabits) loadHabits(); else if (millis() - habitsAt > 20000) habitsKick = true;   // fresh list in the background
+        if (!nhabits || millis() - habitsAt > 20000) habitsKick = true;   // fresh list in the background
         logSel = 0; transition(V_LOG, true);
       } else if (menuSel == M_FRIENDS) {
         friendSel = 0;
-        if (!friendsAt) { gfx->fillRoundRect(40, 140, 160, 40, 10, TLINE); gfx->drawRoundRect(40, 140, 160, 40, 10, INK); text(62, 154, "Loading...", 2, CARD); loadFriends(); }   // the first time only
-        else if (millis() - friendsAt > 60000) friendsKick = true;
+        if (!friendsDone || millis() - friendsAt > 60000) friendsKick = true;   // loads in the background
         status = ""; transition(V_FRIENDS, true);
       } else if (menuSel == M_TODAY) {
-        if (!ntoday) loadHabits(); else if (millis() - habitsAt > 20000) habitsKick = true;   // fresh numbers in the background
+        if (!ntoday || millis() - habitsAt > 20000) habitsKick = true;   // fresh numbers in the background
         todaySel = 0; transition(V_STATS, true);
       } else transition(V_INFO, true);
       break;
@@ -2159,7 +2233,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       break;
     case V_FRIENDS:
       if (b == 0 && nfriends) { friendSel = (friendSel + 1) % nfriends; status = ""; drawFrame(); }
-      else if (b == 1 && nfriends) { sendPoke(friendSel); drawFrame(); }
+      else if (b == 1 && nfriends) { pokeReq = friendSel; status = "Poking " + friends[friendSel].name + "..."; netKick = true; drawFrame(); }
       else if (b == 2) { status = ""; transition(V_MENU, false); }
       break;
     case V_INFO:
@@ -2283,7 +2357,7 @@ void onTap(int x, int y) {
   bool top = y < 44;   // the title bar: back
   switch (view) {
     case V_HOME:
-      if (undoId && millis() < msgUntil && y >= 56 && y < 116) { tuneClick(); undoLog(); return; }
+      if (canUndo() && y >= 56 && y < 116) { undoLog(); return; }
       if (x >= PX && x < PX + 16 * SCALE && y >= PY && y < PY + 16 * SCALE + 10) { act(1); return; }   // pet
       act(0); return;                                                                                   // menu
     case V_MENU: {   // tap a button: the top one opens, another one rolls up; Mochi or the title: back
@@ -2392,7 +2466,7 @@ void uiLoop() {
     if (hNow != lastHungry && view == V_HOME) needRedraw = true;
     lastHungry = hNow;
   }
-  if (msgUntil && millis() > msgUntil) { msgUntil = 0; undoId = 0; if (view == V_HOME) drawFrame(); }   // the message is done
+  if (msgUntil && millis() > msgUntil) { msgUntil = 0; lastLog = ""; if (view == V_HOME) drawFrame(); }   // the message is done
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
   // Only redrawn when something changes, so the screen stays calm.
