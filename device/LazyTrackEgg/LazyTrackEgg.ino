@@ -360,6 +360,10 @@ class EggRxCb : public NimBLECharacteristicCallbacks {
     } else if (bleBuf.startsWith("R")) {
       bleResp = bleBuf.substring(1);
       bleRespReady = true;
+    } else if (bleBuf.startsWith("X")) {        // a command straight from the phone app: right away, no server
+      if (bleBuf == "Xsing") eggCmd |= 1;
+      else if (bleBuf == "Xfind") eggCmd |= 2;
+      else if (bleBuf == "Xsync") netKick = true;
     }
     bleBuf = "";
   }
@@ -2451,7 +2455,7 @@ void uiLoop() {
     uint8_t c = eggCmd; eggCmd = 0;
     if (!screenOn) setScreen(true);
     coolStart = 0;
-    if (c & 2) { view = V_HOME; SING(SONG_FIND); shakeUntil = millis() + 2000; showMsg("HERE I AM!", "press any button", 8000); }
+    if (c & 2) { view = V_HOME; msgUntil = 0; drawFrame(); SING(SONG_FIND); shakeUntil = millis() + 3000; }   // just chirps and shakes
     else if (c & 1) { if (view != V_HOME) { view = V_HOME; drawFrame(); } SING(SONG_MOCHI); }
   }
   static int lastMin = -1;   // the clock on Home (and "playing for 25m") move on every minute

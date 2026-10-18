@@ -239,6 +239,13 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
         send(d)
     }
 
+    /// "sing" / "find" / "sync" straight to the egg over Bluetooth (instant). False when the egg isn't connected.
+    func command(_ cmd: String) -> Bool {
+        guard paired, rx != nil else { return false }
+        send(Data("X\(cmd)".utf8))
+        return true
+    }
+
     private func sendTime() {
         timeSent = Date()
         send(Data("T\(Int(Date().timeIntervalSince1970))".utf8))

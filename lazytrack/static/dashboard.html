@@ -3828,15 +3828,27 @@ const eggPanel = {
     g.fillStyle = e.asleep ? "#c9b8ff" : R.hungry ? "#ffe45e" : "#3fbf6f"; g.beginPath(); g.arc(22, 283, 5, 0, 7); g.fill(); g.stroke();
     g.fillStyle = "#1d1b20"; g.font = "13px Silkscreen, monospace"; g.fillText(line, 34, 277);
   },
+  viaPhone(c) {   // inside the iPhone app with the egg connected over Bluetooth: send it straight there (instant)
+    if (!this.inApp() || !this.native || !this.native.linked) return Promise.resolve(false);
+    return new Promise(res => {
+      window.eggCmdSent = ok => { window.eggCmdSent = null; res(!!ok); };
+      window.webkit.messageHandlers.egg.postMessage({do: "cmd", cmd: c});
+      setTimeout(() => { if (window.eggCmdSent) { window.eggCmdSent = null; res(false); } }, 1500);
+    });
+  },
   async cmd(c, b) {
     b.disabled = true;
     try {
-      const r = await post("/api/cloud/egg/cmd", {cmd: c}), j = await r.json().catch(() => ({}));
-      if (!r.ok) { toast(j.error || "Couldn't reach your egg.", null); return; }
-      const live = this.live() === "on";
-      toast(c === "sing" ? (live ? "🎵 Mochi sings on your egg in a few seconds" : "🎵 He'll sing when your egg is back online")
-          : c === "find" ? (live ? "📣 Your egg chirps in a few seconds: follow the sound" : "📣 It'll chirp once your egg is back online")
-          : "🔄 Your egg syncs in a few seconds", null);
+      if (await this.viaPhone(c)) {
+        toast(c === "sing" ? "🎵 Mochi sings" : c === "find" ? "📣 Your egg is chirping: follow the sound" : "🔄 Your egg is syncing", null);
+      } else {
+        const r = await post("/api/cloud/egg/cmd", {cmd: c}), j = await r.json().catch(() => ({}));
+        if (!r.ok) { toast(j.error || "Couldn't reach your egg.", null); return; }
+        const live = this.live() === "on";
+        toast(c === "sing" ? (live ? "🎵 Mochi sings on your egg in a few seconds" : "🎵 He'll sing when your egg is back online")
+            : c === "find" ? (live ? "📣 Your egg chirps in a few seconds: follow the sound" : "📣 It'll chirp once your egg is back online")
+            : "🔄 Your egg syncs in a few seconds", null);
+      }
       const sh = $("eggShell");
       if (sh && c !== "sync") {   // the same thing the egg does: notes for a song, a shake for find
         sh.classList.remove("sing", "find"); void sh.offsetWidth; sh.classList.add(c);

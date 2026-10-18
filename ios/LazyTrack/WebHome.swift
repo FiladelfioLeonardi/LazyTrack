@@ -55,7 +55,7 @@ struct WebHome: UIViewRepresentable {
                 .sink { [weak self] _ in self?.sendEgg() }
         }
 
-        /// {"do": "get" | "on" | "off" | "forget"} from the page
+        /// {"do": "get" | "on" | "off" | "forget" | "cmd", "cmd": "sing" | "find" | "sync"} from the page
         func userContentController(_ uc: WKUserContentController, didReceive message: WKScriptMessage) {
             guard message.name == "egg", let m = message.body as? [String: Any], let what = m["do"] as? String else { return }
             let egg = EggLink.shared
@@ -63,6 +63,10 @@ struct WebHome: UIViewRepresentable {
             case "on": egg.enabled = true
             case "off": egg.enabled = false
             case "forget": egg.forget()
+            case "cmd":   // instant over Bluetooth; the page hears back whether it went (else it uses the server)
+                let ok = egg.command(m["cmd"] as? String ?? "")
+                web?.evaluateJavaScript("window.eggCmdSent && window.eggCmdSent(\(ok ? "true" : "false"))")
+                return
             default: break
             }
             sendEgg()
