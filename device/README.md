@@ -72,11 +72,11 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 | **Friends** | back | poke them (their egg buzzes, their app plays a sound) | next friend |
 | **Today** | back | yesterday vs today for the highlighted stat | next stat |
 | **Yesterday vs today** | back | back | next stat |
-| **Phone** (Menu → Phone, or Info → C) | back / no | pairing mode / yes (the code) | forget all phones (press twice) |
+| **Phone** (Info → C) | back / no | pairing mode / yes (the code) | forget all phones (press twice) |
 
 - **Home** is a little game screen: hearts for HP (each heart is 20 HP) with Mochi's level under them, the clock
   top right, and a bar at the bottom with what you're doing, or HUNGRY / SLEEPING.
-- **Menu** is a ring of six round buttons around Mochi: Log, Feed, Friends, Today, Phone, Info. C turns it (the one on
+- **Menu** is a ring of five round buttons around Mochi: Log, Feed, Friends, Today, Info. C turns it (the one on
   top is big and yellow, with its name and a live line above it), B opens it. With touch: tap a button.
 - **Your egg on the computer and phone:** run `supabase/egg_status.sql` in Supabase once. The egg then checks in every
   minute, and LazyTrack shows an **Egg** button at the top (green dot = online): it mirrors the egg's screen, shows how it's

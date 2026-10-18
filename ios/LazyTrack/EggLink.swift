@@ -131,7 +131,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
         outbox = []
         if pairFailed {
             pairFailed = false
-            status = "Not paired yet. On the egg: B (menu) → PHONE → B, then confirm the same number on both."
+            status = "Not paired yet. On the egg: B (menu) → INFO → C → B, then confirm the same number on both."
             DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
                 guard let self, self.enabled else { return }
                 c.connect(p)

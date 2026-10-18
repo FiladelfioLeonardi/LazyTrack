@@ -9,7 +9,7 @@
   Buttons (like a Tamagotchi):  A = pet / back   B = menu / OK   C = next
     Home:     B opens the menu, A pets Mochi (hearts!) or feeds him, C turns the screen off (any button wakes it)
     Menu:     a ring around Mochi (C turns it, B opens): Log something (cigarette, water, gym... whatever you
-              track), Feed, Friends (see their Mochi, poke them), Today's stats, Phone (pairing), Info
+              track), Feed, Friends (see their Mochi, poke them), Today's stats, Info
   Friends poking you make the egg buzz. Logs go to LazyTrack within a minute (needs supabase/egg.sql).
 
   Setup: see README.md next to this folder. Short version:
@@ -267,7 +267,7 @@ void tuneLove() { beep(1047, 80); beep(1319, 80); beep(1568, 80); beep(2093, 160
 #define EGG_TX "6c740002-8f3b-4a2e-9d1c-3b5a7e0f4c21"
 #define EGG_RX "6c740003-8f3b-4a2e-9d1c-3b5a7e0f4c21"
 NimBLECharacteristic *bleTx = nullptr;
-// Only YOUR phone: a new phone can pair only while you put the egg in pairing mode (Menu → Phone → B), and both
+// Only YOUR phone: a new phone can pair only while you put the egg in pairing mode (Info → C → B), and both
 // screens show the same 6-digit code that you confirm on the egg (B) and on the phone (Pair). The rest of the
 // time the egg only talks to phones it already knows; anything else is turned away.
 volatile bool bleLinked = false;      // a known phone is connected, the link encrypted + confirmed with the code
@@ -312,7 +312,7 @@ class EggServerCb : public NimBLEServerCallbacks {
       Serial.println("Bluetooth: your phone, online through it");
     } else if (c.isEncrypted()) {                   // paired the old way (no code): not good enough anymore
       bleOldAddr = c.getIdAddress(); bleOldBond = true; bleDrop = true;
-      Serial.println("Bluetooth: phone paired without a code: forgetting it, pair again (Menu > Phone > B)");
+      Serial.println("Bluetooth: phone paired without a code: forgetting it, pair again (Info > C > B)");
     } else {
       bleDrop = true;
       Serial.println("Bluetooth: pairing refused or failed");
@@ -1323,17 +1323,16 @@ void drawList(const char *title, const String *items, const bool *dots, const bo
 }
 
 // ---------------------------------------------------------------- the menu: a ring of round buttons around Mochi
-// Six round buttons circle a smaller Mochi over the dimmed scene. C turns the ring (the picked one rolls to the top,
+// Five round buttons circle a smaller Mochi over the dimmed scene. C turns the ring (the picked one rolls to the top,
 // big and yellow), B opens it, A goes back. Its name and a live line about it sit at the top.
-static const int MENU_N = 6;
-enum { M_LOG, M_FEED, M_FRIENDS, M_TODAY, M_PHONE, M_INFO };
-static const char *MENU_NAMES[MENU_N] = {"LOG", "FEED", "FRIENDS", "TODAY", "PHONE", "INFO"};
+static const int MENU_N = 5;
+enum { M_LOG, M_FEED, M_FRIENDS, M_TODAY, M_INFO };
+static const char *MENU_NAMES[MENU_N] = {"LOG", "FEED", "FRIENDS", "TODAY", "INFO"};
 static const uint8_t MENU_ICONS[MENU_N][8] = {   // 8x8 pixel icons
   {0x7C, 0x46, 0x52, 0x7A, 0x52, 0x42, 0x7E, 0x00},   // a note with a plus
   {0x00, 0x18, 0x24, 0xFF, 0x81, 0x81, 0x42, 0x3C},   // a bowl
   {0x00, 0x66, 0x99, 0x66, 0x00, 0xFF, 0x99, 0xFF},   // two friends
   {0x00, 0x02, 0x02, 0x12, 0x12, 0x92, 0x92, 0xFF},   // bars
-  {0x3C, 0x24, 0x24, 0x24, 0x24, 0x3C, 0x2C, 0x3C},   // a phone
   {0x18, 0x00, 0x38, 0x18, 0x18, 0x18, 0x3C, 0x00}};  // an "i"
 static const int RING_X = 120, RING_Y = 160, RING_R = 88;
 float ringRot = 0;   // degrees, while the ring turns (0 = at rest)
@@ -1367,7 +1366,6 @@ String ringSub(int i) {   // the live line under the name
     case M_FEED: return asleep() ? String("SHH, HE'S SLEEPING") : h.length() ? "HUNGRY FOR " + h : nextMeal().length() ? nextMeal() : String("NOT HUNGRY NOW");
     case M_FRIENDS: return nfriends ? String(onl) + " ONLINE" : String("ADD SOME IN THE APP");
     case M_TODAY: { String t = card.tierName; t.toUpperCase(); return "HP " + String(card.hp) + " - " + t; }
-    case M_PHONE: return bleLinked ? String("CONNECTED") : NimBLEDevice::getNumBonds() ? String("PAIRED, NOT NEAR") : String("NOT PAIRED YET");
     default: { String n = online() ? netName() : String("offline"); n.toUpperCase(); return n.substring(0, 30); }
   }
 }
@@ -1377,7 +1375,7 @@ void ringPos(int i, int &x, int &y, float &top) {   // where button i sits right
   if (a > 180) a -= 360;
   x = RING_X + (int)lroundf(cosf(a * PI / 180) * RING_R);
   y = RING_Y + (int)lroundf(sinf(a * PI / 180) * RING_R);
-  top = max(0.0f, 1 - fabsf(a + 90) / 60);
+  top = max(0.0f, 1 - fabsf(a + 90) / (360.0f / MENU_N));
 }
 
 void drawMenu() {
@@ -1420,7 +1418,7 @@ void turnRing() {   // C: the next button rolls up to the top
   menuSel = (menuSel + 1) % MENU_N;
   if (!banded) { drawFrame(); return; }
   static const float steps[] = {0.62f, 0.32f, 0.12f, 0.0f};   // eased: quick, then settles
-  for (float f : steps) { ringRot = 60 * f; drawFrame(); }
+  for (float f : steps) { ringRot = (360.0f / MENU_N) * f; drawFrame(); }
   ringRot = 0;
 }
 
@@ -1567,7 +1565,7 @@ void drawFrame() {   // a whole screen, without flicker: built band by band in m
   gfx = lcd;
 }
 
-// ---------------------------------------------------------------- your phone: pairing (Menu → Phone, or Info → C)
+// ---------------------------------------------------------------- your phone: pairing (Info → C)
 uint32_t forgetAsk = 0;    // C pressed once: press again within 3 s to forget all phones
 int phoneBack = V_INFO;   // where A goes back to from the Phone screen (the menu or Info)
 void drawPhone() {
@@ -1985,8 +1983,7 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
         view = V_HOME;
         if (hungryNow().length() && !asleep()) feed();
         else { String n = nextMeal(); showMsg(asleep() ? "SHH..." : "NOT HUNGRY", asleep() ? "he's sleeping" : n.length() ? n : "he'll tell you when", 3000); }
-      } else if (menuSel == M_PHONE) { forgetAsk = 0; phoneBack = V_MENU; transition(V_PHONE, true); }
-      else if (menuSel == M_LOG) {
+      } else if (menuSel == M_LOG) {
         if (!nhabits) loadHabits(); else if (millis() - habitsAt > 20000) habitsKick = true;   // fresh list in the background
         logSel = 0; transition(V_LOG, true);
       } else if (menuSel == M_FRIENDS) {

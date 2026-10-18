@@ -3712,7 +3712,10 @@ const eggPanel = {
   inApp: () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.egg),
   async poll() {
     if (!CLOUD.connected) { this.st = null; this.paint(); return; }
-    try { const r = await api("/api/cloud/egg"); if (r.ok) this.st = await r.json(); } catch (_) {}
+    try {
+      const r = await api("/api/cloud/egg");
+      this.st = r.ok ? await r.json() : r.status === 404 ? {ok: false, setup: false, egg: null, why: "Restart LazyTrack to finish the update (it says so in Settings), then this shows your egg."} : this.st;
+    } catch (_) {}
     this.lastFetch = Date.now();
     this.paint();
   },
@@ -3729,7 +3732,7 @@ const eggPanel = {
   },
   paint() {
     const btn = $("eggBtn"), e = this.egg(), n = this.native;
-    btn.hidden = !(e || (n && (n.known || n.linked)) || (this.inApp() && CLOUD.connected));
+    btn.hidden = !(CLOUD.connected || e || (n && (n.known || n.linked)));   // always there once you're connected to friends
     const live = this.live();
     $("eggDot").className = "eggdot" + (live === "on" ? " on ping" : live === "late" ? " late" : "");
     btn.title = !e ? "Your LazyTrack Egg" : live === "on" ? "Your egg is online" : `Your egg checked in ${this.ago(this.st.age)}`;
@@ -3778,7 +3781,7 @@ const eggPanel = {
     if (!CLOUD.connected) body = `<p class="note">Your egg talks to LazyTrack through the friends server. Connect to friends first (Friends tab).</p>`;
     else if (s && !s.setup) body = `<p class="note">${esc(s.why || "One more setup step.")}</p>`;
     else if (!s) body = `<p class="note">Checking…</p>`;
-    else if (!e) body = `<p class="note">No egg has checked in yet. Once yours is on (with the latest egg code), it shows up here within a minute.</p>`;
+    else if (!e) body = `<p class="note">No egg has checked in yet. Two things make it show up here: run <code>supabase/egg_status.sql</code> in Supabase once, and upload the latest egg code. Then it checks in within a minute.</p>`;
     else body = `<div class="eggmain"><div class="eggshell" id="eggShell" aria-label="What your egg shows"><canvas id="eggCv" width="240" height="320"></canvas>
         <span class="bt" style="left:43px"></span><span class="bt" style="left:68px"></span><span class="bt" style="left:93px"></span></div>${this.rows()}</div>
       <div class="eggbtns"><button type="button" class="btn primary" data-eggcmd="sing">🎵 Make him sing</button><button type="button" class="btn" data-eggcmd="find">📣 Find my egg</button><button type="button" class="btn" data-eggcmd="sync">🔄 Sync now</button></div>`;
@@ -3788,7 +3791,7 @@ const eggPanel = {
         <p class="note">No WiFi around? The egg goes online through this phone over Bluetooth, even with the app closed. Only the LazyTrack server is reached.</p>
         <p class="note"><b>${esc(n.status || "")}</b>${n.relayed ? ` · ${n.relayed} requests passed on` : ""}</p></div>
       ${n.linked ? "" : `<div class="eggcard"><h3>PAIR YOUR EGG</h3><ol class="eggsteps">
-        <li><i>1</i>On the egg: B (menu) → turn to PHONE with C → B, then B again for pairing mode.</li>
+        <li><i>1</i>On the egg: B (menu) → INFO → C, then B for pairing mode.</li>
         <li><i>2</i>Keep "Keep my egg online" on. iPhone shows a number: check it's the same as on the egg.</li>
         <li><i>3</i>Press B on the egg and Pair on the iPhone.</li></ol></div>`}
       ${n.known || n.linked ? `<button type="button" class="eggforget" id="eggForget">Forget this egg</button>` : ""}`;
