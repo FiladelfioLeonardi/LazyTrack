@@ -175,7 +175,7 @@ WiFiMulti wifi;   // tries every network in secrets.h and joins whichever is aro
 String token, refresh, uid;
 uint32_t tokenUntil = 0, lastSync = 0, lastTry = 0;
 String status = "Starting...";
-enum { V_HOME, V_STATS, V_INFO, V_MENU, V_LOG, V_FRIENDS, V_CMP };
+enum { V_HOME, V_STATS, V_INFO, V_MENU, V_LOG, V_FRIENDS, V_CMP, V_PHONE };
 int view = V_HOME, menuSel = 0;
 bool screenOn = true;
 
@@ -260,10 +260,19 @@ void tuneLove() { beep(1047, 80); beep(1319, 80); beep(1568, 80); beep(2093, 160
 #define EGG_TX "6c740002-8f3b-4a2e-9d1c-3b5a7e0f4c21"
 #define EGG_RX "6c740003-8f3b-4a2e-9d1c-3b5a7e0f4c21"
 NimBLECharacteristic *bleTx = nullptr;
-volatile bool bleLinked = false;      // a phone is connected, paired (encrypted) and listening
+// Only YOUR phone: a new phone can pair only while you put the egg in pairing mode (Info → C → B), and both
+// screens show the same 6-digit code that you confirm on the egg (B) and on the phone (Pair). The rest of the
+// time the egg only talks to phones it already knows; anything else is turned away.
+volatile bool bleLinked = false;      // a known phone is connected, the link encrypted + confirmed with the code
 volatile bool bleConnected = false;   // a phone is connected (maybe not paired yet)
-volatile uint32_t bleConnAt = 0;      // when it connected (not paired 20 s later: drop it, so it can try again)
-volatile bool bleBadPair = false;     // pairing failed: forget old pairings (the phone may have "forgotten" the egg)
+volatile uint32_t bleConnAt = 0;      // when it connected (no secure link 30 s later: drop it)
+volatile bool bleDrop = false;        // turn the connected phone away (unknown, pairing refused or failed)
+volatile bool bleOldBond = false;     // a phone from the old no-code pairing: forget it, it has to pair with the code
+NimBLEAddress bleOldAddr;
+volatile uint32_t bleNewPairing = 0;  // a phone just paired with the code (the screen says so)
+volatile uint32_t blePairUntil = 0;   // pairing mode: new phones accepted until then
+volatile uint32_t blePin = 0, blePinAt = 0;   // the code waiting for your OK on the egg
+volatile uint16_t blePinConn = 0xFFFF;
 NimBLEServer *bleSrv = nullptr;
 volatile uint16_t bleMtu = 23;
 String bleBuf, bleResp;
@@ -281,18 +290,33 @@ class EggServerCb : public NimBLEServerCallbacks {
     Serial.printf("Bluetooth: phone gone (reason %d), findable again\n", reason);
   }
   void onMTUChange(uint16_t mtu, NimBLEConnInfo &c) override { bleMtu = mtu; }
+  // a new phone wants to pair: the code shows on the egg, but only in pairing mode
+  void onConfirmPassKey(NimBLEConnInfo &c, uint32_t pin) override {
+    if (millis() < blePairUntil) { blePinConn = c.getConnHandle(); blePinAt = millis(); blePin = pin + 1000000; }   // +1e6: "000123" stays 6 digits
+    else { NimBLEDevice::injectConfirmPasskey(c, false); Serial.println("Bluetooth: a phone tried to pair (not in pairing mode): refused"); }
+  }
   void onAuthenticationComplete(NimBLEConnInfo &c) override {
-    bleLinked = c.isEncrypted();
     bleMtu = max((uint16_t)23, c.getMTU());
-    if (!bleLinked) bleBadPair = true;
-    Serial.printf("Bluetooth: phone %s\n", bleLinked ? "paired, online through it" : "pairing failed: forgetting old pairings, try again");
+    bool wasPin = blePin != 0;
+    blePin = 0;
+    if (c.isEncrypted() && c.isAuthenticated()) {   // known phone, or just paired with the code
+      bleLinked = true;
+      if (wasPin || millis() < blePairUntil) { blePairUntil = 0; bleNewPairing = millis(); }
+      Serial.println("Bluetooth: your phone, online through it");
+    } else if (c.isEncrypted()) {                   // paired the old way (no code): not good enough anymore
+      bleOldAddr = c.getIdAddress(); bleOldBond = true; bleDrop = true;
+      Serial.println("Bluetooth: phone paired without a code: forgetting it, pair again (Info > C > B)");
+    } else {
+      bleDrop = true;
+      Serial.println("Bluetooth: pairing refused or failed");
+    }
   }
 };
 
 class EggRxCb : public NimBLECharacteristicCallbacks {
   void onWrite(NimBLECharacteristic *ch, NimBLEConnInfo &c) override {
     std::string v = ch->getValue();
-    if (v.empty() || !c.isEncrypted()) return;
+    if (v.empty() || !c.isEncrypted() || !c.isAuthenticated()) return;   // only your paired phone
     bleBuf += String(v.c_str() + 1).substring(0, v.size() - 1);
     if (v[0] != 'E') return;
     if (bleBuf.startsWith("T")) {               // the phone's clock: set ours if it's missing or off
@@ -312,7 +336,8 @@ class EggRxCb : public NimBLECharacteristicCallbacks {
 void bleSetup() {
   NimBLEDevice::init("LazyTrack Egg");
   NimBLEDevice::setMTU(247);
-  NimBLEDevice::setSecurityAuth(true, false, true);   // bonded, LE Secure Connections: encrypted, paired once
+  NimBLEDevice::setSecurityAuth(true, true, true);    // bonded, protected by the 6-digit code, LE Secure Connections
+  NimBLEDevice::setSecurityIOCap(BLE_HS_IO_DISPLAY_YESNO);   // the egg shows the code, B = yes
   NimBLEServer *srv = bleSrv = NimBLEDevice::createServer();
   srv->advertiseOnDisconnect(true);   // after the phone goes away, be findable again (off by default!)
   srv->setCallbacks(new EggServerCb());
@@ -381,13 +406,31 @@ void bleCheck() {
       Serial.println("Bluetooth: advertising again");
     }
   }
-  bool stuck = bleConnected && !bleLinked && millis() - bleConnAt > 20000;
-  if (!bleBadPair && !stuck) return;
-  bleBadPair = false;
-  NimBLEDevice::deleteAllBonds();
-  for (uint16_t h : bleSrv->getPeerDevices()) bleSrv->disconnect(h);
+  if (blePin && millis() - blePinAt > 30000) blePin = 0;          // the code wasn't confirmed in time
+  if (blePairUntil && millis() > blePairUntil) blePairUntil = 0;  // pairing mode over
+  bool stuck = bleConnected && !bleLinked && !blePin && millis() - bleConnAt > 30000;
+  if (bleOldBond) { bleOldBond = false; NimBLEDevice::deleteBond(bleOldAddr); }
+  if (!bleDrop && !stuck) return;
+  bleDrop = false;
+  for (uint16_t h : bleSrv->getPeerDevices()) bleSrv->disconnect(h);   // turned away (your pairings stay)
   bleConnected = bleLinked = false;
-  Serial.println("Bluetooth: dropped the phone and forgot pairings, waiting for a fresh pairing");
+}
+
+void blePairMode() {   // B on the Phone screen: new phones can pair for 2 minutes
+  blePairUntil = millis() + 120000;
+  if (bleSrv && bleSrv->getConnectedCount() == 0) NimBLEDevice::startAdvertising();
+}
+
+void bleAnswer(bool yes) {   // the code on the screen: same as on the phone?
+  if (!blePin || !bleSrv) return;
+  NimBLEDevice::injectConfirmPasskey(bleSrv->getPeerInfoByHandle(blePinConn), yes);
+  blePin = 0;
+}
+
+void bleForgetAll() {
+  NimBLEDevice::deleteAllBonds();
+  if (bleSrv) for (uint16_t h : bleSrv->getPeerDevices()) bleSrv->disconnect(h);
+  bleConnected = bleLinked = false;
 }
 
 bool online() { return WiFi.status() == WL_CONNECTED || bleLinked; }
@@ -1451,10 +1494,46 @@ void drawFrame() {   // a whole screen, without flicker: built band by band in m
   gfx = lcd;
 }
 
+// ---------------------------------------------------------------- your phone: pairing (Info → C)
+uint32_t forgetAsk = 0;   // C pressed once: press again within 3 s to forget all phones
+void drawPhone() {
+  drawBackground();
+  panel(8, 8, 221, 304);
+  text(20, 20, "PHONE", 2, INK);
+  if (blePin) {   // a phone wants to pair: the same code is on its screen
+    char code[8]; snprintf(code, sizeof code, "%06lu", (unsigned long)(blePin - 1000000));
+    text(20, 60, "Same number on", 2, INK);
+    text(20, 82, "your phone?", 2, INK);
+    gfx->fillRoundRect(20, 116, 197, 60, 10, YELLOW); gfx->drawRoundRect(20, 116, 197, 60, 10, INK);
+    text(36, 130, String(code).substring(0, 3) + " " + String(code).substring(3), 4, INK);
+    text(20, 196, "Then tap Pair on the phone too.", 1, GREY);
+    text(20, 296, "B yes, pair   A no", 1, INK);
+    return;
+  }
+  int n = NimBLEDevice::getNumBonds();
+  text(20, 52, "Paired phones: " + String(n), 1, INK);
+  text(20, 70, String("Now: ") + (bleLinked ? "connected" : bleConnected ? "a phone is connecting..." : "no phone"), 1, INK);
+  if (blePairUntil) {
+    int left = (int)((blePairUntil - millis()) / 1000);
+    gfx->fillRoundRect(16, 96, 205, 78, 10, YELLOW); gfx->drawRoundRect(16, 96, 205, 78, 10, INK);
+    text(26, 106, "PAIRING MODE " + String(left / 60) + ":" + (left % 60 < 10 ? "0" : "") + String(left % 60), 2, INK);
+    text(26, 134, "Open the LazyTrack app on the", 1, INK);
+    text(26, 148, "phone (phone button > egg on)", 1, INK);
+  } else {
+    text(20, 100, "Only phones paired here can use", 1, GREY);
+    text(20, 114, "the egg. To add one, press B and", 1, GREY);
+    text(20, 128, "confirm the 6-digit code.", 1, GREY);
+  }
+  text(20, 200, "When the egg has no WiFi, a paired", 1, GREY);
+  text(20, 214, "phone keeps it online.", 1, GREY);
+  text(20, 296, forgetAsk && millis() - forgetAsk < 3000 ? "C again = forget ALL phones" : "B pair a phone  C forget all  A back", 1, forgetAsk && millis() - forgetAsk < 3000 ? RED : GREY);
+}
+
 void drawScreen() {  // the background and everything on it; Mochi itself comes from drawStage
   if (view == V_MENU) { drawMenu(); return; }
   if (view == V_STATS) { drawToday(); return; }
   if (view == V_CMP) { drawCompare(); return; }
+  if (view == V_PHONE) { drawPhone(); return; }
   if (view == V_LOG) {
     if (!nhabits) {
       drawBackground();
@@ -1532,7 +1611,7 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
     text(20, 160, "HOME: B menu  A pet/feed  C off", 1, GREY);
     text(20, 176, "MENUS: C next   B ok    A back", 1, GREY);
     text(20, 200, "B here  sync now", 1, GREY);
-    text(20, 216, "C here  legendary cool move (test)", 1, GREY);
+    text(20, 216, "C here  your phone (Bluetooth pairing)", 1, GREY);
     if (!touchOn) text(20, 240, "Touch: not connected (buttons only)", 1, GREY);
     else {
       text(20, 240, "TOUCH: tap = pick, again = open,", 1, GREY);
@@ -1800,13 +1879,21 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       break;
     case V_INFO:
       if (b == 1) { status = "Syncing..."; drawFrame(); netKick = true; break; }   // the network task does it (Info updates when done)
-      if (b == 0) { transition(V_HOME, false); playCool(); break; }   // C: try the legendary cool move
+      if (b == 0) { forgetAsk = 0; transition(V_PHONE, true); break; }   // C: your phone (pairing)
       if (b == 2 || b == 0) transition(V_MENU, false);
       break;
     case V_STATS:
       if (b == 0 && ntoday) { todaySel = (todaySel + 1) % ntoday; drawFrame(); }
       else if (b == 1 && ntoday) transition(V_CMP, true);
       else if (b == 2 || b == 0) transition(V_MENU, false);
+      break;
+    case V_PHONE:
+      if (blePin) { bleAnswer(b == 1); drawFrame(); break; }                       // the code: B yes, A no
+      if (b == 1) { blePairMode(); drawFrame(); }
+      else if (b == 0) {
+        if (forgetAsk && millis() - forgetAsk < 3000) { forgetAsk = 0; bleForgetAll(); showMsg("FORGOTTEN", "no phones paired now", 3000); }
+        else { forgetAsk = millis(); drawFrame(); }
+      } else transition(V_INFO, false);
       break;
     case V_CMP:
       if (b == 0 && ntoday) { todaySel = (todaySel + 1) % ntoday; drawFrame(); }
@@ -1937,6 +2024,7 @@ void onTap(int x, int y) {
     }
     case V_CMP: act(top ? 2 : 0); return;   // tap: next stat
     case V_INFO: act(top ? 2 : 1); return;  // tap: sync now
+    case V_PHONE: act(top ? 2 : 1); return; // tap: pairing mode / yes
   }
 }
 
@@ -1976,6 +2064,17 @@ void loop() {   // the screen and buttons; the network has its own task
 void uiLoop() {
   static uint32_t tick = 0, nextBlink = 4000, blinkEnd = 0;
   if (needRedraw && !coolStart && screenOn) { needRedraw = false; drawFrame(); }
+  static uint32_t pinShown = 0;   // a phone sent its code: show it (whatever screen you're on)
+  if (blePin && blePin != pinShown) {
+    pinShown = blePin;
+    if (!screenOn) setScreen(true);
+    coolStart = 0; view = V_PHONE; tuneClick(); drawFrame();
+  }
+  if (!blePin && pinShown) { pinShown = 0; if (view == V_PHONE) drawFrame(); }
+  static uint32_t pairShown = 0;
+  if (bleNewPairing && bleNewPairing != pairShown) { pairShown = bleNewPairing; tuneUp(); showMsg("PAIRED!", "your phone keeps the egg online", 4000); }
+  static uint32_t phoneTick = 0;  // the pairing countdown / connection state on the Phone screen
+  if (view == V_PHONE && screenOn && millis() - phoneTick > 1000) { phoneTick = millis(); drawFrame(); }
   songTick();
   bleCheck();
   int b = pressed();

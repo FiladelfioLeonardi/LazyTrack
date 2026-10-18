@@ -34,6 +34,8 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
     private var outbox: [Data] = []
     private var timeSent = Date.distantPast
     private var paired = false
+    private var pairFailed = false   // turned away: wait a bit between tries (the egg may not be in pairing mode)
+    private var connectedAt = Date.distantPast
 
     override init() {
         enabled = UserDefaults.standard.object(forKey: "eggLink") as? Bool ?? true
@@ -101,6 +103,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
 
     func centralManager(_ c: CBCentralManager, didConnect p: CBPeripheral) {
         savedEgg = p.identifier
+        connectedAt = Date()
         status = "Connected, setting up…"
         p.discoverServices([Self.service])
     }
@@ -111,10 +114,20 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
     }
 
     func centralManager(_ c: CBCentralManager, didDisconnectPeripheral p: CBPeripheral, error: Error?) {
+        if !paired && Date().timeIntervalSince(connectedAt) < 20 { pairFailed = true }   // the egg turned us away
         rx = nil
         paired = false
         inbox = Data()
         outbox = []
+        if pairFailed {
+            pairFailed = false
+            status = "Not paired. On the egg: Info → C (Phone) → B, then confirm the same number on both."
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+                guard let self, self.enabled else { return }
+                c.connect(p)
+            }
+            return
+        }
         status = enabled ? "Egg out of reach, waiting for it" : "Off"
         if enabled { c.connect(p) }   // reconnects by itself when the egg is back
     }
@@ -150,7 +163,8 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
 
     func peripheral(_ p: CBPeripheral, didUpdateValueFor ch: CBCharacteristic, error: Error?) {
         guard ch.uuid == Self.txUUID else { return }
-        if let error {   // the encrypted read failed: not paired. Start over with a fresh pairing.
+        if let error {   // not paired: the egg only accepts new phones in pairing mode (with the 6-digit code)
+            pairFailed = true
             status = "Pairing didn't work, trying again… If it keeps saying this: iPhone Settings → Bluetooth → ⓘ LazyTrack Egg → Forget This Device."
             savedEgg = nil
             central.cancelPeripheralConnection(p)

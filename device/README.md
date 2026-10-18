@@ -72,6 +72,7 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 | **Friends** | back | poke them (their egg buzzes, their app plays a sound) | next friend |
 | **Today** | back | yesterday vs today for the highlighted stat | next stat |
 | **Yesterday vs today** | back | back | next stat |
+| **Phone** (Info → C) | back / no | pairing mode / yes (the code) | forget all phones (press twice) |
 
 - **Log** lists the habits you track in LazyTrack. A log reaches LazyTrack within a minute, while LazyTrack runs on
   your computer. Without WiFi, logs wait on the egg and go out once it's back online.
@@ -92,8 +93,10 @@ Compiled and checked with ESP32 board package 3.3.12, GFX Library for Arduino 1.
 ## No WiFi? Bluetooth through your phone, or fully offline
 
 - **Through your iPhone:** when the egg has no WiFi, the LazyTrack iPhone app keeps it online over Bluetooth, even
-  with the app closed (like a watch). Setup tab → "LazyTrack Egg (Bluetooth)" → on. The first time, iOS asks to
-  pair: tap **Pair**. The phone only passes the egg's requests to the LazyTrack server (encrypted link), and gives it
+  with the app closed (like a watch). **Pairing (once):** on the egg Menu → Info → **C** (Phone) → **B** (pairing mode,
+  2 minutes). In the app: 📱 → "Keep my egg online" on. Both screens show the same 6-digit number: press **B** on the
+  egg and **Pair** on the iPhone. Only phones paired this way can use the egg; others are turned away. Phone screen
+  → C twice forgets all paired phones. The phone only passes the egg's requests to the LazyTrack server (encrypted link), and gives it
   the time. Info on the egg says "Online via: phone (Bluetooth)". Rebuild the iPhone app once (./setup.sh, ▶ in Xcode).
 - **Fully offline:** LazyTrack sends the egg today's and tomorrow's meal times and your sleep window. With no
   connection at all, the egg keeps Mochi's day going on its own clock: he gets hungry, A feeds him, he sleeps at
