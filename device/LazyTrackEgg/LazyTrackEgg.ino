@@ -761,11 +761,9 @@ void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) 
 
 // The epic part: pixel fire (the classic "Doom fire": heat rises cell by cell, cooling and drifting at random)
 // and explosions, across the whole width behind Mochi, with a dark red wash and a screen shake.
-static const int FC = 4, FW = 240 / FC, FH = SH / FC;      // fire cells of 4x4 px over the strip Mochi stands in
+static const int FC = 8, FW = 240 / FC, FH = (SH + FC - 1) / FC;   // chunky fire cells of 8x8 px over the strip Mochi stands in
 uint8_t fireHeat[FW * FH];
-static const uint32_t FIRE_PAL[36] = {0x070707, 0x1f0707, 0x2f0f07, 0x470f07, 0x571707, 0x671f07, 0x771f07, 0x8f2707, 0x9f2f07,
-  0xaf3f07, 0xbf4707, 0xc74707, 0xdf4f07, 0xdf5707, 0xdf5707, 0xd75f07, 0xd7670f, 0xcf6f0f, 0xcf770f, 0xcf7f0f, 0xcf8717, 0xc78717,
-  0xc78f17, 0xc7971f, 0xbf9f1f, 0xbf9f1f, 0xbfa727, 0xbfa727, 0xbfaf2f, 0xb7af2f, 0xb7b72f, 0xb7b737, 0xcfcf6f, 0xdfdf9f, 0xefefc7, 0xffffff};
+static const uint32_t FIRE_PAL[36] = {0x28060a, 0x38080a, 0x480a0a, 0x580c0a, 0x680e0a, 0x78110b, 0x88150c, 0x98180d, 0xa81b0e, 0xb7200f, 0xc12910, 0xcb3312, 0xd53c13, 0xe04514, 0xe55016, 0xea5b18, 0xee671b, 0xf3721d, 0xf67e1f, 0xf88921, 0xfb9524, 0xfda026, 0xffab29, 0xffb632, 0xffc03b, 0xffca45, 0xffd44e, 0xffdc5f, 0xffe374, 0xffea89, 0xfff19d, 0xfff6b1, 0xfff8c5, 0xfffad8, 0xfffdec, 0xffffff};
 
 uint16_t blend(uint16_t c, uint32_t hex, int a) {   // a: 0..256 of hex over c
   int r = (c >> 11) << 3, g = ((c >> 5) & 63) << 2, b = (c & 31) << 3;
@@ -779,17 +777,21 @@ void coolScene(uint32_t t) {
   mochiNow(cell, framePx(false, false), cf);
   long ft = (long)t - 650;                       // fire time: starts with the glint
   bool fire = ft >= 0 && ft < 3550;
-  if (fire) {
-    int src = ft < 2050 ? 22 : max(0, 22 - (int)(ft - 2050) / 45);
-    for (int x = 0; x < FW; x++) fireHeat[(FH - 1) * FW + x] = src ? max(0, src - (int)random(6)) : 0;
+  static uint32_t lastFire = 0;
+  bool step = millis() - lastFire >= 100;
+  if (step) lastFire = millis();
+  if (fire && step) {
+    int src = ft < 2050 ? 11 : max(0, 11 - (int)(ft - 2050) / 90);
+    for (int x = 0; x < FW; x++) fireHeat[(FH - 1) * FW + x] = src ? max(0, src - (int)random(3)) : 0;
     for (int y = 1; y < FH; y++) for (int x = 0; x < FW; x++) {
       int from = y * FW + x, r = random(3), to = from - FW - r + 1;
       if (to >= 0) fireHeat[to] = max(0, fireHeat[from] - (int)random(3));
     }
   }
   int wash = !fire ? 0 : ft < 250 ? ft * 140 / 250 : ft > 2750 ? max(0L, 140 - (ft - 2750) * 140 / 800) : 140;
-  int shake = fire && ft < 450 ? (int)random(7) - 3 : 0;
-  static const int BOOM[5][3] = {{0, 15, 9}, {170, 45, 6}, {360, 30, 4}, {620, 8, 17}, {820, 52, 15}};
+  static int shake = 0;
+  if (step) shake = fire && ft < 450 ? ((int)random(3) - 1) * 4 : 0;
+  static const int BOOM[5][3] = {{0, 7, 4}, {200, 22, 3}, {420, 15, 1}, {700, 4, 9}, {950, 26, 8}};
   for (int y0 = 0; y0 < SH; y0 += band.bh) {
     int h = min((int)band.bh, SH - y0);
     for (int y = 0; y < h; y++) {
@@ -799,12 +801,12 @@ void coolScene(uint32_t t) {
         uint16_t c = bgAt(x, sy);
         if (fire) {
           int v = fireHeat[fy * FW + x / FC];
-          if (v > 1) c = rgb(FIRE_PAL[min(35, v * 35 / 22)]);
+          if (v > 1) c = rgb(FIRE_PAL[min(35, v * 35 / 11)]);
           else if (rowWash) c = blend(c, 0x28060a, rowWash);
           for (auto &b : BOOM) {                   // explosions: flash, fireball, smoke ring
             long bt = ft - b[0];
             if (bt < 0 || bt > 650) continue;
-            int R = 2 + (int)(bt * 7 / 650), fx = x / FC, d2 = (fx - b[1]) * (fx - b[1]) + (fy - b[2]) * (fy - b[2]);
+            int R = 1 + (int)(bt * 4 / 650), fx = x / FC, d2 = (fx - b[1]) * (fx - b[1]) + (fy - b[2]) * (fy - b[2]);
             if (d2 > R * R) continue;
             int edge = (int)(sqrtf(d2) * 100 / R);
             c = bt < 80 ? 0xFFFF : edge > 82 ? (bt > 400 ? rgb(0x463e48) : rgb(0xbe2814)) : edge > 55 ? rgb(0xf07814) : bt > 450 ? rgb(0x786458) : rgb(0xffdc5a);
@@ -1343,7 +1345,7 @@ void loop() {
   if (coolStart) {
     static uint32_t coolTick = 0;
     if (view != V_HOME || !screenOn) { coolStart = 0; }
-    else if (millis() - coolTick > 40) {
+    else if (millis() - coolTick > 60) {
       coolTick = millis();
       uint32_t t = millis() - coolStart;
       if (coolFrame(t).on || t < 4200) coolScene(t);
