@@ -189,7 +189,7 @@ final class EggLink: NSObject, ObservableObject, CBCentralManagerDelegate, CBPer
         guard ch.uuid == Self.txUUID else { return }
         if let error {   // not paired: the egg only accepts new phones in pairing mode (with the 6-digit code)
             pairFailed = true
-            status = "Pairing didn't work, trying again… If it keeps saying this: iPhone Settings → Bluetooth → ⓘ LazyTrack Egg → Forget This Device."
+            status = "Pairing didn't work (\(error.localizedDescription)), trying again… If it keeps saying this: iPhone Settings → Bluetooth → ⓘ LazyTrack Egg → Forget This Device."
             savedEgg = nil
             central.cancelPeripheralConnection(p)
             return
