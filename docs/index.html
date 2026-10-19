@@ -21,7 +21,7 @@
 <link rel="stylesheet" href="style.css">
 <style>
   /* hero */
-  .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding: 48px 0 72px; }
+  .hero { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; padding: 22px 0 56px; }
   @media (max-width: 880px) { .hero { grid-template-columns: 1fr; padding-top: 20px; gap: 32px; } }
   .kicker { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 3px solid var(--line); border-radius: 999px; background: var(--card);
             font: 13px var(--pixel); margin-bottom: 18px; }
@@ -174,10 +174,22 @@
   .mech li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--soft); font-weight: 700; font-size: 15px; }
   .mech b { font: 13px var(--pixel); padding: 3px 8px; border: 2px solid var(--line); border-radius: 8px; white-space: nowrap; color: #1d1b20; }
   .mech b.up { background: var(--green); } .mech b.down { background: var(--pink); }
+  /* coming next: on the first screen */
+  .soonbar { display: block; text-align: center; padding: 9px 16px; background: var(--ink); color: var(--bg); font-size: 15px; font-weight: 700; text-decoration: none; }
+  .soonbar b { color: var(--yellow); font-family: var(--pixel); font-weight: 400; font-size: 13px; letter-spacing: .04em; margin-right: 6px; }
+  .soonbar u { text-underline-offset: 3px; }
+  .next { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 22px; max-width: 560px; }
+  @media (max-width: 520px) { .next { grid-template-columns: 1fr; } }
+  .nextcard { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 3px dashed var(--line); border-radius: 14px; background: var(--card); text-decoration: none; }
+  .nextcard:hover { border-style: solid; }
+  .nextcard .ic { font-size: 28px; line-height: 1; }
+  .nextcard small { display: block; font: 11px var(--pixel); color: var(--ink-2); letter-spacing: .04em; }
+  .nextcard b { display: block; font-size: 16px; line-height: 1.25; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
+<a class="soonbar" href="#egg"><b>COMING NEXT</b>📱 the Mochi phone app &amp; 🥚 Mochi Egg, a pocket handheld · <u>get notified</u></a>
 <header class="top" id="top">
   <div class="wrap">
     <a class="brand" href="#"><img src="icon.png" alt="">MOCHI</a>
@@ -204,6 +216,10 @@
         <button type="button" class="btn small" id="shareBtn" style="margin-top:6px">Send it to myself</button>
       </div>
       <div class="trust"><span>Free for Mac + Windows, no ads</span><span>No logging screen time by hand</span><span>Your data stays on your computer</span></div>
+      <div class="next" aria-label="Coming next">
+        <a class="nextcard" href="#egg"><span class="ic" aria-hidden="true">📱</span><span><small>COMING NEXT</small><b>Mochi on your phone</b>an app of its own, iPhone first</span></a>
+        <a class="nextcard" href="#egg"><span class="ic" aria-hidden="true">🥚</span><span><small>COMING TO KICKSTARTER</small><b>The Mochi Egg</b>your pet in a pocket handheld</span></a>
+      </div>
     </div>
     <div class="heroart">
       <div class="shot"><div class="bar"><i></i><i></i><i></i></div>
@@ -310,18 +326,18 @@
         <div class="eggbtns"><i></i><i></i><i></i></div>
       </div>
       <div>
-        <span class="badge">COMING TO KICKSTARTER</span>
-        <h2 class="sec">Mochi in your pocket</h2>
-        <p class="sub" style="margin-bottom:16px">The Mochi Egg is a little handheld with a colour screen that shows your Mochi, live, wherever you are.</p>
+        <span class="badge">COMING NEXT</span>
+        <h2 class="sec">Mochi everywhere you go</h2>
+        <p class="sub" style="margin-bottom:16px"><b>First, the phone app:</b> Mochi, your habits and your friends in an app of their own, iPhone first. <b>Then the Mochi Egg:</b> a little handheld with a colour screen that shows your Mochi, live, wherever you are.</p>
         <ul class="ticks">
           <li>Log habits and feed Mochi with three buttons</li>
           <li>Friends' pokes buzz in your pocket</li>
           <li>Stays online through WiFi, or through your phone</li>
           <li>He sings little old-handheld songs</li>
         </ul>
-        <form class="join" data-wants="egg"><input type="email" name="email" required placeholder="you@example.com" aria-label="Your email"><button class="btn primary" type="submit">Notify me</button></form>
+        <form class="join" data-wants="both"><input type="email" name="email" required placeholder="you@example.com" aria-label="Your email"><button class="btn primary" type="submit">Notify me</button></form>
         <div class="msg" role="status"></div>
-        <p class="fine" style="margin-top:2px">One email when the Kickstarter goes live, with the early-bird price. Nothing else.</p>
+        <p class="fine" style="margin-top:2px">One email when the phone app is out, and one when the Kickstarter goes live, with the early-bird price. Nothing else.</p>
       </div>
     </div>
   </div>
