@@ -99,8 +99,13 @@
   .soon h3 { margin: 0 0 4px; font-size: 20px; }
   .note { margin-top: 16px; padding: 14px 18px; border: 3px dashed var(--line); border-radius: 14px; background: var(--soft); color: var(--ink-2); font-size: 15px; }
 
-  .plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; max-width: 840px; }
-  @media (max-width: 760px) { .plans { grid-template-columns: 1fr; } }
+  .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
+  @media (max-width: 960px) { .plans { grid-template-columns: 1fr; max-width: 520px; } }
+  .plan.founder { background: linear-gradient(160deg, #fff6d6, #ffd6e6); color: #1d1b20; }
+  .plan.founder .btn { background: var(--yellow); color: #1d1b20; }
+  .plan.founder .btn[aria-disabled="true"] { opacity: .65; pointer-events: none; }
+  .slots { margin: 4px 0 0; font: 12px var(--pixel); }
+  .offers-note { margin-top: 18px; max-width: 840px; padding: 14px 18px; border: 3px dashed var(--line); border-radius: 14px; background: var(--soft); color: var(--ink-2); font-size: 15px; }
   .plan { padding: 26px; position: relative; } .plan.plus { background: var(--yellow); color: #1d1b20; }
   .plan h3 { font: 16px var(--pixel); margin: 0; }
   .plan .price { font: 800 40px/1.1 var(--body); margin: 8px 0 2px; } .plan .price small { font-size: 16px; font-weight: 400; }
@@ -278,8 +283,8 @@
 
 <section id="plus">
   <div class="wrap">
-    <h2 class="sec">Free, or Plus</h2>
-    <p class="sub">Everything that matters is free. Plus is for people who want more of Mochi, and it keeps the project going.</p>
+    <h2 class="sec">Free, Plus, or Founder</h2>
+    <p class="sub">Everything that matters is free. Plus is for people who want more of Mochi. Founder is Plus forever, and only the first 100 supporters can get it.</p>
     <div class="plans">
       <div class="card plan">
         <h3>FREE</h3>
@@ -290,12 +295,23 @@
       <div class="card plan plus">
         <span class="tag">♥ SUPPORT</span>
         <h3>⭐ PLUS</h3>
-        <div class="price">€3.99 <small>a month, or €29 a year</small></div>
+        <div class="price">€3.99 <small>a month</small></div>
+        <p class="slots">OR €29 A YEAR · CANCEL ANYTIME</p>
         <ul><li>Everything in Free</li><li>The ⭐ Plus corner of the wardrobe: extra looks, hats and outfits</li><li>A ⭐ next to your name that friends see</li><li>New pieces every month</li><li>Helps pay for the developer certificates and the egg</li></ul>
         <a class="btn" href="https://mochipage.lemonsqueezy.com/checkout/buy/173b5880-15c9-4f38-8c9b-71cd0030e2a8" target="_blank" rel="noopener">Get Plus</a>
         <p style="margin:12px 0 0;font-size:14px">Cancel anytime. 14-day refund, no questions asked.</p>
       </div>
+      <div class="card plan founder">
+        <span class="tag">ONLY 100</span>
+        <h3>🥚 FOUNDER</h3>
+        <div class="price">€39.99 <small>once</small></div>
+        <p class="slots">PLUS FOREVER · FIRST 100 PEOPLE ONLY</p>
+        <ul><li>Everything in Plus, <b>for life</b>: no subscription, nothing to renew</li><li>Every new Plus piece, forever</li><li>You're one of the first 100 people who believed in Mochi ♥</li></ul>
+        <a class="btn" id="founderBtn" href="#plus" aria-disabled="true">Founder spots open soon</a>
+        <p style="margin:12px 0 0;font-size:14px">One payment. Once 100 are gone, lifetime is gone for good. 14-day refund.</p>
+      </div>
     </div>
+    <p class="offers-note"><b>The offers, simply:</b> Mochi is free. <b>Plus</b> is €3.99 a month or €29 a year, cancel anytime. <b>Founder</b> is a one-time €39.99 for Plus forever, and it's only for the first 100 people: after that, Plus is only available as a subscription.</p>
   </div>
 </section>
 
@@ -306,6 +322,7 @@
     <details class="card"><summary>Does it watch my screen?</summary><p>It only notices which app or website is in front, never what's on it. The optional smoking detector is explained in <a href="#camera">The camera, honestly</a>: it runs only on your computer, only if you turn it on.</p></details>
     <details class="card"><summary>Can Mochi die?</summary><p>His hearts drop on bad days, and yes, he can run out. Then a baby hatches and you start a new generation. Good days, meals on time and your friends keep him going.</p></details>
     <details class="card"><summary>How do I unlock Plus?</summary><p>Buy Plus, and you get a license key by email right away. In Mochi, open Settings → Account, paste the key and press Unlock. One key works on up to 3 computers.</p></details>
+    <details class="card"><summary>What's the Founder deal?</summary><p>The first 100 supporters can get Plus forever for a one-time €39.99. You get a license key that never runs out, plus every Plus piece that ever comes out. When the 100 spots are gone, lifetime Plus isn't sold anymore.</p></details>
     <details class="card"><summary>When can I get the egg?</summary><p>The Kickstarter launches once the egg is ready. Join the waitlist above and you'll get one email when it goes live.</p></details>
     <details class="card"><summary>Who makes Mochi?</summary><p>One student, in Germany, with a lot of love for old handheld pets. Questions or ideas: <a href="mailto:Fefo.leo51@gmail.com">Fefo.leo51@gmail.com</a>.</p></details>
   </div>
@@ -353,6 +370,10 @@ let s = 0; const bub = document.getElementById("bubble");
 setInterval(() => { s = (s + 1) % SAYS.length; bub.style.opacity = 0; setTimeout(() => { bub.textContent = SAYS[s]; bub.style.opacity = 1; }, 200); }, 2800);
 const hdr = document.getElementById("top");
 addEventListener("scroll", () => hdr.classList.toggle("scrolled", scrollY > 8), {passive: true});
+
+// the Founder checkout (set it once the Founder product exists; empty = "opens soon")
+const FOUNDER_URL = "";
+if (FOUNDER_URL) { const f = document.getElementById("founderBtn"); f.href = FOUNDER_URL; f.target = "_blank"; f.rel = "noopener"; f.removeAttribute("aria-disabled"); f.textContent = "Become a Founder"; }
 
 // email sign-ups: stored on Mochi's friends server (anyone can add one, nobody can read the list from outside)
 const SUPA = "https://zmrzumltciteeznzjwaw.supabase.co", KEY = "sb_publishable_mmX_kRPufTOQk1M4fmjjFg_HenbqicQ";

@@ -3455,8 +3455,8 @@ const plusCard = {
     }
     box.innerHTML = `<p class="sub">Everything you have now stays free. Plus adds extra pieces for Mochi and keeps the app going.</p>${perks}
       <div class="actions">${PLUS.checkout ? `<a class="btn primary" href="${esc(PLUS.checkout)}" target="_blank" rel="noopener">Get Plus · €3.99/month</a>` : `<span class="note">Plus is coming soon.</span>`}</div>
-      ${PLUS.founder ? `<div class="founder"><b>🥚 Founder pack: Plus forever, pay once</b><span class="hint">Only for the first 100 supporters. One key, works forever, no subscription.</span>
-        <div class="actions" style="margin-top:10px"><a class="btn" href="${esc(PLUS.founder)}" target="_blank" rel="noopener">Become a Founder</a></div></div>` : ""}
+      ${PLUS.founder ? `<div class="founder"><b>🥚 Founder: Plus forever for €39.99, once</b><span class="hint">Only for the first 100 people. One key that never runs out, no subscription. After 100, lifetime is gone.</span>
+        <div class="actions" style="margin-top:10px"><a class="btn" href="${esc(PLUS.founder)}" target="_blank" rel="noopener">Become a Founder · €39.99</a></div></div>` : ""}
       <div class="field" style="margin-top:14px"><label for="plusKey">Already have a key?</label>
         <div class="actions"><input type="text" id="plusKey" autocomplete="off" spellcheck="false" placeholder="Paste your license key" style="flex:1 1 220px">
         <button type="button" class="btn" id="plusGo">Unlock</button></div>
