@@ -3,14 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Mochi: a pet that lives off your real habits</title>
-<meta name="description" content="Mochi is a pixel pet that lives off your real habits. It tracks your screen time and habits by itself on Mac and Windows. Free, private, and coming to a little handheld egg.">
-<meta property="og:title" content="Mochi: a pet that lives off your real habits">
-<meta property="og:description" content="Smoke and he coughs. Doomscroll and he gets sad. Hit the gym and he glows. Free for Mac and Windows.">
-<meta property="og:image" content="https://filadelfioleonardi.github.io/LazyTrack/icon.png">
+<title>Mochi: keep your pet alive by keeping your habits · free Tamagotchi habit tracker for Mac &amp; Windows</title>
+<meta name="description" content="Keep a Tamagotchi-style pixel pet alive by keeping your habits. Mochi is a free habit tracker and screen time tracker for Mac and Windows: it counts your screen time by itself, doomscrolling makes him sad, smoking makes him cough, the gym makes him glow.">
+<meta name="keywords" content="tamagotchi habit tracker, virtual pet habit tracker, habit tracker app, screen time tracker, screen time app for mac, screen time app for windows, quit smoking tracker, doomscrolling, digital wellbeing, focus app, pixel pet">
+<link rel="canonical" href="https://filadelfioleonardi.github.io/LazyTrack/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://filadelfioleonardi.github.io/LazyTrack/">
+<meta property="og:title" content="Mochi: keep your pet alive by keeping your habits">
+<meta property="og:description" content="A free habit tracker with a pixel pet. Doomscroll and he gets sad. Smoke and he coughs. Hit the gym and he glows. Mac + Windows.">
+<meta property="og:image" content="https://filadelfioleonardi.github.io/LazyTrack/img/og.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#efeaff">
 <link rel="icon" href="icon.png">
 <link rel="apple-touch-icon" href="icon.png">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Mochi","applicationCategory":"LifestyleApplication","operatingSystem":"macOS, Windows","description":"Keep a Tamagotchi-style virtual pet alive by keeping your habits: a free habit tracker and screen time tracker for Mac and Windows that tracks automatically.","featureList":"Automatic screen time tracking, habit tracking, virtual pet, friends, quit smoking tracker","offers":{"@type":"Offer","price":"0","priceCurrency":"EUR"},"image":"https://filadelfioleonardi.github.io/LazyTrack/img/og.png","url":"https://filadelfioleonardi.github.io/LazyTrack/"}</script>
 <link rel="stylesheet" href="style.css">
 <style>
   /* hero */
@@ -19,9 +26,8 @@
   .kicker { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border: 3px solid var(--line); border-radius: 999px; background: var(--card);
             font: 13px var(--pixel); margin-bottom: 18px; }
   .kicker i { width: 10px; height: 10px; border-radius: 50%; background: #3fae69; box-shadow: 0 0 0 3px color-mix(in srgb, #3fae69 30%, transparent); }
-  .hero h1 { font: 800 clamp(40px, 6.4vw, 68px)/1.02 var(--body); margin: 0 0 18px; letter-spacing: -.025em; }
-  .hero h1 mark { background: var(--yellow); color: #1d1b20; padding: 0 10px; border: 3px solid var(--line); border-radius: 14px;
-                  box-decoration-break: clone; -webkit-box-decoration-break: clone; display: inline-block; transform: rotate(-1.5deg); }
+  .hero h1 { font: 800 clamp(36px, 5vw, 58px)/1.05 var(--body); margin: 0 0 18px; letter-spacing: -.025em; }
+  .hero h1 mark { background: var(--yellow); color: #1d1b20; padding: 0 8px; border-radius: 10px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
   .hero p.lead { font-size: 20px; color: var(--ink-2); margin: 0 0 28px; max-width: 32em; }
   .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
   .fine { margin-top: 14px; font-size: 14px; color: var(--ink-2); }
@@ -141,6 +147,33 @@
   .promises li::before { content: "✓"; position: absolute; left: 0; top: 0; width: 22px; height: 22px; display: grid; place-items: center; background: var(--green); color: #1d1b20;
                          border: 2px solid var(--line); border-radius: 6px; font-weight: 800; font-size: 13px; }
 
+  /* the app itself, in a window */
+  .shot { border: 3px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: 8px 8px 0 var(--line); background: var(--card); }
+  .shot .bar { display: flex; gap: 7px; padding: 10px 12px; border-bottom: 3px solid var(--line); background: var(--soft); }
+  .shot .bar i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--line); background: #ff8fb1; }
+  .shot .bar i:nth-child(2) { background: #ffe45e; } .shot .bar i:nth-child(3) { background: #9be8a9; }
+  .shot img, .shot video { display: block; width: 100%; height: auto; }
+  .hero .shot { transform: rotate(1.2deg); }
+  .heroart { position: relative; }
+  .sticker { position: absolute; left: -18px; bottom: -22px; padding: 10px 14px; background: var(--yellow); color: #1d1b20; border: 3px solid var(--line); border-radius: 14px;
+             box-shadow: 3px 3px 0 var(--line); font: 13px var(--pixel); transform: rotate(-3deg); }
+  .trust { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 16px; font-size: 14px; color: var(--ink-2); }
+  .trust span::before { content: "✓ "; color: #3fae69; font-weight: 800; }
+  .mobilecta { display: none; margin-top: 4px; }
+  .mobilecta p { margin: 0 0 10px; font-weight: 700; }
+  body.is-mobile .mobilecta { display: block; } body.is-mobile .deskcta { display: none; }
+  /* three screens: the pet, the habits, the payoff */
+  .loop { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; align-items: start; }
+  @media (max-width: 900px) { .loop { grid-template-columns: 1fr; max-width: 560px; } }
+  .loopcard { padding: 18px; }
+  .loopcard .num { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 3px solid var(--line); border-radius: 10px; background: var(--yellow); color: #1d1b20; font: 15px var(--pixel); margin-bottom: 10px; }
+  .loopcard h3 { margin: 0 0 4px; font-size: 22px; } .loopcard p { margin: 0 0 14px; color: var(--ink-2); }
+  .loopcard .shot { box-shadow: 4px 4px 0 var(--line); border-radius: 14px; }
+  .loopcard .shot.sq { aspect-ratio: 1; } .loopcard .shot.sq video { height: 100%; object-fit: cover; }
+  .mech { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; }
+  .mech li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--soft); font-weight: 700; font-size: 15px; }
+  .mech b { font: 13px var(--pixel); padding: 3px 8px; border: 2px solid var(--line); border-radius: 8px; white-space: nowrap; color: #1d1b20; }
+  .mech b.up { background: var(--green); } .mech b.down { background: var(--pink); }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -148,7 +181,7 @@
 <header class="top" id="top">
   <div class="wrap">
     <a class="brand" href="#"><img src="icon.png" alt="">MOCHI</a>
-    <nav class="links" aria-label="Sections"><a href="#how">How it works</a><a href="#camera">Camera</a><a href="#egg">The egg</a><a href="#download">Download</a><a href="#faq">FAQ</a></nav>
+    <nav class="links" aria-label="Sections"><a href="#loop">How it works</a><a href="#camera">Camera</a><a href="#egg">The egg</a><a href="#download">Download</a><a href="#faq">FAQ</a></nav>
     <a class="btn primary small" href="#download">Get Mochi</a>
   </div>
 </header>
@@ -157,29 +190,53 @@
 <div class="wrap">
   <div class="hero">
     <div>
-      <span class="kicker"><i></i>FREE FOR MAC + WINDOWS</span>
-      <h1>A pet that lives off your <mark>real habits</mark></h1>
-      <p class="lead">Mochi quietly tracks your screen time and your habits, and lives your day with you. Smoke and he coughs. Doomscroll and he gets sad. Hit the gym and he glows.</p>
-      <div class="ctas">
-        <a class="btn primary" href="#download">Get Mochi free</a>
-        <a class="btn" href="#egg">🥚 Join the egg waitlist</a>
+      <span class="kicker"><i></i>FREE TAMAGOTCHI HABIT TRACKER</span>
+      <h1>Keep your pet alive by <mark>keeping your habits</mark></h1>
+      <p class="lead">Mochi tracks your screen time by itself and turns your day into a pixel pet's health. <b>Doomscroll</b> and he gets sad. <b>Smoke</b> and he coughs. <b>Hit the gym</b> and he glows. You'll fix your habits just to keep him happy.</p>
+      <div class="ctas deskcta">
+        <a class="btn primary" id="heroDl" href="#download">Download Mochi free</a>
+        <a class="btn" href="#loop">See how it works</a>
       </div>
-      <p class="fine">No ads. Your tracking data stays on your computer.</p>
+      <div class="mobilecta">
+        <p>Mochi runs on your computer. Get the link there:</p>
+        <form class="join" data-wants="app"><input type="email" name="email" required placeholder="your email" aria-label="Your email"><button class="btn primary" type="submit">Email me the link</button></form>
+        <div class="msg" role="status"></div>
+        <button type="button" class="btn small" id="shareBtn" style="margin-top:6px">Send it to myself</button>
+      </div>
+      <div class="trust"><span>Free for Mac + Windows, no ads</span><span>No logging screen time by hand</span><span>Your data stays on your computer</span></div>
     </div>
-    <div class="stage" role="img" aria-label="Mochi, a lavender pixel pet, bouncing on the grass under a sunny sky">
-      <div class="sun"></div><div class="cloud a"></div><div class="cloud b"></div><div class="grass"></div>
-      <div class="bubble" id="bubble">CODING FOR 25M</div>
-      <div class="shadow"></div>
-      <svg class="mochi" viewBox="0 0 16 16" shape-rendering="crispEdges" id="mochi" aria-hidden="true"></svg>
-      <div class="hearts"><i></i><i></i><i></i><i></i><i class="off"></i></div>
-      <div class="hp">HP 86</div>
+    <div class="heroart">
+      <div class="shot"><div class="bar"><i></i><i></i><i></i></div>
+        <img src="img/app-home.webp" width="1280" height="860" alt="The Mochi app: a pixel pet with a crown, 100 HP and LEGENDARY, today's gym session counted, meal times and quick log buttons"></div>
+      <span class="sticker">HP 100 · LEGENDARY</span>
     </div>
   </div>
 </div>
 
-<section id="how" style="padding-top:24px">
+<section id="loop" style="padding-top:8px">
   <div class="wrap">
-    <h2 class="sec">He feels your day</h2>
+    <h2 class="sec">A virtual pet that runs on your habits</h2>
+    <p class="sub">A habit tracker you don't have to remember to open. Mochi notices your screen time on his own, you log the rest in one tap, and his health shows how your day is really going.</p>
+    <div class="loop">
+      <div class="card loopcard"><span class="num">1</span><h3>Meet your pet</h3><p>Dress him up with dozens of looks, hats and places. He's yours, and your friends see him too.</p>
+        <div class="shot sq"><video src="img/dressup.mp4" poster="img/dressup-poster.webp" autoplay muted loop playsinline preload="metadata" aria-label="Mochi trying on different outfits in the wardrobe"></video></div></div>
+      <div class="card loopcard"><span class="num">2</span><h3>Your habits are his food</h3><p>Every habit changes his HP, right away.</p>
+        <ul class="mech">
+          <li><span>🏋️ Gym session</span><b class="up">+3.3 HP</b></li>
+          <li><span>🚬 Cigarette</span><b class="down">−3.3 HP</b></li>
+          <li><span>📱 Doomscrolling</span><b class="down">drains HP</b></li>
+          <li><span>🍽️ Fed on time</span><b class="up">+1 HP</b></li>
+        </ul>
+        <p class="fine" style="margin:4px 0 0">Screen time, coding, YouTube and games count by themselves. Cigarettes, water and the gym take one tap. You can add your own habits too.</p></div>
+      <div class="card loopcard"><span class="num">3</span><h3>See it in his face</h3><p>A good week makes him legendary. A bad one makes him tired and coughing. Your friends see it too.</p>
+        <div class="shot"><img src="img/payoff.webp" width="759" height="1196" loading="lazy" alt="Two Mochis side by side: after a bad week, tired and coughing at 41 HP; after a good week, legendary at 100 HP"></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <h2 class="sec">He feels your whole day</h2>
     <p class="sub">Good days fill his hearts, bad ones drain them. He gets hungry three times a day and sleeps when you sleep.</p>
     <div class="moods">
       <div class="card mood"><div class="scene" style="background:linear-gradient(#bfe3ff 0 70%,#9be8a9 70%)"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" data-mood="happy" aria-hidden="true"></svg></div><b>HAPPY</b><span>A good, balanced day</span></div>
@@ -190,17 +247,6 @@
   </div>
 </section>
 
-<section>
-  <div class="wrap">
-    <h2 class="sec">How it works</h2>
-    <p class="sub">Most habit apps wait for you to open them. Mochi notices on his own, and makes you care.</p>
-    <div class="grid3">
-      <div class="card feat"><div class="ic" style="background:var(--blue)">💻</div><h3>It tracks for you</h3><p>Screen time, coding, YouTube and games on your computer, all counted by themselves. Log the rest (cigarettes, water, the gym) in one tap.</p></div>
-      <div class="card feat"><div class="ic" style="background:var(--pink)">💜</div><h3>Mochi reacts</h3><p>His hearts, mood and looks follow your real day. Dress him up with dozens of hats, outfits and places.</p></div>
-      <div class="card feat"><div class="ic" style="background:var(--green)">👥</div><h3>Friends keep you honest</h3><p>See your friends' Mochis, poke them and send love. You choose exactly what they can see about you.</p></div>
-    </div>
-  </div>
-</section>
 
 <section id="camera">
   <div class="wrap">
@@ -224,6 +270,35 @@
         <li><b>You can check the code.</b> Mochi's code is public on <a href="https://github.com/FiladelfioLeonardi/LazyTrack/blob/main/lazytrack/smoke.py">GitHub</a>, so anyone can see what the camera part does.</li>
       </ul>
     </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <h2 class="sec">Get Mochi</h2>
+    <p class="sub">Free for Mac and Windows. The download is small; on the first start it sets up what it needs (a few minutes), then it starts with your computer and updates itself.</p>
+    <div class="dl">
+      <div class="card">
+        <h3>Windows</h3><p class="fine" style="margin:0 0 14px">Windows 10 and 11</p>
+        <a class="btn primary" href="https://github.com/FiladelfioLeonardi/LazyTrack/releases/latest/download/Mochi-Setup.exe">⬇ Download for Windows</a>
+        <ol class="steps">
+          <li>Open <b>Mochi-Setup.exe</b>.</li>
+          <li>If Windows says "Windows protected your PC": click <b>More info</b>, then <b>Run anyway</b>.</li>
+          <li>Mochi opens when it's done. Make your account and pick your habits.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Mac</h3><p class="fine" style="margin:0 0 14px">macOS 12 or newer, Apple silicon and Intel</p>
+        <a class="btn primary" href="https://github.com/FiladelfioLeonardi/LazyTrack/releases/latest/download/Install-Mochi-Mac.zip">⬇ Download for Mac</a>
+        <ol class="steps">
+          <li>Unzip it, then <b>right-click Install Mochi → Open</b>.</li>
+          <li>On newer macOS: open it once, then System Settings → Privacy &amp; Security → <b>Open Anyway</b>.</li>
+          <li>Mochi opens when it's done. Make your account and pick your habits.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="note"><b>Why the warning when you install?</b> Mochi is made by one student, and the developer certificates that remove it cost money every year. They're first on the list once the app earns enough to pay for them. The app only talks to its own friends server, and your tracking data never leaves your computer.</div>
+    <div class="note"><b>On your phone:</b> in Mochi on your computer, open Settings → Phone and scan the code. Add it to your home screen and it works like an app.</div>
   </div>
 </section>
 
@@ -252,38 +327,13 @@
   </div>
 </section>
 
-<section id="download">
-  <div class="wrap">
-    <h2 class="sec">Get Mochi</h2>
-    <p class="sub">Free for Mac and Windows. It installs everything it needs, starts with your computer and updates itself.</p>
-    <div class="dl">
-      <div class="card">
-        <h3>Windows</h3><p class="fine" style="margin:0 0 14px">Windows 10 and 11</p>
-        <a class="btn primary" href="https://github.com/FiladelfioLeonardi/LazyTrack/releases/latest/download/Mochi-Setup.exe">⬇ Download for Windows</a>
-        <ol class="steps">
-          <li>Open <b>Mochi-Setup.exe</b>.</li>
-          <li>If Windows says "Windows protected your PC": click <b>More info</b>, then <b>Run anyway</b>.</li>
-          <li>Mochi opens when it's done. Make your account and pick your habits.</li>
-        </ol>
-      </div>
-      <div class="card">
-        <h3>Mac</h3><p class="fine" style="margin:0 0 14px">macOS 12 or newer, Apple silicon and Intel</p>
-        <a class="btn primary" href="https://github.com/FiladelfioLeonardi/LazyTrack/releases/latest/download/Install-Mochi-Mac.zip">⬇ Download for Mac</a>
-        <ol class="steps">
-          <li>Unzip it, then <b>right-click Install Mochi → Open</b>.</li>
-          <li>On newer macOS: open it once, then System Settings → Privacy &amp; Security → <b>Open Anyway</b>.</li>
-          <li>Mochi opens when it's done. Make your account and pick your habits.</li>
-        </ol>
-      </div>
-    </div>
-    <div class="note"><b>Why the warning when you install?</b> Mochi is made by one student, and the developer certificates that remove it cost money every year. They're first on the list once the app earns enough to pay for them. The app only talks to its own friends server, and your tracking data never leaves your computer.</div>
-    <div class="note"><b>On your phone:</b> in Mochi on your computer, open Settings → Phone and scan the code. Add it to your home screen and it works like an app.</div>
-  </div>
-</section>
-
 <section id="faq">
   <div class="wrap faq">
     <h2 class="sec">Questions</h2>
+    <details class="card"><summary>Is Mochi a Tamagotchi app?</summary><p>Kind of: Mochi is a Tamagotchi-style virtual pet, but instead of pressing buttons to feed him, your real habits do it. It's also a full habit tracker and screen time tracker for your computer, free on Mac and Windows.</p></details>
+    <details class="card"><summary>Does it track my screen time automatically?</summary><p>Yes. Mochi counts time in apps and websites by itself (coding, YouTube, social media, games), so you never have to log it. Other habits, like cigarettes, water or the gym, take one tap.</p></details>
+    <details class="card"><summary>Can Mochi help me quit smoking or doomscrolling?</summary><p>It makes every cigarette and every hour of social media visible, and Mochi pays for each one in HP. You set a daily limit for each bad habit, and Mochi can lower it by about 10% a week as you get better. It's not a medical program, just a very motivating pet.</p></details>
+    <details class="card"><summary>How is it different from Finch or other habit pet apps?</summary><p>Most habit pets live on your phone and wait for you to check boxes. Mochi lives on your computer and tracks your screen time by itself, so he reacts even when you forget to log anything. Friends, a wardrobe and a handheld egg are on top.</p></details>
     <details class="card"><summary>Where does my data go?</summary><p>Your tracking data stays on your computer. Only what you choose to share with friends (like your Mochi's look and the numbers you picked) goes to the friends server. More in the <a href="privacy.html">privacy policy</a>.</p></details>
     <details class="card"><summary>Does it watch my screen?</summary><p>It only notices which app or website is in front, never what's on it. The optional smoking detector is explained in <a href="#camera">The camera, honestly</a>: it runs only on your computer, only if you turn it on.</p></details>
     <details class="card"><summary>Can Mochi die?</summary><p>His hearts drop on bad days, and yes, he can run out. Then a baby hatches and you start a new generation. Good days, meals on time and your friends keep him going.</p></details>
@@ -325,13 +375,23 @@ function draw(svg, mood, blink) {
   }));
   svg.innerHTML = out;
 }
-const hero = document.getElementById("mochi");
 document.querySelectorAll("svg[data-mood]").forEach(s => draw(s, s.dataset.mood));
-draw(hero, "happy");
-setInterval(() => { draw(hero, "happy", true); setTimeout(() => draw(hero, "happy"), 150); }, 3600);
-const SAYS = ["CODING FOR 25M", "HUNGRY! FEED ME", "GYM DAY! +6 HP", "MARK POKED YOU", "2H OFF SOCIALS ♥"];
-let s = 0; const bub = document.getElementById("bubble");
-setInterval(() => { s = (s + 1) % SAYS.length; bub.style.opacity = 0; setTimeout(() => { bub.textContent = SAYS[s]; bub.style.opacity = 1; }, 200); }, 2800);
+
+// one download button for this computer; phones get "send me the link" instead (Mochi is a computer app)
+const DL = "https://github.com/FiladelfioLeonardi/LazyTrack/releases/latest/download/";
+const ua = navigator.userAgent, plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
+const mobile = /iPhone|iPad|iPod|Android|Mobile/i.test(ua) || (/Mac/.test(plat) && navigator.maxTouchPoints > 1);
+const os = mobile ? "" : /Win/i.test(plat + ua) ? "win" : /Mac/i.test(plat + ua) ? "mac" : "";
+if (mobile) document.body.classList.add("is-mobile");
+const heroDl = document.getElementById("heroDl");
+if (os === "win") { heroDl.href = DL + "Mochi-Setup.exe"; heroDl.textContent = "⬇ Download for Windows, free"; }
+if (os === "mac") { heroDl.href = DL + "Install-Mochi-Mac.zip"; heroDl.textContent = "⬇ Download for Mac, free"; }
+if (os) heroDl.addEventListener("click", () => setTimeout(() => document.getElementById("download").scrollIntoView({behavior: "smooth"}), 400));
+document.getElementById("shareBtn").addEventListener("click", async () => {
+  const data = {title: "Mochi", text: "Mochi: the Tamagotchi that lives off your real habits (download it on my computer)", url: location.origin + location.pathname};
+  try { if (navigator.share) { await navigator.share(data); return; } } catch (_) { return; }
+  try { await navigator.clipboard.writeText(data.url); document.getElementById("shareBtn").textContent = "Link copied ✓"; } catch (_) {}
+});
 const hdr = document.getElementById("top");
 addEventListener("scroll", () => hdr.classList.toggle("scrolled", scrollY > 8), {passive: true});
 
@@ -345,7 +405,7 @@ document.querySelectorAll("form.join").forEach(f => f.addEventListener("submit",
   try {
     const r = await fetch(`${SUPA}/rest/v1/waitlist`, {method: "POST", headers: {apikey: KEY, "Content-Type": "application/json", Prefer: "return=minimal"},
       body: JSON.stringify({email, wants: f.dataset.wants, lang: (navigator.language || "").slice(0, 10)})});
-    if (r.ok || r.status === 409) { msg.className = "msg ok"; msg.textContent = r.status === 409 ? "You're already on the list ♥" : "You're on the list! Mochi says thanks ♥"; f.reset(); }
+    if (r.ok || r.status === 409) { msg.className = "msg ok"; msg.textContent = r.status === 409 ? "You're already on the list ♥" : f.dataset.wants === "app" ? "Saved ♥ The download link is coming to your inbox." : "You're on the list! Mochi says thanks ♥"; f.reset(); }
     else { msg.className = "msg err"; msg.textContent = "Couldn't sign you up right now. Try again in a minute."; }
   } catch (_) { msg.className = "msg err"; msg.textContent = "Couldn't reach the server. Check your internet."; }
   btn.disabled = false;
