@@ -249,7 +249,7 @@ def chime() -> None:
 _ASK = r"""
 import json, sys, tkinter as tk
 a = json.loads(sys.argv[1]); res = {"v": ""}
-r = tk.Tk(); r.title("LazyTrack"); r.attributes("-topmost", True); r.resizable(False, False); r.configure(bg="#efeaff")
+r = tk.Tk(); r.title("Mochi"); r.attributes("-topmost", True); r.resizable(False, False); r.configure(bg="#efeaff")
 def pick(b): res.update(v=b); r.destroy()
 tk.Label(r, text=a["msg"], font=("Segoe UI", 13), justify="left", bg="#efeaff", fg="#1d1b20", padx=26, pady=18).pack()
 f = tk.Frame(r, bg="#efeaff", padx=18, pady=14); f.pack()

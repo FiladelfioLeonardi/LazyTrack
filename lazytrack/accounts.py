@@ -89,7 +89,7 @@ def check_new(username: str, password: str, email: str = "") -> None:
 def signup(username: str, password: str, display_name: str = "", email: str = "") -> str:
     username = username.strip()
     if has_account():
-        raise AuthError("This LazyTrack already has an account. Log in instead.")
+        raise AuthError("This Mochi already has an account. Log in instead.")
     check_new(username, password, email)
     salt = secrets.token_hex(16)
     c = _c()

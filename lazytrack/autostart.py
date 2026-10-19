@@ -30,11 +30,16 @@ def _mac_tracker() -> Path:
 
 
 def _mac_app() -> Path:
-    return Path.home() / "Applications" / "LazyTrack.app"
+    from .rebrand import mac_app
+    return mac_app()
 
 
 def _win_link() -> Path:
-    return Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / "LazyTrack.lnk"
+    return Path(os.environ.get("APPDATA", "")) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup" / "Mochi.lnk"
+
+
+def _win_old_link() -> Path:   # from before the app was called Mochi
+    return _win_link().with_name("LazyTrack.lnk")
 
 
 def supported() -> bool:
@@ -50,7 +55,7 @@ def enabled() -> bool:
     if sys.platform == "darwin":
         return _mac_agent().exists() and not FLAG.exists()
     if sys.platform == "win32":
-        return _win_link().exists()
+        return _win_link().exists() or _win_old_link().exists()
     return False
 
 
@@ -64,12 +69,12 @@ AGENT = """<?xml version="1.0" encoding="UTF-8"?>
 """
 
 SHORTCUT_VBS = """Set sh = CreateObject("WScript.Shell")
-Set s = sh.CreateShortcut(sh.SpecialFolders("Startup") & "\\LazyTrack.lnk")
+Set s = sh.CreateShortcut(sh.SpecialFolders("Startup") & "\\Mochi.lnk")
 s.TargetPath = sh.ExpandEnvironmentStrings("%WINDIR%") & "\\System32\\wscript.exe"
 s.Arguments = Chr(34) & "{dir}\\windows\\LazyTrack.vbs" & Chr(34) & " /background"
 s.WorkingDirectory = "{dir}"
 s.IconLocation = "{dir}\\assets\\lazytrack.ico"
-s.Description = "LazyTrack"
+s.Description = "Mochi"
 s.Save
 """
 
@@ -88,7 +93,7 @@ def set_enabled(on: bool) -> bool:
                 tracker.write_text(tracker.read_text().replace("<key>RunAtLoad</key><false/>", "<key>RunAtLoad</key><true/>"))
         else:
             FLAG.parent.mkdir(parents=True, exist_ok=True)
-            FLAG.write_text("LazyTrack doesn't start at login (Settings > App).\n")
+            FLAG.write_text("Mochi doesn't start at login (Settings > App).\n")
             subprocess.run(["launchctl", "bootout", f"gui/{os.getuid()}/com.lazytrack.app"], capture_output=True)
             _mac_agent().unlink(missing_ok=True)
             if tracker.exists():   # stays loaded for now (LazyTrack keeps running), just doesn't start at the next login
@@ -104,5 +109,6 @@ def set_enabled(on: bool) -> bool:
                 os.unlink(path)
         else:
             _win_link().unlink(missing_ok=True)
+            _win_old_link().unlink(missing_ok=True)
     log.info("start at login: %s", "on" if enabled() else "off")
     return enabled()

@@ -166,13 +166,13 @@ def ask(message: str, buttons: List[str], default: str, timeout: int = 120, canc
     cancel: a function; when it returns True (answered somewhere else) the dialog closes."""
     if len(buttons) <= 3:
         btns = ", ".join('"' + _esc(b) + '"' for b in buttons)
-        script = (f'display dialog "{_esc(message)}" with title "LazyTrack" buttons {{{btns}}} '
+        script = (f'display dialog "{_esc(message)}" with title "Mochi" buttons {{{btns}}} '
                   f'default button "{_esc(default)}" giving up after {int(timeout)}')
     else:
         items = ", ".join('"' + _esc(b) + '"' for b in buttons)
         # plain osascript (like the 3-button dialog), so no new "control System Events" permission is needed
         script = (f'activate\n'
-                  f'choose from list {{{items}}} with title "LazyTrack" '
+                  f'choose from list {{{items}}} with title "Mochi" '
                   f'with prompt "{_esc(message)}" default items {{"{_esc(default)}"}} '
                   f'OK button name "That\'s it" cancel button name "Not now"')
     try:

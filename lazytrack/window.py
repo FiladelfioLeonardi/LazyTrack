@@ -118,12 +118,12 @@ def _icon(ext: str) -> str:
 
 
 def _mac_branding() -> None:
-    """Shows "LazyTrack" with Mochi's icon in the Dock and menu bar, instead of "Python"."""
+    """Shows "Mochi" with Mochi's icon in the Dock and menu bar, instead of "Python"."""
     try:
         from AppKit import NSApplication, NSImage
         from Foundation import NSBundle
         info = NSBundle.mainBundle().localizedInfoDictionary() or NSBundle.mainBundle().infoDictionary()
-        info["CFBundleName"] = "LazyTrack"
+        info["CFBundleName"] = "Mochi"
         img = NSImage.alloc().initWithContentsOfFile_(_icon("icns"))
         if img:
             NSApplication.sharedApplication().setApplicationIconImage_(img)
@@ -151,8 +151,9 @@ def fix_mac_app() -> None:
     the always-up-to-date mac/launcher.sh, so the app opens the window."""
     if not MAC:
         return
-    app = Path.home() / "Applications" / "LazyTrack.app"
-    exe = app / "Contents" / "MacOS" / "LazyTrack"
+    from .rebrand import mac_app
+    app = mac_app()
+    exe = app / "Contents" / "MacOS" / "LazyTrack"   # the program inside keeps its name
     try:
         if exe.exists() and exe.read_text() != MAC_STUB:   # old stubs: the browser one, or one that needs launcher.sh to be executable
             exe.write_text(MAC_STUB)
@@ -223,7 +224,7 @@ def _window(cfg: dict) -> None:
     log.info("window: opening %s", url)
 
     api = _Api()
-    window = webview.create_window("LazyTrack", url, width=1200, height=880, min_size=(380, 560),
+    window = webview.create_window("Mochi", url, width=1200, height=880, min_size=(380, 560),
                                    background_color="#efeaff", text_select=True, js_api=api)
     api._window = window
 

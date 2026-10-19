@@ -8,15 +8,15 @@ param([switch]$Yes)
 $ErrorActionPreference = 'SilentlyContinue'
 Add-Type -AssemblyName System.Windows.Forms
 $dir = Split-Path -Parent $PSScriptRoot          # ...\AppData\Local\LazyTrack
-$title = 'Uninstall LazyTrack'
+$title = 'Uninstall Mochi'
 $owner = New-Object System.Windows.Forms.Form
 $owner.TopMost = $true                           # the questions show up in front, not behind other windows
 function Ask($msg, $buttons = 'OKCancel', $icon = 'Question', $def = 'Button1') {
   [System.Windows.Forms.MessageBox]::Show($owner, $msg, $title, $buttons, $icon, $def)
 }
 
-if (-not $Yes -and (Ask 'Remove LazyTrack from this computer?') -ne 'OK') { exit }
-$delData = (Ask ("Also delete your LazyTrack data (logs, stats, account on this computer)?`n`n" +
+if (-not $Yes -and (Ask 'Remove Mochi from this computer?') -ne 'OK') { exit }
+$delData = (Ask ("Also delete your Mochi data (logs, stats, account on this computer)?`n`n" +
   'Choose No to keep it, so a reinstall picks up where you left off.') 'YesNo' 'Question' 'Button2') -eq 'Yes'
 
 # 1. stop LazyTrack: everything running from its folder, plus the hidden scripts that start and restart it
@@ -32,7 +32,9 @@ Start-Sleep -Seconds 2                           # let Windows let go of the fil
 # 2. the shortcuts and the entry in Settings > Apps
 $sh = New-Object -ComObject WScript.Shell
 foreach ($f in 'Programs', 'Desktop', 'Startup') {
-  Remove-Item -LiteralPath (Join-Path $sh.SpecialFolders.Item($f) 'LazyTrack.lnk') -Force
+  foreach ($n in 'Mochi.lnk', 'LazyTrack.lnk') {
+    Remove-Item -LiteralPath (Join-Path $sh.SpecialFolders.Item($f) $n) -Force -ErrorAction SilentlyContinue
+  }
 }
 Remove-Item -Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\LazyTrack' -Recurse -Force
 
@@ -51,9 +53,9 @@ foreach ($t in $targets) {
 }
 
 if ($left.Count) {
-  Ask ("LazyTrack is removed, but Windows kept a few files because something still has them open:`n`n" +
+  Ask ("Mochi is removed, but Windows kept a few files because something still has them open:`n`n" +
     ($left -join "`n") + "`n`nRestart the computer, then delete that folder.") 'OK' 'Warning' | Out-Null
   Start-Process explorer.exe (Split-Path -Parent $left[0])
 } else {
-  Ask 'LazyTrack was removed. Bye from Mochi!' 'OK' 'Information' | Out-Null
+  Ask 'Mochi was removed. Bye!' 'OK' 'Information' | Out-Null
 }

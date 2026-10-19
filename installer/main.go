@@ -66,12 +66,12 @@ type State struct {
 var (
 	mu    sync.Mutex
 	state = State{Steps: []*Step{
-		{Name: "Copying LazyTrack"},
+		{Name: "Copying Mochi"},
 		{Name: "Getting Python"},
-		{Name: "Installing what LazyTrack needs (about 1 GB, the longest part)"},
-		{Name: "Getting LazyTrack ready"},
+		{Name: "Installing what Mochi needs (about 1 GB, the longest part)"},
+		{Name: "Getting Mochi ready"},
 		{Name: "Adding shortcuts"},
-		{Name: "Starting LazyTrack"},
+		{Name: "Starting Mochi"},
 	}}
 	retry = make(chan bool, 1)
 	hello = make(chan bool, 1) // the progress page loaded (so its window really is on screen)
@@ -104,19 +104,19 @@ func main() {
 	}
 	dir := appDir()
 	again := fileExists(filepath.Join(dir, ".venv"))
-	msg := "LazyTrack will be installed for you on this computer (no admin needed).\n\n" +
+	msg := "Mochi will be installed for you on this computer (no admin needed).\n\n" +
 		"It downloads about 1 GB (mostly the camera AI), so it takes a few minutes. A small window shows the progress.\n\nInstall now?"
 	if again {
-		msg = "LazyTrack is already installed here.\n\nRepair it? Your data and settings are kept."
+		msg = "Mochi is already installed here.\n\nRepair it? Your data and settings are kept."
 	}
-	if !ask("Install LazyTrack", msg) {
+	if !ask("Install Mochi", msg) {
 		return
 	}
 	state.Dir = dir
 
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		tell("LazyTrack", "Couldn't start the installer: "+err.Error())
+		tell("Mochi", "Couldn't start the installer: "+err.Error())
 		return
 	}
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -207,7 +207,7 @@ func install(dir string) error {
 // 1. unzip LazyTrack's files (an existing install keeps its Python and packages)
 func copyApp(dir string) error {
 	if fileExists(filepath.Join(dir, ".venv")) { // a repair: stop the running copy so its files can be replaced
-		setStep(0, "run", "stopping the LazyTrack that's running", -1)
+		setStep(0, "run", "stopping the Mochi that's running", -1)
 		stopRunning(dir)
 	}
 	zr, err := zip.NewReader(bytes.NewReader(payload), int64(len(payload)))
@@ -326,7 +326,7 @@ func pipInstall(dir string) error {
 		return run(dir, 2, pythonExe(dir), "-m", "venv", "--system-site-packages", ".venv")
 	}
 	if !fileExists(venvPy) {
-		setStep(2, "run", "making LazyTrack's Python folder", -1)
+		setStep(2, "run", "making Mochi's Python folder", -1)
 		if err := run(dir, 2, pythonExe(dir), "-m", "venv", ".venv"); err != nil {
 			return err
 		}
@@ -362,10 +362,10 @@ func startApp(dir string) error {
 			r.Body.Close()
 			return nil
 		}
-		setStep(5, "run", "waiting for LazyTrack to start", -1)
+		setStep(5, "run", "waiting for Mochi to start", -1)
 		time.Sleep(time.Second)
 	}
-	return fmt.Errorf("LazyTrack didn't start. Try the LazyTrack shortcut; if it still doesn't open, send a screenshot of this page")
+	return fmt.Errorf("Mochi didn't start. Try the Mochi shortcut; if it still doesn't open, send a screenshot of this page")
 }
 
 // ---------------------------------------------------------------- helpers

@@ -32,13 +32,16 @@ def fix_apps_entry() -> None:
     cmd = " ".join(f'"{a}"' if " " in a or a.endswith(".exe") or a.endswith(".ps1") else a for a in _args())
     try:
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, KEY, 0, winreg.KEY_QUERY_VALUE | winreg.KEY_SET_VALUE) as k:
-            try:
-                if winreg.QueryValueEx(k, "UninstallString")[0] == cmd:
-                    return
-            except FileNotFoundError:
-                pass
-            winreg.SetValueEx(k, "UninstallString", 0, winreg.REG_SZ, cmd)
-            log.info("uninstall: Settings > Apps now uses windows/uninstall.ps1")
+            def now(name):
+                try:
+                    return winreg.QueryValueEx(k, name)[0]
+                except FileNotFoundError:
+                    return None
+            if now("DisplayName") != "Mochi":   # the app's new name in Settings > Apps
+                winreg.SetValueEx(k, "DisplayName", 0, winreg.REG_SZ, "Mochi")
+            if now("UninstallString") != cmd:
+                winreg.SetValueEx(k, "UninstallString", 0, winreg.REG_SZ, cmd)
+                log.info("uninstall: Settings > Apps now uses windows/uninstall.ps1")
     except FileNotFoundError:
         pass   # not installed with the installer (a dev checkout)
     except OSError as e:

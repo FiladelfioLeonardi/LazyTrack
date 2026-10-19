@@ -27,7 +27,10 @@ func yesNo(title, msg string) bool {
 
 func home() string      { h, _ := os.UserHomeDir(); return h }
 func appDir() string    { return filepath.Join(home(), "Library", "Application Support", "LazyTrack") }
-func appBundle() string { return filepath.Join(home(), "Applications", "LazyTrack.app") }
+func appBundle() string { return filepath.Join(home(), "Applications", "Mochi.app") }
+
+// the app's old name, from before it was called Mochi
+func oldAppBundle() string { return filepath.Join(home(), "Applications", "LazyTrack.app") }
 func agentPlist() string {
 	return filepath.Join(home(), "Library", "LaunchAgents", "com.lazytrack.app.plist")
 }
@@ -45,7 +48,7 @@ function run(argv) {
   var app = $.NSApplication.sharedApplication;
   app.setActivationPolicy($.NSApplicationActivationPolicyAccessory);
   var win = $.NSWindow.alloc.initWithContentRectStyleMaskBackingDefer($.NSMakeRect(0, 0, 560, 700), 15, $.NSBackingStoreBuffered, false);
-  win.title = "Installing LazyTrack";
+  win.title = "Installing Mochi";
   win.releasedWhenClosed = false;
   var wv = $.WKWebView.alloc.initWithFrameConfiguration(win.contentView.bounds, $.WKWebViewConfiguration.alloc.init);
   wv.autoresizingMask = 18;
@@ -84,8 +87,8 @@ func stopRunning(dir string) { // only the installed copy (run.sh starts it by i
 const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>LazyTrack</string>
-  <key>CFBundleDisplayName</key><string>LazyTrack</string>
+  <key>CFBundleName</key><string>Mochi</string>
+  <key>CFBundleDisplayName</key><string>Mochi</string>
   <key>CFBundleIdentifier</key><string>com.lazytrack.app</string>
   <key>CFBundleExecutable</key><string>LazyTrack</string>
   <key>CFBundleIconFile</key><string>lazytrack</string>
@@ -93,8 +96,8 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
   <key>CFBundleShortVersionString</key><string>1.0</string>
   <key>LSMinimumSystemVersion</key><string>11.0</string>
   <key>LSUIElement</key><true/>
-  <key>NSCameraUsageDescription</key><string>LazyTrack uses the webcam to notice when you smoke. Pictures never leave your Mac.</string>
-  <key>NSAppleEventsUsageDescription</key><string>LazyTrack reads which website is open in your browser to count your screen time.</string>
+  <key>NSCameraUsageDescription</key><string>Mochi uses the webcam to notice when you smoke. Pictures never leave your Mac.</string>
+  <key>NSAppleEventsUsageDescription</key><string>Mochi reads which website is open in your browser to count your screen time.</string>
 </dict></plist>
 `
 
@@ -102,6 +105,8 @@ const infoPlist = `<?xml version="1.0" encoding="UTF-8"?>
 func makeShortcuts(dir string) error {
 	app := appBundle()
 	os.RemoveAll(app)
+	os.RemoveAll(oldAppBundle())
+	os.Remove(filepath.Join(home(), "Applications", "Uninstall LazyTrack.command"))
 	for _, d := range []string{"Contents/MacOS", "Contents/Resources"} {
 		if err := os.MkdirAll(filepath.Join(app, d), 0o755); err != nil {
 			return err
@@ -117,7 +122,7 @@ func makeShortcuts(dir string) error {
 	copyFile(filepath.Join(dir, "assets", "lazytrack.icns"), filepath.Join(app, "Contents", "Resources", "lazytrack.icns"))
 	os.Chmod(filepath.Join(dir, "mac", "run.sh"), 0o755)
 	os.Chmod(filepath.Join(dir, "mac", "uninstall.command"), 0o755)
-	copyFile(filepath.Join(dir, "mac", "uninstall.command"), filepath.Join(home(), "Applications", "Uninstall LazyTrack.command"))
+	copyFile(filepath.Join(dir, "mac", "uninstall.command"), filepath.Join(home(), "Applications", "Uninstall Mochi.command"))
 	os.MkdirAll(filepath.Dir(agentPlist()), 0o755)
 	agent := fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -138,7 +143,7 @@ func launch(dir string) error {
 }
 
 func uninstall() {
-	if !ask("Uninstall LazyTrack", "Remove LazyTrack from this Mac?") {
+	if !ask("Uninstall Mochi", "Remove Mochi from this Mac?") {
 		return
 	}
 	stopRunning(appDir())
@@ -147,11 +152,13 @@ func uninstall() {
 	exec.Command("launchctl", "bootout", fmt.Sprintf("gui/%d/com.lazytrack.tracker", os.Getuid())).Run()
 	os.Remove(filepath.Join(home(), "Library", "LaunchAgents", "com.lazytrack.tracker.plist"))
 	os.RemoveAll(appBundle())
+	os.RemoveAll(oldAppBundle())
+	os.Remove(filepath.Join(home(), "Applications", "Uninstall Mochi.command"))
 	os.Remove(filepath.Join(home(), "Applications", "Uninstall LazyTrack.command"))
-	if yesNo("Uninstall LazyTrack", "Also delete your LazyTrack data (logs, stats, account on this Mac)?\n\nIt goes to the Trash, so you can still put it back until you empty the Trash.") {
+	if yesNo("Uninstall Mochi", "Also delete your Mochi data (logs, stats, account on this Mac)?\n\nIt goes to the Trash, so you can still put it back until you empty the Trash.") {
 		// to the Trash, never gone for good in one click
-		os.Rename(filepath.Join(home(), ".lazytrack"), filepath.Join(home(), ".Trash", "LazyTrack data "+time.Now().Format("2006-01-02 15-04")))
+		os.Rename(filepath.Join(home(), ".lazytrack"), filepath.Join(home(), ".Trash", "Mochi data "+time.Now().Format("2006-01-02 15-04")))
 	}
 	os.RemoveAll(appDir())
-	tell("LazyTrack", "LazyTrack was removed. Bye from Mochi!")
+	tell("Mochi", "Mochi was removed. Bye!")
 }

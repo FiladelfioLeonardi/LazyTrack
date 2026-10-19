@@ -1,7 +1,7 @@
 #!/bin/bash
 # Builds the installers into dist/:
-#   LazyTrack-Setup.exe          Windows (64-bit)
-#   Install-LazyTrack-Mac.zip    Mac (Apple Silicon + Intel): unzip, open "Install LazyTrack"
+#   Mochi-Setup.exe          Windows (64-bit)
+#   Install-Mochi-Mac.zip    Mac (Apple Silicon + Intel): unzip, open "Install Mochi"
 # The app files come from this git checkout (what's committed + new files that aren't ignored);
 # VERSION is set to the current commit so the updater knows what's installed.
 set -e
@@ -30,19 +30,19 @@ print("payload:", len(z.namelist()) if False else "ok", os.path.getsize("install
 EOF
 
 cd installer
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H windowsgui" -o "$ROOT/dist/LazyTrack-Setup.exe" .
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -H windowsgui" -o "$ROOT/dist/Mochi-Setup.exe" .
 GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$ROOT/dist/installer-arm64" .
 GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "-s -w" -o "$ROOT/dist/installer-x86_64" .
 cd "$ROOT"
 
-# the Mac installer is a small app: "Install LazyTrack.app" picks the right program for the Mac's chip
+# the Mac installer is a small app: "Install Mochi.app" picks the right program for the Mac's chip
 python3 - <<'EOF'
 import zipfile, os, stat
-app = "Install LazyTrack.app/Contents"
+app = "Install Mochi.app/Contents"
 plist = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
-  <key>CFBundleName</key><string>Install LazyTrack</string>
+  <key>CFBundleName</key><string>Install Mochi</string>
   <key>CFBundleIdentifier</key><string>com.lazytrack.installer</string>
   <key>CFBundleExecutable</key><string>install</string>
   <key>CFBundleIconFile</key><string>lazytrack</string>
@@ -58,7 +58,7 @@ if [ "$(uname -m)" = "arm64" ]; then exec "$DIR/installer-arm64" "$@"; else exec
 def add(z, name, data, mode):
     zi = zipfile.ZipInfo(name); zi.external_attr = (stat.S_IFREG | mode) << 16; zi.compress_type = zipfile.ZIP_DEFLATED
     z.writestr(zi, data)
-with zipfile.ZipFile("dist/Install-LazyTrack-Mac.zip", "w") as z:
+with zipfile.ZipFile("dist/Install-Mochi-Mac.zip", "w") as z:
     add(z, f"{app}/Info.plist", plist, 0o644)
     add(z, f"{app}/MacOS/install", launcher, 0o755)
     add(z, f"{app}/Resources/lazytrack.icns", open("assets/lazytrack.icns", "rb").read(), 0o644)

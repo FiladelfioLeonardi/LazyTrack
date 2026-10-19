@@ -76,7 +76,7 @@ func showProgress(u string) func() {
 		if cmd.Process != nil {
 			cmd.Process.Kill()
 		}
-		runTimed(appDir(), 10*time.Second, "taskkill", "/F", "/T", "/FI", "WINDOWTITLE eq Installing LazyTrack*")
+		runTimed(appDir(), 10*time.Second, "taskkill", "/F", "/T", "/FI", "WINDOWTITLE eq Installing Mochi*")
 	}
 }
 
@@ -151,20 +151,26 @@ Sub mk(path, arg)
   s.Arguments = Chr(34) & d & "\windows\LazyTrack.vbs" & Chr(34) & arg
   s.WorkingDirectory = d
   s.IconLocation = d & "\assets\lazytrack.ico"
-  s.Description = "LazyTrack"
+  s.Description = "Mochi"
   s.Save
 End Sub
-mk sh.SpecialFolders("Programs") & "\LazyTrack.lnk", ""
-mk sh.SpecialFolders("Desktop") & "\LazyTrack.lnk", ""
-mk sh.SpecialFolders("Startup") & "\LazyTrack.lnk", " /background"
+Set fs = CreateObject("Scripting.FileSystemObject")
+For Each f In Array("Programs", "Desktop", "Startup")
+  If fs.FileExists(sh.SpecialFolders(f) & "\LazyTrack.lnk") Then fs.DeleteFile sh.SpecialFolders(f) & "\LazyTrack.lnk"
+Next
+mk sh.SpecialFolders("Programs") & "\Mochi.lnk", ""
+mk sh.SpecialFolders("Desktop") & "\Mochi.lnk", ""
+mk sh.SpecialFolders("Startup") & "\Mochi.lnk", " /background"
 `
 
 // removes the shortcuts again (uninstall)
 const unshortcutsVBS = `Set sh = CreateObject("WScript.Shell")
 Set fs = CreateObject("Scripting.FileSystemObject")
 For Each f In Array("Programs", "Desktop", "Startup")
-  p = sh.SpecialFolders(f) & "\LazyTrack.lnk"
-  If fs.FileExists(p) Then fs.DeleteFile p
+  For Each n In Array("\Mochi.lnk", "\LazyTrack.lnk")
+    p = sh.SpecialFolders(f) & n
+    If fs.FileExists(p) Then fs.DeleteFile p
+  Next
 Next
 `
 
@@ -199,8 +205,8 @@ func makeShortcuts(dir string) error {
 	}
 	// the uninstall entry in Settings > Apps (best effort: the app works without it)
 	for _, v := range [][]string{
-		{"DisplayName", "REG_SZ", "LazyTrack"}, {"DisplayIcon", "REG_SZ", dir + `\assets\lazytrack.ico`},
-		{"Publisher", "REG_SZ", "LazyTrack"}, {"InstallLocation", "REG_SZ", dir},
+		{"DisplayName", "REG_SZ", "Mochi"}, {"DisplayIcon", "REG_SZ", dir + `\assets\lazytrack.ico`},
+		{"Publisher", "REG_SZ", "Mochi"}, {"InstallLocation", "REG_SZ", dir},
 		{"UninstallString", "REG_SZ", uninstallCmd(dir)},
 		{"NoModify", "REG_DWORD", "1"}, {"NoRepair", "REG_DWORD", "1"}, {"EstimatedSize", "REG_DWORD", "2500000"},
 	} {
@@ -235,13 +241,13 @@ func uninstall() {
 			return
 		}
 	}
-	if !ask("Uninstall LazyTrack", "Remove LazyTrack from this computer?") {
+	if !ask("Uninstall Mochi", "Remove Mochi from this computer?") {
 		return
 	}
 	stopRunning(dir)
 	runVBS(dir, unshortcutsVBS)
 	runTimed(dir, 20*time.Second, "reg", "delete", uninstallKey, "/f")
-	if yesNo("Uninstall LazyTrack", "Also delete your LazyTrack data (logs, stats, account on this computer)?\n\nChoose No to keep it, so a reinstall picks up where you left off.") {
+	if yesNo("Uninstall Mochi", "Also delete your Mochi data (logs, stats, account on this computer)?\n\nChoose No to keep it, so a reinstall picks up where you left off.") {
 		home, _ := os.UserHomeDir()
 		os.RemoveAll(filepath.Join(home, ".lazytrack"))
 	}
@@ -249,5 +255,5 @@ func uninstall() {
 	cmd := exec.Command("cmd", "/c", "ping 127.0.0.1 -n 3 >nul & rmdir /s /q \""+dir+"\"")
 	hideWindow(cmd)
 	cmd.Start()
-	tell("LazyTrack", "LazyTrack was removed. Bye from Mochi 👋")
+	tell("Mochi", "Mochi was removed. Bye! 👋")
 }

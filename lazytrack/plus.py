@@ -1,4 +1,4 @@
-"""LazyTrack Plus: a license key bought through Lemon Squeezy unlocks the Plus wardrobe.
+"""Mochi Plus: a license key bought through Lemon Squeezy unlocks the Plus wardrobe.
 
 Nothing that's free today becomes Plus. The key is checked with Lemon Squeezy when you enter it and then
 about once a day; if the internet is gone, Plus keeps working for 14 days since the last good check.
@@ -94,7 +94,7 @@ def activate(key: str) -> dict:
     key = (key or "").strip()
     if not 8 <= len(key) <= 100:
         raise PlusError("That doesn't look like a license key. Copy it from your receipt email.")
-    j = _call("activate", {"license_key": key, "instance_name": (platform.node() or "LazyTrack")[:60]})
+    j = _call("activate", {"license_key": key, "instance_name": (platform.node() or "Mochi")[:60]})
     if not j.get("activated") or not _store_ok(j):
         raise PlusError(str(j.get("error") or "That key didn't work.")[:200])
     db.kv_set("plus_key", key)

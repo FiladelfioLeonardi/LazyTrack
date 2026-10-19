@@ -169,9 +169,9 @@ def _nudge(again: bool = False) -> None:
     """The notification, plus a sound LazyTrack plays itself, so you hear it even when the system
     hides notifications (Do Not Disturb / Focus, a game in full screen, notifications not allowed)."""
     line = last_line()
-    msg = ("Still waiting: was that a cigarette or a joint? Open LazyTrack to say." if again
-           else "Looks like you're smoking. Open LazyTrack to say what it was.")
-    system.notify("LazyTrack 👀", msg + (f" {line}" if line else ""), sound=False, sticky=True)
+    msg = ("Still waiting: was that a cigarette or a joint? Open Mochi to say." if again
+           else "Looks like you're smoking. Open Mochi to say what it was.")
+    system.notify("Mochi 👀", msg + (f" {line}" if line else ""), sound=False, sticky=True)
     system.chime()
     log.info("smoke question: notification%s sent", " (reminder)" if again else "")
 
@@ -706,9 +706,9 @@ class SmokeDetector(threading.Thread):
                 drops = [x for x in drops if t0 - x < 600] + [t0]
                 log.warning("camera gave no pictures for 10 s (dropout %d in 10 min), reopening", len(drops))
                 if len(drops) >= 3:
-                    _set("no_camera", "The camera keeps switching off: another app may be using it, or LazyTrack isn't allowed to use it "
+                    _set("no_camera", "The camera keeps switching off: another app may be using it, or Mochi isn't allowed to use it "
                          + ("(Settings > Privacy & security > Camera > Let desktop apps access your camera)." if sys.platform == "win32"
-                            else "(System Settings > Privacy & Security > Camera: turn on LazyTrack, or Terminal/Python)."))
+                            else "(System Settings > Privacy & Security > Camera: turn on Mochi (or LazyTrack), or Terminal/Python)."))
                 self.stop_ev.wait(min(60, 5 * len(drops)))   # back off instead of flickering
                 continue
             if fails:

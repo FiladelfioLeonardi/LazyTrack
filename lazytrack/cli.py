@@ -69,7 +69,7 @@ def _hungry_notice(meal: dict) -> None:
     from . import smoke
     if smoke.app_in_use():
         return
-    system.notify(f"Mochi is hungry {meal['e']}", f"Time for {meal['n']}! Feed him in LazyTrack, on your phone or on the egg.", sound=False)
+    system.notify(f"Mochi is hungry {meal['e']}", f"Time for {meal['n']}! Feed him in the app, on your phone or on the egg.", sound=False)
     try:
         system.chime()
     except Exception:
@@ -97,6 +97,8 @@ def cmd_run(cfg: dict, args) -> None:
     from . import dashboard
 
     stop = threading.Event()
+    from .rebrand import migrate
+    migrate()   # the app is called Mochi now: rename the Mac app / Windows shortcuts of older installs
     from .window import fix_mac_app
     fix_mac_app()
     dashboard.start(cfg)
@@ -166,7 +168,7 @@ def cmd_check(cfg: dict, args) -> None:
     except ImportError:
         print("Camera: opencv not installed")
     print("\nTesting a notification...")
-    system.notify("LazyTrack", "Notifications work 👍")
+    system.notify("Mochi", "Notifications work 👍")
 
 
 def cmd_camtest(cfg: dict, args) -> None:

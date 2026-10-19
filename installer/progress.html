@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Installing LazyTrack</title>
+<title>Installing Mochi</title>
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=Rubik:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   :root { --bg: #efeaff; --card: #ffffff; --line: #1d1b20; --ink: #1d1b20; --ink-3: #6a6475; --yellow: #ffe45e; --green: #9be8a9; --red: #ff9d94; --lilac: #c9b8ff;
@@ -34,7 +34,7 @@
 </style></head><body>
 <div class="card">
   <div class="top"><div class="pet" id="pet" aria-hidden="true"></div>
-    <div><h1 id="title">Installing LazyTrack</h1><p class="sub" id="sub">Hang tight, Mochi is moving in. This takes a few minutes.</p></div></div>
+    <div><h1 id="title">Installing Mochi</h1><p class="sub" id="sub">Hang tight, Mochi is moving in. This takes a few minutes.</p></div></div>
   <ol class="steps" id="steps"></ol>
   <div id="end"></div>
   <p class="note" id="note">You can leave this window in the background. Closing it doesn't stop the install.</p>
@@ -63,10 +63,10 @@ async function tick() {
     $("end").innerHTML = `<div class="msg err">${esc(s.error)}</div><div class="btns"><button class="btn primary" id="again">Try again</button></div>`;
     $("again").onclick = async () => { $("end").innerHTML = ""; await fetch("/retry"); };
   } else if (s.done) {
-    $("title").textContent = "LazyTrack is installed 🎉";
-    $("sub").textContent = "Mochi is ready. LazyTrack is opening in its own window…";
+    $("title").textContent = "Mochi is installed 🎉";
+    $("sub").textContent = "Mochi is ready and opening in its own window…";
     $("end").innerHTML = `<div class="msg ok">Find it any time in the Start menu or on your desktop (Mac: in Applications). It also starts by itself with your computer.</div>
-      <div class="btns"><button class="btn primary" id="openApp">Open LazyTrack →</button></div>`;
+      <div class="btns"><button class="btn primary" id="openApp">Open Mochi →</button></div>`;
     $("openApp").onclick = () => fetch("/open").catch(() => {});
     $("note").textContent = "This window closes by itself in a few seconds.";
     moved = true;

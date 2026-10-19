@@ -351,7 +351,7 @@ def make_handler(cfg: dict):
                 return accounts.signup(st["username"], pw, disp, email)
             if owner["email"] and owner["email"].lower() != email.lower():
                 cloud.disconnect()
-                raise accounts.AuthError(f"This LazyTrack belongs to @{owner['username']}. Log in with that account.")
+                raise accounts.AuthError(f"This Mochi belongs to @{owner['username']}. Log in with that account.")
             accounts.update(owner["id"], username=st["username"], display_name=disp, email=email, password=pw)
             return accounts.login(email, pw)
 
@@ -484,7 +484,7 @@ def make_handler(cfg: dict):
             try:
                 if path == "/api/auth/signup":
                     if accounts.has_account():
-                        raise accounts.AuthError("This LazyTrack already has an account. Log in instead.")
+                        raise accounts.AuthError("This Mochi already has an account. Log in instead.")
                     email, name = str(b.get("email", "")).strip(), str(b.get("username", "")).strip()
                     pw, disp = str(b.get("password", "")), str(b.get("display_name", "")).strip()
                     if not email:
@@ -529,7 +529,7 @@ def make_handler(cfg: dict):
                     return self._update_account(b)
                 if path == "/api/auth/reset":   # forgot password: only on the computer itself
                     if not self._local():
-                        raise accounts.AuthError("You can only reset your password on the computer where LazyTrack runs.")
+                        raise accounts.AuthError("You can only reset your password on the computer where Mochi runs.")
                     owner = accounts.owner()
                     if owner is None:
                         raise accounts.AuthError("There's no account here yet. Make one instead.")
