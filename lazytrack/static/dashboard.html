@@ -627,6 +627,7 @@
             background: var(--card); color: var(--ink); font: 700 14px/1.15 var(--body); text-align: left; cursor: pointer; }
   .wrplus { position: absolute; right: -6px; top: -6px; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 0 #fff); }
   .plusperks { margin: 6px 0 14px; padding-left: 20px; } .plusperks li { margin-bottom: 4px; }
+  .btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; transform: none; }
   .fplus { font-size: .9em; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
   .founder { margin-top: 14px; padding: 14px 16px; border: 3px dashed var(--line); border-radius: 14px; background: var(--soft); }
   .founder b { display: block; margin-bottom: 2px; }
@@ -3454,9 +3455,10 @@ const plusCard = {
       return;
     }
     box.innerHTML = `<p class="sub">Everything you have now stays free. Plus adds extra pieces for Mochi and keeps the app going.</p>${perks}
-      <div class="actions">${PLUS.checkout ? `<a class="btn primary" href="${esc(PLUS.checkout)}" target="_blank" rel="noopener">Get Plus · €3.99/month</a>` : `<span class="note">Plus is coming soon.</span>`}</div>
+      <div class="actions">${PLUS.checkout && PLUS.selling ? `<a class="btn primary" href="${esc(PLUS.checkout)}" target="_blank" rel="noopener">Get Plus · €3.99/month</a>`
+        : `<button type="button" class="btn primary" disabled>Get Plus · coming soon</button>`}</div>
       ${PLUS.founder ? `<div class="founder"><b>🥚 Founder: Plus forever for €39.99, once</b><span class="hint">Only for the first 100 people. One key that never runs out, no subscription. After 100, lifetime is gone.</span>
-        <div class="actions" style="margin-top:10px"><a class="btn" href="${esc(PLUS.founder)}" target="_blank" rel="noopener">Become a Founder · €39.99</a></div></div>` : ""}
+        <div class="actions" style="margin-top:10px">${PLUS.selling ? `<a class="btn" href="${esc(PLUS.founder)}" target="_blank" rel="noopener">Become a Founder · €39.99</a>` : `<button type="button" class="btn" disabled>Founder · coming soon</button>`}</div></div>` : ""}
       <div class="field" style="margin-top:14px"><label for="plusKey">Already have a key?</label>
         <div class="actions"><input type="text" id="plusKey" autocomplete="off" spellcheck="false" placeholder="Paste your license key" style="flex:1 1 220px">
         <button type="button" class="btn" id="plusGo">Unlock</button></div>
