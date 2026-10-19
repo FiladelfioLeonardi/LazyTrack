@@ -47,7 +47,7 @@
   .hp { position: absolute; right: 5%; bottom: 5%; padding: 6px 10px; background: var(--yellow); color: #1d1b20; border: 3px solid var(--line); border-radius: 8px; font: 13px var(--pixel); }
 
   /* sections */
-  section { padding: 56px 0; }
+  section { padding: 56px 0; scroll-margin-top: 64px; }
   h2.sec { font: clamp(26px, 4vw, 36px)/1.15 var(--pixel); margin: 0 0 10px; }
   p.sub { color: var(--ink-2); margin: 0 0 30px; font-size: 19px; max-width: 38em; }
 
@@ -115,6 +115,27 @@
   .faq summary::after { content: "+"; font: 20px var(--pixel); } .faq details[open] summary::after { content: "–"; }
   .faq p { margin: 10px 0 0; color: var(--ink-2); }
 
+  /* the camera, explained */
+  .cam { padding: 30px; }
+  @media (max-width: 760px) { .cam { padding: 22px; } }
+  .flow { display: grid; grid-template-columns: 1fr auto 1fr auto 1fr; gap: 12px; align-items: stretch; margin: 6px 0 26px; }
+  @media (max-width: 760px) { .flow { grid-template-columns: 1fr; } .flow .arrow { transform: rotate(90deg); justify-self: center; } }
+  .step { padding: 18px; border: 3px solid var(--line); border-radius: 16px; background: var(--soft); }
+  .step .n { font: 12px var(--pixel); color: var(--ink-2); }
+  .step b { display: block; font-size: 18px; margin: 4px 0 4px; }
+  .step span { color: var(--ink-2); font-size: 15px; }
+  .step .ic { font-size: 28px; line-height: 1; }
+  .arrow { align-self: center; font: 22px var(--pixel); }
+  .never { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 24px; }
+  .never span { padding: 8px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--card); font-weight: 700; font-size: 15px; }
+  .never span::before { content: "✕ "; color: #e0303a; }
+  .promises { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; padding: 0; margin: 0; list-style: none; }
+  @media (max-width: 760px) { .promises { grid-template-columns: 1fr; } }
+  .promises li { padding-left: 32px; position: relative; color: var(--ink-2); }
+  .promises li b { color: var(--ink); }
+  .promises li::before { content: "✓"; position: absolute; left: 0; top: 0; width: 22px; height: 22px; display: grid; place-items: center; background: var(--green); color: #1d1b20;
+                         border: 2px solid var(--line); border-radius: 6px; font-weight: 800; font-size: 13px; }
+
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -122,7 +143,7 @@
 <header class="top" id="top">
   <div class="wrap">
     <a class="brand" href="#"><img src="icon.png" alt="">MOCHI</a>
-    <nav class="links" aria-label="Sections"><a href="#how">How it works</a><a href="#egg">The egg</a><a href="#download">Download</a><a href="#plus">Plus</a><a href="#faq">FAQ</a></nav>
+    <nav class="links" aria-label="Sections"><a href="#how">How it works</a><a href="#camera">Camera</a><a href="#egg">The egg</a><a href="#download">Download</a><a href="#plus">Plus</a><a href="#faq">FAQ</a></nav>
     <a class="btn primary small" href="#download">Get Mochi</a>
   </div>
 </header>
@@ -172,6 +193,31 @@
       <div class="card feat"><div class="ic" style="background:var(--blue)">💻</div><h3>It tracks for you</h3><p>Screen time, coding, YouTube and games on your computer, all counted by themselves. Log the rest (cigarettes, water, the gym) in one tap.</p></div>
       <div class="card feat"><div class="ic" style="background:var(--pink)">💜</div><h3>Mochi reacts</h3><p>His hearts, mood and looks follow your real day. Dress him up with dozens of hats, outfits and places.</p></div>
       <div class="card feat"><div class="ic" style="background:var(--green)">👥</div><h3>Friends keep you honest</h3><p>See your friends' Mochis, poke them and send love. You choose exactly what they can see about you.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="camera">
+  <div class="wrap">
+    <h2 class="sec">The camera, honestly</h2>
+    <p class="sub">Mochi can notice when you smoke, using your webcam. That's a big thing to trust an app with, so here's exactly how it works.</p>
+    <div class="card cam">
+      <div class="flow">
+        <div class="step"><div class="ic">📷</div><span class="n">STEP 1</span><b>Your webcam takes a frame</b><span>Only while the detector is on, and only if someone's in front of it.</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="step"><div class="ic">💻</div><span class="n">STEP 2</span><b>Checked on your computer</b><span>A small AI model looks around your face and hands for a cigarette, in your computer's memory.</span></div>
+        <div class="arrow" aria-hidden="true">→</div>
+        <div class="step"><div class="ic">🗑️</div><span class="n">STEP 3</span><b>Thrown away right after</b><span>The frame is gone a moment later. If it thinks you're smoking, Mochi just asks you.</span></div>
+      </div>
+      <div class="never" aria-label="What never happens"><span>No video recorded</span><span>Nothing uploaded</span><span>Friends never see it</span><span>I never see it</span><span>No internet needed for it</span></div>
+      <ul class="promises">
+        <li><b>Off until you turn it on.</b> It's a switch in Settings ("Use the webcam detector"), and the app works fine without it.</li>
+        <li><b>Nothing counts until you say so.</b> It only asks "cigarette or joint?". Answer "Neither" and nothing is logged.</li>
+        <li><b>Pause it any time</b> from Home, or turn it off for good. Your webcam's light shows when it's on.</li>
+        <li><b>No photos are kept.</b> Saving training photos (to teach it your own setup) is off, and only you can turn it on. Even then they stay in Mochi's folder on your computer, and you can delete them.</li>
+        <li><b>Your computer asks you first.</b> macOS and Windows only let Mochi use the camera after you allow it.</li>
+        <li><b>You can check the code.</b> Mochi's code is public on <a href="https://github.com/FiladelfioLeonardi/LazyTrack/blob/main/lazytrack/smoke.py">GitHub</a>, so anyone can see what the camera part does.</li>
+      </ul>
     </div>
   </div>
 </section>
@@ -263,7 +309,7 @@
   <div class="wrap faq">
     <h2 class="sec">Questions</h2>
     <details class="card"><summary>Where does my data go?</summary><p>Your tracking data stays on your computer. Only what you choose to share with friends (like your Mochi's look and the numbers you picked) goes to the friends server. More in the <a href="privacy.html">privacy policy</a>.</p></details>
-    <details class="card"><summary>Does it watch my screen?</summary><p>It only notices which app or website is in front, never what's on it. The optional smoking detector uses your camera only on your computer, and only if you turn it on.</p></details>
+    <details class="card"><summary>Does it watch my screen?</summary><p>It only notices which app or website is in front, never what's on it. The optional smoking detector is explained in <a href="#camera">The camera, honestly</a>: it runs only on your computer, only if you turn it on.</p></details>
     <details class="card"><summary>Can Mochi die?</summary><p>His hearts drop on bad days, and yes, he can run out. Then a baby hatches and you start a new generation. Good days, meals on time and your friends keep him going.</p></details>
     <details class="card"><summary>How do I unlock Plus?</summary><p>Buy Plus, and you get a license key by email right away. In Mochi, open Settings → Account, paste the key and press Unlock. One key works on up to 3 computers.</p></details>
     <details class="card"><summary>When can I get the egg?</summary><p>The Kickstarter launches once the egg is ready. Join the waitlist above and you'll get one email when it goes live.</p></details>
