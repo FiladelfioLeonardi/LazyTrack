@@ -19,8 +19,8 @@ from . import db
 log = logging.getLogger(__name__)
 
 # Fill these in once the Lemon Squeezy product exists. Empty checkout = the buy button says "coming soon".
-CHECKOUT_URL = ""
-STORE_ID = 0          # 0 = accept keys from any store (set it so keys from other shops don't work)
+CHECKOUT_URL = "https://mochipage.lemonsqueezy.com/checkout/buy/173b5880-15c9-4f38-8c9b-71cd0030e2a8"
+STORE_ID = 501362   # only keys from this shop unlock Plus
 
 API = "https://api.lemonsqueezy.com/v1/licenses/"
 GRACE = 14 * 86400    # offline grace after the last good check
