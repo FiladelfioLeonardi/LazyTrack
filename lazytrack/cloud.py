@@ -254,6 +254,11 @@ def _rhythm() -> tuple:
 
 def push_card(card: dict) -> bool:
     """Upload your card. Skipped if nothing changed and it went up less than 2 minutes ago."""
+    try:   # the ⭐ next to your name: set here from your real license, not by the page
+        from . import plus
+        card["plus"] = bool(plus.active())
+    except Exception:
+        card.pop("plus", None)
     db.kv_set("cloud_last_card", json.dumps(card, sort_keys=True))
     card = _with_now(card)
     body = json.dumps(card, sort_keys=True)

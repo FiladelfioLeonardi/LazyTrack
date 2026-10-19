@@ -627,6 +627,9 @@
             background: var(--card); color: var(--ink); font: 700 14px/1.15 var(--body); text-align: left; cursor: pointer; }
   .wrplus { position: absolute; right: -6px; top: -6px; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 0 #fff); }
   .plusperks { margin: 6px 0 14px; padding-left: 20px; } .plusperks li { margin-bottom: 4px; }
+  .fplus { font-size: .9em; filter: drop-shadow(0 1px 0 rgba(0,0,0,.25)); }
+  .founder { margin-top: 14px; padding: 14px 16px; border: 3px dashed var(--line); border-radius: 14px; background: var(--soft); }
+  .founder b { display: block; margin-bottom: 2px; }
   .pluson { display: inline-block; padding: 3px 10px; border: 2px solid var(--line); border-radius: 8px; background: var(--yellow); color: #1d1b20; font-weight: 800; }
   .writem .wrscene { position: relative; width: 46px; height: 46px; border: 2px solid var(--line); border-radius: 9px; background-color: #fff; background-size: cover; display: grid; place-items: center; }
   .writem .wrscene .pet { grid-template-columns: repeat(16, 2.5px); grid-auto-rows: 2.5px; }
@@ -3443,7 +3446,7 @@ const plusCard = {
   draw() {
     const box = $("plusBox"); if (!box) return;
     $("sPlus").hidden = IN_APP;
-    const perks = `<ul class="plusperks"><li>The ⭐ Plus corner of the wardrobe: new looks, hats and outfits</li><li>New pieces every month</li><li>You keep a student's project alive ♥</li></ul>`;
+    const perks = `<ul class="plusperks"><li>The ⭐ Plus corner of the wardrobe: new looks, hats and outfits</li><li>A ⭐ next to your name that your friends see</li><li>New pieces every month</li><li>You keep a student's project alive ♥</li></ul>`;
     if (PLUS.active) {
       box.innerHTML = `<p><span class="pluson">⭐ PLUS IS ON</span> Thank you! Key ${esc(PLUS.key || "")}.</p>${perks}
         <div class="actions"><button type="button" class="btn" id="plusOff">Move Plus to another computer</button></div>
@@ -3451,7 +3454,9 @@ const plusCard = {
       return;
     }
     box.innerHTML = `<p class="sub">Everything you have now stays free. Plus adds extra pieces for Mochi and keeps the app going.</p>${perks}
-      <div class="actions">${PLUS.checkout ? `<a class="btn primary" href="${esc(PLUS.checkout)}" target="_blank" rel="noopener">Get Plus</a>` : `<span class="note">Plus is coming soon.</span>`}</div>
+      <div class="actions">${PLUS.checkout ? `<a class="btn primary" href="${esc(PLUS.checkout)}" target="_blank" rel="noopener">Get Plus · €3.99/month</a>` : `<span class="note">Plus is coming soon.</span>`}</div>
+      ${PLUS.founder ? `<div class="founder"><b>🥚 Founder pack: Plus forever, pay once</b><span class="hint">Only for the first 100 supporters. One key, works forever, no subscription.</span>
+        <div class="actions" style="margin-top:10px"><a class="btn" href="${esc(PLUS.founder)}" target="_blank" rel="noopener">Become a Founder</a></div></div>` : ""}
       <div class="field" style="margin-top:14px"><label for="plusKey">Already have a key?</label>
         <div class="actions"><input type="text" id="plusKey" autocomplete="off" spellcheck="false" placeholder="Paste your license key" style="flex:1 1 220px">
         <button type="button" class="btn" id="plusGo">Unlock</button></div>
@@ -4116,7 +4121,7 @@ function fcardHTML(p, opts = {}) {
     <div class="ftop">${(() => { const fp = c && c.pet || {}, bg = placeURL(fp.place || LOOK_DEFAULT.place, {tier: stale ? "okay" : tier, soft: softColor(fp)});
       const fx = friendFx(c, stale), motion = fx.drunk ? "drunk" + fx.drunk : fx.high ? "high" + fx.high : "bob";
       return `<div class="fpet scene" style="background-image:url(${bg})"><div class="pet ${calm ? motion : ""}">${mochiCells(fp, fx.mood, stale ? "okay" : tier, false, {high: fx.high, drunk: fx.drunk})}</div></div>`; })()}
-      <div class="fname"><b>${esc(p.display_name)}</b><span>@${esc(p.username)}</span>${c && c.gen ? `<span class="fgen">Mochi #${c.gen} · ${c.age || 0}d old · record ${Math.max(c.best || 0, c.age || 0)}d</span>` : ""}
+      <div class="fname"><b>${esc(p.display_name)}${c && c.plus ? ` <span class="fplus" title="Supports Mochi with Plus">⭐</span>` : ""}</b><span>@${esc(p.username)}</span>${c && c.gen ? `<span class="fgen">Mochi #${c.gen} · ${c.age || 0}d old · record ${Math.max(c.best || 0, c.age || 0)}d</span>` : ""}
         ${(() => { const fx = friendFx(c, stale), tags = [fx.drunk && `🍺 ${["", "TIPSY", "DRUNK", "WASTED"][fx.drunk]}`, fx.high && `🌿 ${["", "BUZZED", "HIGH", "SO HIGH"][fx.high]}`, fx.coughy && "🚬 COUGHING"].filter(Boolean);
           return tags.length ? `<span class="fstate">${tags.map(t => `<span>${t}</span>`).join("")}</span>` : ""; })()}</div></div>
     ${c ? `<div class="hprow"><span class="hpl">HP</span><span class="hpbar">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>

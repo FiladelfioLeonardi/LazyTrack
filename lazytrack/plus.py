@@ -20,6 +20,7 @@ log = logging.getLogger(__name__)
 
 # Fill these in once the Lemon Squeezy product exists. Empty checkout = the buy button says "coming soon".
 CHECKOUT_URL = "https://mochipage.lemonsqueezy.com/checkout/buy/173b5880-15c9-4f38-8c9b-71cd0030e2a8"
+FOUNDER_URL = ""      # the one-time "Founder" pack (Plus forever); empty = not offered
 STORE_ID = 501362   # only keys from this shop unlock Plus
 
 API = "https://api.lemonsqueezy.com/v1/licenses/"
@@ -61,7 +62,7 @@ def status() -> dict:
     active = bool(key) and time.time() - ok_at < GRACE
     if key and time.time() - ok_at > RECHECK:
         threading.Thread(target=_recheck, daemon=True).start()
-    return {"active": active, "key": _mask(key), "checkout": CHECKOUT_URL,
+    return {"active": active, "key": _mask(key), "checkout": CHECKOUT_URL, "founder": FOUNDER_URL,
             "checked": ok_at or None, "problem": db.kv_get("plus_problem") or ""}
 
 
