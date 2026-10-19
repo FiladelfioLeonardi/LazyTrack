@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LazyTrack: a pet that lives off your real habits</title>
+<meta name="description" content="LazyTrack tracks your screen time and habits, and Mochi, your pixel pet, lives it with you. Free for Mac and Windows. The Mochi Egg is coming to Kickstarter.">
+<meta property="og:title" content="LazyTrack: a pet that lives off your real habits">
+<meta property="og:description" content="Smoke and he coughs. Hit the gym and he glows. Free for Mac and Windows.">
+<meta property="og:image" content="icon.png">
+<link rel="icon" href="icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #efeaff; --card: #ffffff; --soft: #f4f1ff; --ink: #1d1b20; --ink-2: #4e4858; --line: #1d1b20;
+    --yellow: #ffe45e; --lilac: #c9b8ff; --pink: #ff8fb1; --green: #9be8a9; --blue: #7ad3ff; --orange: #ffd28a;
+    --pet: #b9a7ff; --shadow: 4px 4px 0 var(--line);
+    --pixel: "Silkscreen", ui-monospace, monospace; --body: "Rubik", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #17141f; --card: #241f30; --soft: #2e2840; --ink: #f3eefc; --ink-2: #c6bfd6; --line: #000; color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 var(--body); overflow-x: hidden; }
+  a { color: inherit; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+  .px { font-family: var(--pixel); letter-spacing: .02em; }
+  .card { background: var(--card); border: 3px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+  .btn { display: inline-flex; align-items: center; gap: 8px; height: 52px; padding: 0 22px; border: 3px solid var(--line); border-radius: 14px;
+         background: var(--card); color: var(--ink); box-shadow: 3px 3px 0 var(--line); font: 800 17px var(--body); text-decoration: none; cursor: pointer;
+         transition: transform .08s, box-shadow .08s; }
+  .btn:active { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
+  .btn.primary { background: var(--yellow); color: #1d1b20; }
+  .btn small { font-weight: 500; opacity: .75; }
+
+  header.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 0; }
+  .brand { display: inline-flex; align-items: center; gap: 10px; font: 700 20px var(--pixel); text-decoration: none; }
+  .brand img { width: 36px; height: 36px; border-radius: 10px; border: 3px solid var(--line); }
+  nav.links { display: flex; gap: 18px; font-weight: 700; font-size: 15px; }
+  nav.links a { text-decoration: none; }
+  nav.links a:hover { text-decoration: underline; text-underline-offset: 4px; }
+  @media (max-width: 720px) { nav.links { display: none; } }
+
+  .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 32px; align-items: center; padding: 40px 0 56px; }
+  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; padding-top: 16px; } }
+  .hero h1 { font: 800 clamp(36px, 6vw, 58px)/1.05 var(--body); margin: 0 0 16px; letter-spacing: -.02em; }
+  .hero h1 mark { background: var(--yellow); color: #1d1b20; padding: 0 8px; border-radius: 10px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+  .hero p.lead { font-size: 19px; color: var(--ink-2); margin: 0 0 26px; max-width: 34em; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+  .free { margin-top: 14px; font-size: 14px; color: var(--ink-2); }
+
+  .stage { position: relative; aspect-ratio: 1; max-width: 420px; justify-self: center; width: 100%; border-radius: 26px; overflow: hidden;
+           background: linear-gradient(#bfe3ff 0 62%, #9be8a9 62% 100%); border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--line); }
+  .sun { position: absolute; top: 9%; right: 12%; width: 13%; aspect-ratio: 1; background: var(--yellow); border: 3px solid var(--line); }
+  .cloud { position: absolute; height: 6%; background: #fff; border: 3px solid var(--line); animation: drift 22s linear infinite; }
+  .cloud.a { top: 14%; left: -30%; width: 26%; } .cloud.b { top: 26%; left: -40%; width: 18%; animation-duration: 30s; animation-delay: -12s; }
+  @keyframes drift { to { left: 110%; } }
+  .mochi { position: absolute; left: 50%; bottom: 30%; width: 52%; transform: translateX(-50%); animation: bob 2.4s ease-in-out infinite; image-rendering: pixelated; }
+  @keyframes bob { 50% { transform: translate(-50%, -5%); } }
+  .bubble { position: absolute; left: 50%; top: 9%; transform: translateX(-50%); background: #fff; color: #1d1b20; border: 3px solid var(--line); border-radius: 12px;
+            padding: 6px 12px; font: 700 13px var(--pixel); white-space: nowrap; }
+  .bubble::after { content: ""; position: absolute; left: 50%; bottom: -10px; width: 14px; height: 14px; background: #fff; border-right: 3px solid var(--line);
+                   border-bottom: 3px solid var(--line); transform: translateX(-50%) rotate(45deg); }
+  .hearts { position: absolute; left: 6%; bottom: 6%; display: flex; gap: 6px; padding: 8px 10px; background: rgba(29,27,32,.8); border: 3px solid var(--line); border-radius: 8px; }
+  .hearts i { width: 18px; height: 16px; background: #e0303a; clip-path: polygon(0 25%, 25% 0, 50% 20%, 75% 0, 100% 25%, 100% 50%, 50% 100%, 0 50%); }
+  .hearts i.off { background: #5a5266; }
+
+  section { padding: 48px 0; }
+  h2.sec { font: 700 clamp(24px, 4vw, 34px) var(--pixel); margin: 0 0 8px; }
+  p.sub { color: var(--ink-2); margin: 0 0 26px; font-size: 18px; max-width: 40em; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  @media (max-width: 860px) { .grid3 { grid-template-columns: 1fr; } }
+  .feat { padding: 22px; }
+  .feat .ic { width: 52px; height: 52px; display: grid; place-items: center; border: 3px solid var(--line); border-radius: 14px; font-size: 26px; margin-bottom: 14px; }
+  .feat h3 { margin: 0 0 6px; font-size: 20px; } .feat p { margin: 0; color: var(--ink-2); }
+
+  .egg { display: grid; grid-template-columns: .8fr 1.2fr; gap: 32px; align-items: center; padding: 30px; }
+  @media (max-width: 860px) { .egg { grid-template-columns: 1fr; padding: 22px; } }
+  .eggshell { width: 220px; height: 272px; margin: 0 auto; position: relative; background: #fffdf4; border: 4px solid var(--line); border-radius: 110px 110px 92px 92px; box-shadow: 6px 6px 0 var(--line); }
+  .eggscreen { position: absolute; left: 46px; top: 52px; width: 128px; height: 150px; border: 4px solid #1d1b20; border-radius: 10px; overflow: hidden; background: linear-gradient(#bfe3ff 0 64%, #9be8a9 64%); }
+  .eggscreen svg { position: absolute; left: 22px; bottom: 26px; width: 84px; }
+  .eggbtns { position: absolute; left: 0; right: 0; bottom: 26px; display: flex; justify-content: center; gap: 20px; }
+  .eggbtns i { width: 20px; height: 20px; border-radius: 50%; background: #1d1b20; }
+  .badge { display: inline-block; padding: 4px 12px; border: 3px solid var(--line); border-radius: 10px; background: var(--pink); color: #1d1b20; font: 700 13px var(--pixel); margin-bottom: 12px; }
+  ul.ticks { list-style: none; padding: 0; margin: 0 0 22px; display: grid; gap: 8px; }
+  ul.ticks li { padding-left: 30px; position: relative; } ul.ticks li::before { content: "✦"; position: absolute; left: 4px; color: #8b6ff0; }
+
+  form.join { display: flex; gap: 10px; flex-wrap: wrap; }
+  form.join input { flex: 1 1 220px; height: 52px; padding: 0 16px; border: 3px solid var(--line); border-radius: 14px; font: 500 17px var(--body); background: var(--soft); color: var(--ink); }
+  form.join input:focus { outline: 3px solid #2a78d6; outline-offset: 2px; }
+  .msg { min-height: 24px; margin-top: 10px; font-weight: 700; }
+  .msg.ok { color: #157a3f; } .msg.err { color: #c2410c; }
+  @media (prefers-color-scheme: dark) { .msg.ok { color: #5fe08f; } .msg.err { color: #ff8a6b; } }
+
+  .dl { display: grid; margin-bottom: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  @media (max-width: 760px) { .dl { grid-template-columns: 1fr; } }
+  .dl .card { padding: 22px; }
+  .dl h3 { margin: 0 0 4px; font-size: 22px; }
+  .steps { margin: 16px 0 0; padding-left: 22px; color: var(--ink-2); } .steps li { margin-bottom: 6px; }
+  .note { margin-top: 18px; padding: 14px 18px; border: 3px dashed var(--line); border-radius: 14px; background: var(--soft); color: var(--ink-2); font-size: 15px; }
+
+  .plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; max-width: 820px; }
+  @media (max-width: 760px) { .plans { grid-template-columns: 1fr; } }
+  .plan { padding: 24px; } .plan.plus { background: var(--yellow); color: #1d1b20; }
+  .plan .price { font: 800 34px var(--body); margin: 6px 0 4px; } .plan .price small { font-size: 16px; font-weight: 500; }
+  .plan ul { margin: 14px 0 20px; padding-left: 20px; } .plan li { margin-bottom: 6px; }
+  .plan.plus .btn { background: #fff; color: #1d1b20; }
+
+  .faq details { padding: 16px 20px; margin-bottom: 12px; }
+  .faq summary { cursor: pointer; font-weight: 800; font-size: 18px; } .faq p { margin: 10px 0 0; color: var(--ink-2); }
+  footer { padding: 40px 0 60px; color: var(--ink-2); font-size: 15px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#"><img src="icon.png" alt="">LAZYTRACK</a>
+    <nav class="links" aria-label="Sections"><a href="#how">How it works</a><a href="#egg">The egg</a><a href="#download">Download</a><a href="#plus">Plus</a></nav>
+    <a class="btn primary" href="#download" style="height:44px;padding:0 16px;font-size:15px">Get it free</a>
+  </header>
+
+  <div class="hero">
+    <div>
+      <h1>A pet that lives off your <mark>real habits</mark>.</h1>
+      <p class="lead">LazyTrack quietly tracks your screen time, your habits and your friends, and Mochi lives it with you. Smoke and he coughs. Doomscroll and he gets sad. Hit the gym and he glows.</p>
+      <div class="ctas">
+        <a class="btn primary" href="#download">Download free <small>Mac · Windows</small></a>
+        <a class="btn" href="#egg">Join the egg waitlist</a>
+      </div>
+      <p class="free">Free forever. No ads. Your data stays on your computer.</p>
+    </div>
+    <div class="stage" aria-label="Mochi, a lavender pixel pet, bouncing in front of a sunny sky">
+      <div class="sun"></div><div class="cloud a"></div><div class="cloud b"></div>
+      <div class="bubble" id="bubble">CODING FOR 25M</div>
+      <svg class="mochi" viewBox="0 0 16 16" shape-rendering="crispEdges" id="mochi" aria-hidden="true"></svg>
+      <div class="hearts" aria-label="4 and a half hearts"><i></i><i></i><i></i><i></i><i class="off"></i></div>
+    </div>
+  </div>
+</div>
+
+<section id="how">
+  <div class="wrap">
+    <h2 class="sec">How it works</h2>
+    <p class="sub">Most habit apps wait for you to open them. LazyTrack notices on its own, and Mochi makes you care.</p>
+    <div class="grid3">
+      <div class="card feat"><div class="ic" style="background:var(--blue)">💻</div><h3>It tracks for you</h3><p>Screen time, coding, YouTube and games on your computer, all counted by themselves. Log the rest (cigarettes, water, the gym) in one tap.</p></div>
+      <div class="card feat"><div class="ic" style="background:var(--pink)">💜</div><h3>Mochi reacts</h3><p>Good days fill his hearts, bad ones drain them. He gets hungry three times a day, sleeps when you sleep, and does something legendary at 100 HP.</p></div>
+      <div class="card feat"><div class="ic" style="background:var(--green)">👥</div><h3>Friends keep you honest</h3><p>See your friends' Mochis, poke them, send love. You choose exactly what they can see about you.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="egg">
+  <div class="wrap">
+    <div class="card egg">
+      <div class="eggshell" aria-label="The Mochi Egg: a cream egg-shaped device with a small screen and three buttons">
+        <div class="eggscreen"><svg viewBox="0 0 16 16" shape-rendering="crispEdges" id="mochi2" aria-hidden="true"></svg></div>
+        <div class="eggbtns"><i></i><i></i><i></i></div>
+      </div>
+      <div>
+        <span class="badge">COMING TO KICKSTARTER</span>
+        <h2 class="sec">Mochi in your pocket</h2>
+        <p class="sub" style="margin-bottom:16px">The Mochi Egg is a little handheld with a colour screen that shows your Mochi, live, wherever you are.</p>
+        <ul class="ticks">
+          <li>Log habits and feed Mochi with three buttons</li>
+          <li>Friends' pokes buzz in your pocket</li>
+          <li>Stays online through WiFi, or through your phone</li>
+          <li>He sings little old-handheld songs</li>
+        </ul>
+        <form class="join" data-wants="egg"><input type="email" name="email" required placeholder="you@example.com" aria-label="Your email"><button class="btn primary" type="submit">Notify me</button></form>
+        <div class="msg" role="status"></div>
+        <p class="free" style="margin-top:4px">One email when the Kickstarter goes live, with the early-bird price. Nothing else.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="download">
+  <div class="wrap">
+    <h2 class="sec">Download LazyTrack</h2>
+    <p class="sub">Free for Mac and Windows. It installs everything it needs, starts with your computer and updates itself.</p>
+    <div class="dl">
+      <div class="card">
+        <h3>Windows</h3><p class="free" style="margin:0 0 14px">Windows 10 and 11</p>
+        <a class="btn primary" href="https://github.com/FiladelfioLeonardi/LazyTrack/releases/latest/download/LazyTrack-Setup.exe">Download for Windows</a>
+        <ol class="steps">
+          <li>Open <b>LazyTrack-Setup.exe</b>.</li>
+          <li>If Windows says "Windows protected your PC": click <b>More info</b>, then <b>Run anyway</b>.</li>
+          <li>LazyTrack opens when it's done. Make your account and pick your habits.</li>
+        </ol>
+      </div>
+      <div class="card">
+        <h3>Mac</h3><p class="free" style="margin:0 0 14px">macOS 12 or newer, Apple silicon and Intel</p>
+        <a class="btn primary" href="https://github.com/FiladelfioLeonardi/LazyTrack/releases/latest/download/Install-LazyTrack-Mac.zip">Download for Mac</a>
+        <ol class="steps">
+          <li>Unzip it, then <b>right-click Install LazyTrack → Open</b>.</li>
+          <li>On macOS 15: open it once, then System Settings → Privacy &amp; Security → <b>Open Anyway</b>.</li>
+          <li>LazyTrack opens when it's done. Make your account and pick your habits.</li>
+        </ol>
+      </div>
+    </div>
+    <div class="note"><b>Why the warning?</b> LazyTrack is made by one student, and the developer certificates that remove it cost money every year. They're first on the list once Plus pays for them. The app is safe: it only talks to its own friends server, and your tracking data never leaves your computer.</div>
+    <div class="note"><b>On your phone:</b> in LazyTrack on your computer, open Settings → Phone and scan the code. Add it to your home screen and it works like an app.</div>
+  </div>
+</section>
+
+<section id="plus">
+  <div class="wrap">
+    <h2 class="sec">Free, or Plus</h2>
+    <p class="sub">Everything that matters is free. Plus is for people who want more of Mochi, and it keeps the project going.</p>
+    <div class="plans">
+      <div class="card plan">
+        <h3 class="px" style="margin:0">FREE</h3>
+        <div class="price">€0</div>
+        <ul><li>Automatic screen time and habit tracking</li><li>Mochi, his moods, meals and sleep</li><li>Friends, pokes and messages</li><li>The Mochi Egg and the phone</li><li>The last 30 days of history</li></ul>
+        <a class="btn" href="#download">Download free</a>
+      </div>
+      <div class="card plan plus">
+        <h3 class="px" style="margin:0">PLUS</h3>
+        <div class="price">€3.99 <small>a month, or €29 a year</small></div>
+        <ul><li>Everything in Free</li><li>The whole wardrobe and every place for Mochi</li><li>Your full history and long-term charts</li><li>New outfits and songs every month</li><li>Support a student's project ♥</li></ul>
+        <a class="btn" id="plusBtn" href="#download">Get Plus in the app</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq">
+  <div class="wrap">
+    <h2 class="sec">Questions</h2>
+    <details class="card"><summary>Where does my data go?</summary><p>Your tracking data stays on your computer. Only what you choose to share with friends (like your Mochi and today's numbers you picked) goes to the friends server.</p></details>
+    <details class="card"><summary>Does it watch my screen?</summary><p>It reads which app or website is in front, never what's on it. The optional smoking detector uses your camera only on your computer, and only if you turn it on.</p></details>
+    <details class="card"><summary>Can Mochi die?</summary><p>His hearts drop on bad days, but there's always a way back. Good days, meals on time and your friends bring him back up.</p></details>
+    <details class="card"><summary>When can I get the egg?</summary><p>The Kickstarter launches once the egg is ready. Join the waitlist above and you'll get one email when it goes live, with the early-bird price.</p></details>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <p>Made by one student, with a lot of help from Mochi. <a href="https://github.com/FiladelfioLeonardi/LazyTrack">LazyTrack on GitHub</a></p>
+    <form class="join" data-wants="app" style="max-width:520px;margin:18px auto 0"><input type="email" name="email" required placeholder="Get news about LazyTrack" aria-label="Your email"><button class="btn" type="submit">Sign up</button></form>
+    <div class="msg" role="status"></div>
+  </div>
+</footer>
+
+<script>
+// Mochi, the plain bean (same pixels as the egg's first screen)
+const BEAN = ["................","................","................","................","....11111111....","...1222222221...","..122222222221..","..122122221221..","..122122221221..","..133222222331..","..122212212221..","..122221122221..","..142222222241..","...1422222241...","....121..121....","....111..111...."];
+const COLORS = {"1": "#1d1b20", "2": "#b9a7ff", "3": "#ff8fb1", "4": "#9686d6"};
+function drawBean(svg, blink) {
+  let out = "";
+  BEAN.forEach((row, y) => [...row].forEach((ch, x) => {
+    let c = ch;
+    if (blink && (y === 7 || y === 8) && c === "1" && x > 2 && x < 13) c = y === 8 ? "1" : "2";   // closed eyes: one line
+    if (c !== ".") out += `<rect x="${x}" y="${y}" width="1.02" height="1.02" fill="${COLORS[c]}"/>`;
+  }));
+  svg.innerHTML = out;
+}
+const m1 = document.getElementById("mochi"), m2 = document.getElementById("mochi2");
+drawBean(m1, false); drawBean(m2, false);
+setInterval(() => { drawBean(m1, true); drawBean(m2, true); setTimeout(() => { drawBean(m1, false); drawBean(m2, false); }, 160); }, 3800);
+const SAYS = ["CODING FOR 25M", "HUNGRY! FEED ME", "GYM DAY! +6 HP", "MARK POKED YOU", "ZZZ..."];
+let s = 0; setInterval(() => { s = (s + 1) % SAYS.length; document.getElementById("bubble").textContent = SAYS[s]; }, 2600);
+
+// the waitlist: emails go to LazyTrack's friends server (anyone can add one, nobody can read the list)
+const SUPA = "https://zmrzumltciteeznzjwaw.supabase.co", KEY = "sb_publishable_mmX_kRPufTOQk1M4fmjjFg_HenbqicQ";
+document.querySelectorAll("form.join").forEach(f => f.addEventListener("submit", async e => {
+  e.preventDefault();
+  const email = f.email.value.trim().toLowerCase(), msg = f.nextElementSibling, btn = f.querySelector("button");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { msg.className = "msg err"; msg.textContent = "That email doesn't look right."; return; }
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${SUPA}/rest/v1/waitlist`, {method: "POST", headers: {apikey: KEY, "Content-Type": "application/json", Prefer: "return=minimal"},
+      body: JSON.stringify({email, wants: f.dataset.wants, lang: (navigator.language || "").slice(0, 10)})});
+    if (r.ok || r.status === 409) { msg.className = "msg ok"; msg.textContent = r.status === 409 ? "You're already on the list ♥" : "You're on the list! Mochi says thanks ♥"; f.reset(); }
+    else { msg.className = "msg err"; msg.textContent = "Couldn't sign you up right now. Try again in a minute."; }
+  } catch (_) { msg.className = "msg err"; msg.textContent = "Couldn't reach the server. Check your internet."; }
+  btn.disabled = false;
+}));
+</script>
+</body>
+</html>
