@@ -1534,12 +1534,11 @@ void rpgBox(int x, int y, int w, int h) {   // cream, a thick dark edge and a th
   gfx->drawRect(x + 4, y + 4, w - 8, h - 8, INK);
 }
 
-int menuRowY(int i) { return MB_Y + 11 + i * ROW_H; }
-
-int menuSlide = 0;   // while the choices box slides in from the right: how far it still has to go (px)
+int menuSlide = 0;   // while the choices box drops in from the top: how far above its place it still is (px, <= 0)
+int menuRowY(int i) { return MB_Y + menuSlide + 11 + i * ROW_H; }
 
 void menuArrow(int i, uint16_t col) {
-  int y = menuRowY(i) + 7, x = MB_X + menuSlide;
+  int y = menuRowY(i) + 7, x = MB_X;
   gfx->fillTriangle(x + 10, y - 6, x + 10, y + 6, x + 17, y, col);
 }
 
@@ -1573,8 +1572,8 @@ void menuDesc() {   // the bottom box, text wrapped to 3 lines of 16
 
 void drawScreen();
 void menuBoxes() {   // the menu itself: the choices box and the line at the bottom
-  int x = MB_X + menuSlide;
-  rpgBox(x, MB_Y, MB_W, MB_H);
+  int x = MB_X;
+  rpgBox(x, MB_Y + menuSlide, MB_W, MB_H);
   for (int i = 0; i < MENU_ROWS; i++) text(x + 22, menuRowY(i), i < MENU_N ? MENU_NAMES[i] : "EXIT", 2, i < MENU_N ? INK : GREY);
   menuArrow(menuSel, INK);
   if (!menuSlide) menuDesc();
@@ -1588,9 +1587,9 @@ void drawMenu() {   // the menu floats over Home: Home underneath, the boxes on 
 }
 
 void pushRows(int y0, int y1);
-void slideMenu(bool in) {   // the choices box slides in from the right over Home (only its rows are redrawn)
-  static const int IN[] = {96, 60, 32, 12, 0}, OUT[] = {12, 40, 76, 116, 130};
-  for (int k = 0; k < 5; k++) { menuSlide = in ? IN[k] : OUT[k]; pushRows(MB_Y, MB_Y + MB_H + 1); }
+void slideMenu(bool in) {   // the choices box drops in from the top over Home (only its rows are redrawn)
+  static const int IN[] = {-110, -66, -32, -10, 0}, OUT[] = {-10, -34, -70, -116, -170};
+  for (int k = 0; k < 5; k++) { menuSlide = in ? IN[k] : OUT[k]; pushRows(0, MB_Y + MB_H + 1); }
   menuSlide = 0;
 }
 
@@ -1984,6 +1983,7 @@ void setup() {
   TDARK = rgb(0x3d3456); TLINE = rgb(0x2b2246); TSUB = rgb(0xc9b8ff);
   stage = (uint16_t *)malloc(SW * STAGE_ROWS * 2);
   banded = band.begin(0);   // before WiFi takes its share of memory
+  lcd->setTextWrap(false); band.setTextWrap(false);   // text past the edge is cut, never wrapped to the left side
   scrollSetup();
   Serial.printf("screen buffer: %d rows per band\n", banded ? band.bh : 0);
   prefs.begin("lazytrack", false);
