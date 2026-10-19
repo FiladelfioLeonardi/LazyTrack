@@ -625,7 +625,10 @@
   .writems { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
   .writem { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center; padding: 6px 8px; border: 3px solid var(--line); border-radius: 14px;
             background: var(--card); color: var(--ink); font: 700 14px/1.15 var(--body); text-align: left; cursor: pointer; }
-  .writem .wrscene { width: 46px; height: 46px; border: 2px solid var(--line); border-radius: 9px; background-color: #fff; background-size: cover; display: grid; place-items: center; }
+  .wrplus { position: absolute; right: -6px; top: -6px; font-size: 13px; line-height: 1; filter: drop-shadow(0 1px 0 #fff); }
+  .plusperks { margin: 6px 0 14px; padding-left: 20px; } .plusperks li { margin-bottom: 4px; }
+  .pluson { display: inline-block; padding: 3px 10px; border: 2px solid var(--line); border-radius: 8px; background: var(--yellow); color: #1d1b20; font-weight: 800; }
+  .writem .wrscene { position: relative; width: 46px; height: 46px; border: 2px solid var(--line); border-radius: 9px; background-color: #fff; background-size: cover; display: grid; place-items: center; }
   .writem .wrscene .pet { grid-template-columns: repeat(16, 2.5px); grid-auto-rows: 2.5px; }
   .writem > span:last-child { min-width: 0; overflow-wrap: anywhere; }
   .writem[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 2px 2px 0 var(--line); }
@@ -1575,6 +1578,10 @@ applyTheme();
         <p class="sub">Everything about Mochi, HP and targets, tracking, the camera, friends, your phone, updates and your data.</p>
         <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a><button type="button" class="btn" data-tour>🧭 Start the tutorial</button></div></section>
       <section class="card pad" id="sAccount" data-cat="account"></section>
+      <section class="card pad" id="sPlus" data-cat="account" hidden>
+        <h2>⭐ LazyTrack Plus</h2>
+        <div id="plusBox"><p class="note">Loading…</p></div>
+      </section>
 
       <section class="card pad" data-cat="habits">
         <h2>Habits</h2>
@@ -1789,6 +1796,8 @@ const TOKEN = new URLSearchParams(location.search).get("token") || "";
 // inside the LazyTrack iPhone app: show the buttons that open its phone screens (egg Bluetooth, gym, Health, food)
 if (/LazyTrackApp\//.test(navigator.userAgent)) document.querySelectorAll(".inapp").forEach(el => { el.hidden = false; });
 const H = TOKEN ? {"X-Token": TOKEN} : {};
+const IN_APP = /LazyTrackApp\//.test(navigator.userAgent);
+let PLUS = {active: false};   // LazyTrack Plus (/api/plus); unlocks the ⭐ wardrobe corner
 
 // ---------------------------------------------------------------- vocabulary
 // The habits come from the server (/api/habits): each person picks their own in the setup.
@@ -2254,6 +2263,22 @@ Object.assign(MOCHI.looks, {
   witch: {n: "Cute witch", g: 1, look: {body: "blob", skin: "mint", eyes: "lashes", mouth: "gloss", hat: "wizard", hatColor: "#2b2733", outfit: "dress", outfitColor: "#6250d6", held: "wand"}},
   cheerleader: {n: "Cheerleader", g: 1, look: {body: "blob", skin: "sun", eyes: "happy", hat: "pigtails", outfit: "cheer", held: "none"}},
   bobagirl: {n: "Boba girl", g: 1, look: {body: "blob", skin: "cloud", eyes: "doe", mouth: "smile", hat: "buns", outfit: "cardigan", held: "boba"}},
+});
+// ---- LazyTrack Plus (p: 1): new pieces only for Plus. Nothing that was free before became Plus.
+Object.assign(MOCHI.hats, {
+  p_party: {n: "Party hat", p: 1, tint: "#ff5aa0", rows: [".......kk.......", "......khyk......", "......khhk......", ".....khyhhk.....", ".....khhhyk.....", "....khyhhhhk....", "....kkkkkkkk...."]},
+  p_chef: {n: "Chef hat", p: 1, tint: "#ffffff", rows: ["....kk.kk.kk....", "...khhkhhkhhk...", "...khjhhhhhhk...", "....khhhhhhk....", "....kHHHHHHk....", "...kkkkkkkkkk..."]},
+  p_viking: {n: "Viking helmet", p: 1, tint: "#8a8f9c", rows: [".k............k.", "kwk..kkkkkk..kwk", "kwkkhjhhhhhhkkwk", ".kkhjhhhhhhhhkk.", "..kHHHHHHHHHHk..", "..kkkkkkkkkkkk.."]},
+});
+Object.assign(MOCHI.outfits, {
+  p_tux: {n: "Tuxedo", p: 1, tint: "#1d1b20", rows: ["hhhhhhwrrwhhhhhh", "hhhhhhwwwwhhhhhh", "HHHHHHwkkwHHHHHH"]},
+  p_robe: {n: "Royal robe", p: 1, tint: "#6250d6", rows: ["hhhhhhyyhhhhhhhh", "hjhhhhyyhhhhjhhh", "yyyyyyyyyyyyyyyy"]},
+  p_galaxy: {n: "Galaxy hoodie", p: 1, tint: "#2b2733", rows: ["hhwhhhhhhhyhhhhh", "hhhhhyhhhhhhhwhh", "hwhhhhhhwhhhhhhy"]},
+});
+Object.assign(MOCHI.looks, {
+  p_royal: {n: "Royal", p: 1, look: {body: "blob", skin: "lilac", eyes: "star", hat: "crown", outfit: "p_robe"}},
+  p_chef: {n: "Chef", p: 1, look: {body: "bear", skin: "peach", hat: "p_chef", outfit: "p_tux", mouth: "smile"}},
+  p_viking: {n: "Viking", p: 1, look: {body: "bear", skin: "choco", hat: "p_viking", outfit: "p_galaxy"}},
 });
 
 /**
@@ -3408,11 +3433,58 @@ async function loadSettings() {
   $("sUninstall").hidden = !s.uninstall_supported;    // Windows
   settingsLoaded = true;
 }
+// ---------------------------------------------------------------- LazyTrack Plus
+// A license key from Lemon Squeezy. Inside the iPhone app the card stays hidden (Apple doesn't allow buying outside the App Store).
+const plusCard = {
+  async load() {
+    try { const r = await api("/api/plus"); if (r.ok) PLUS = await r.json(); } catch (_) {}
+    this.draw();
+  },
+  draw() {
+    const box = $("plusBox"); if (!box) return;
+    $("sPlus").hidden = IN_APP;
+    const perks = `<ul class="plusperks"><li>The ⭐ Plus corner of the wardrobe: new looks, hats and outfits</li><li>New pieces every month</li><li>You keep a student's project alive ♥</li></ul>`;
+    if (PLUS.active) {
+      box.innerHTML = `<p><span class="pluson">⭐ PLUS IS ON</span> Thank you! Key ${esc(PLUS.key || "")}.</p>${perks}
+        <div class="actions"><button type="button" class="btn" id="plusOff">Move Plus to another computer</button></div>
+        <p class="hint">That frees this computer, so you can enter the same key on another one.</p>`;
+      return;
+    }
+    box.innerHTML = `<p class="sub">Everything you have now stays free. Plus adds extra pieces for Mochi and keeps LazyTrack going.</p>${perks}
+      <div class="actions">${PLUS.checkout ? `<a class="btn primary" href="${esc(PLUS.checkout)}" target="_blank" rel="noopener">Get Plus</a>` : `<span class="note">Plus is coming soon.</span>`}</div>
+      <div class="field" style="margin-top:14px"><label for="plusKey">Already have a key?</label>
+        <div class="actions"><input type="text" id="plusKey" autocomplete="off" spellcheck="false" placeholder="Paste your license key" style="flex:1 1 220px">
+        <button type="button" class="btn" id="plusGo">Unlock</button></div>
+        <p class="note" id="plusNote">${PLUS.problem ? esc(PLUS.problem) : ""}</p></div>`;
+  },
+  async activate() {
+    const key = $("plusKey").value.trim(), note = $("plusNote");
+    if (!key) { note.textContent = "Paste the key from your receipt email."; return; }
+    note.textContent = "Checking…"; $("plusGo").disabled = true;
+    try {
+      const r = await post("/api/plus/activate", {key}), j = await r.json();
+      if (!r.ok) { note.textContent = j.error || "That key didn't work."; $("plusGo").disabled = false; return; }
+      PLUS = j; this.draw(); toast("⭐ Plus is on. Thank you!", null);
+    } catch (_) { note.textContent = "Couldn't reach LazyTrack."; $("plusGo").disabled = false; }
+  },
+  async off() {
+    if (!confirm("Turn Plus off on this computer? You can enter the key again here or on another computer.")) return;
+    try { const r = await post("/api/plus/deactivate", {}); if (r.ok) PLUS = await r.json(); } catch (_) {}
+    this.draw();
+  },
+};
+document.addEventListener("click", e => {
+  if (e.target.id === "plusGo") plusCard.activate();
+  else if (e.target.id === "plusOff") plusCard.off();
+});
+document.addEventListener("keydown", e => { if (e.target.id === "plusKey" && e.key === "Enter") { e.preventDefault(); plusCard.activate(); } });
+plusCard.load();
+
 // ---------------------------------------------------------------- the wardrobe
 // the categories on the right; the stage on the left always shows the look you're making
 const WR_CATS = [["looks", "✨", "Ready-made looks"], ["girl", "🎀", "Girl styles"], ["body", "🫧", "Body"], ["skin", "🎨", "Color"], ["eyes", "👀", "Eyes"], ["mouth", "👄", "Mouth"],
-                 ["hat", "🎩", "Head"], ["glasses", "🕶️", "Glasses"], ["neck", "📿", "Neck"], ["outfit", "👕", "Outfit"], ["held", "✋", "Holding"], ["place", "🏞️", "Place"]];
-const WR_HINT = {looks: "Whole outfits in one tap. You can change any part after.", girl: "Girl characters, hair, dresses, bags and more. Pick any piece, or a whole look.", body: "Mochi's shape.", skin: "Mochi's color, or pick any color.",
+                 ["hat", "🎩", "Head"], ["glasses", "🕶️", "Glasses"], ["neck", "📿", "Neck"], ["outfit", "👕", "Outfit"], ["held", "✋", "Holding"], ["place", "🏞️", "Place"], ["plus", "⭐", "Plus"]];
+const WR_HINT = {plus: "New pieces for LazyTrack Plus. Thanks for keeping Mochi going ♥", looks: "Whole outfits in one tap. You can change any part after.", girl: "Girl characters, hair, dresses, bags and more. Pick any piece, or a whole look.", body: "Mochi's shape.", skin: "Mochi's color, or pick any color.",
   eyes: "Pick the eyes, then any color for them.", mouth: "Moods still change it now and then.", hat: "Sits on top without squashing Mochi. Any color.",
   glasses: "", neck: "", outfit: "", held: "Something to hold.", place: "Where Mochi lives. Friends see it too."};
 const WR_COLORS = ["#1d1b20", "#ffffff", "#8a8f9c", "#e0303a", "#ff8fb1", "#f2b705", "#3fae69", "#7ad3ff", "#2a78d6", "#6250d6", "#c99a6e"];
@@ -3429,6 +3501,7 @@ const wardrobe = {
   close() { clearInterval(this.blink); $("wardrobe").hidden = true; },
   nameOf(slot) {
     if (slot === "girl") return "Hair, dresses…";
+    if (slot === "plus") return PLUS.active ? "Unlocked" : "🔒";
     if (slot === "looks") { const m = Object.entries(MOCHI.looks).find(([, v]) => { const l = {...LOOK_DEFAULT, ...v.look, place: this.look.place}; return Object.keys(LOOK_DEFAULT).every(s => l[s] === this.look[s]); }); return m ? m[1].n : "Your own"; }
     if (slot === "skin" && isHex(this.look.skin)) return "Custom";
     const it = MOCHI[SLOTS[slot]][this.look[slot]]; return it ? it.n : "–";
@@ -3453,7 +3526,7 @@ const wardrobe = {
     this.drawStage();
     this.slide(dir);
     if (!this.tab) {
-      $("wrHead").innerHTML = `<h2 id="wrTitle">Dress up Mochi</h2><p>Everything's free. Your friends see the look on your card.</p>`;
+      $("wrHead").innerHTML = `<h2 id="wrTitle">Dress up Mochi</h2><p>Everything's free, except the ⭐ Plus corner. Your friends see the look on your card.</p>`;
       $("wrList").innerHTML = WR_CATS.map(([k, ic, n], i) => `<button type="button" class="wrrow" data-wrtab="${k}" aria-current="${i === this.focus}">
         <span class="ic" aria-hidden="true">${ic}</span><span>${n}</span><span class="now">${esc(this.nameOf(k))}</span><span class="go" aria-hidden="true">›</span></button>`).join("");
       $("wrColors").hidden = true;
@@ -3464,29 +3537,31 @@ const wardrobe = {
     $("wrHead").innerHTML = `<h2 id="wrTitle">${cat[1]} ${cat[2]}</h2>${WR_HINT[this.tab] ? `<p>${WR_HINT[this.tab]}</p>` : ""}`;
     $("wrBackBtn").hidden = false; $("wrKeys").hidden = true;   // the way back: a big button at the bottom, next to Save
     let items;
-    if (this.tab === "girl") {   // the girl pieces from every category, in sections; each tile changes its own part
-      const SEC = [["looks", "Characters"], ["hat", "Hair & head"], ["eyes", "Eyes"], ["mouth", "Lips"], ["outfit", "Outfits"], ["neck", "Necklaces"], ["held", "Holding"]];
+    if (this.tab === "girl" || this.tab === "plus") {   // pieces from every category, in sections; each tile changes its own part
+      const flag = this.tab === "girl" ? "g" : "p";
+      const SEC = flag === "p" ? [["looks", "Looks"], ["hat", "Head"], ["outfit", "Outfits"]]
+        : [["looks", "Characters"], ["hat", "Hair & head"], ["eyes", "Eyes"], ["mouth", "Lips"], ["outfit", "Outfits"], ["neck", "Necklaces"], ["held", "Holding"]];
       items = [];
       for (const [slot, title] of SEC) {
         items.push({sec: title});
         const src = slot === "looks" ? MOCHI.looks : MOCHI[SLOTS[slot]];
         for (const [k, v] of Object.entries(src)) {
-          if (!v.g) continue;
+          if (!v[flag]) continue;
           if (slot === "looks") { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
-            items.push({k: "looks:" + k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}); }
-          else items.push({k: slot + ":" + k, n: v.n, look: {...this.look, [slot]: k}, on: this.look[slot] === k});
+            items.push({k: "looks:" + k, n: v.n, p: v.p, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}); }
+          else items.push({k: slot + ":" + k, n: v.n, p: v.p, look: {...this.look, [slot]: k}, on: this.look[slot] === k});
         }
       }
     } else if (this.tab === "looks") {
       items = Object.entries(MOCHI.looks).map(([k, v]) => { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
-        return {k, n: v.n, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}; });
+        return {k, n: v.n, p: v.p, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}; });
     } else {
-      items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
+      items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, p: v.p, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
     }
     const fresh = !!dir;   // the tiles drop in only when the page opens, not on every pick
     $("wrList").innerHTML = `<div class="writems ${fresh ? "" : "settled"}">${items.map((it, n) => { if (it.sec) return `<div class="wrsec">${esc(it.sec)}</div>`; const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
       return `<button type="button" class="writem" style="--n:${Math.min(n, 20)}" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
-        <span class="wrscene" style="background-image:url(${bg})"><span class="pet">${mochiCells(it.look)}</span></span><span>${esc(it.n)}</span></button>`; }).join("")}</div>`;
+        <span class="wrscene" style="background-image:url(${bg})"><span class="pet">${mochiCells(it.look)}</span>${it.p ? `<span class="wrplus">${PLUS.active ? "⭐" : "🔒"}</span>` : ""}</span><span>${esc(it.n)}</span></button>`; }).join("")}</div>`;
     this.drawColors();
   },
   // the color row: body color, eyes and head only
@@ -3516,9 +3591,17 @@ const wardrobe = {
     else this.look = {...this.look, [this.tab + "Color"]: c.toLowerCase()};
     this.draw(); this.pop();
   },
+  isPlus(k) {
+    if (this.tab === "girl" || this.tab === "plus") { const [slot, key] = k.split(":"); return !!(slot === "looks" ? MOCHI.looks[key] : MOCHI[SLOTS[slot]][key])?.p; }
+    return !!(this.tab === "looks" ? MOCHI.looks[k] : MOCHI[SLOTS[this.tab]]?.[k])?.p;
+  },
   pick(k) {
+    if (!PLUS.active && this.isPlus(k)) {
+      toast(IN_APP ? "That's a ⭐ Plus piece. Get Plus in LazyTrack on your computer." : "That's a ⭐ Plus piece. Unlock it in Settings → Account.", null);
+      return;
+    }
     this.remember();
-    if (this.tab === "girl") {   // "slot:key"
+    if (this.tab === "girl" || this.tab === "plus") {   // "slot:key"
       const [slot, key] = k.split(":");
       if (slot === "looks") this.look = {...LOOK_DEFAULT, ...MOCHI.looks[key].look, place: this.look.place};
       else { this.look = {...this.look, [slot]: key}; if (!COLOR_SLOTS.includes(slot)) delete this.look[slot + "Color"]; }
@@ -3534,7 +3617,7 @@ const wardrobe = {
   back() { this.tab = null; this.draw("l"); const f = $("wrList").querySelector('[aria-current="true"]'); if (f) f.focus({preventScroll: false}); },
   random() {
     this.remember();
-    const any = slot => { const ks = Object.keys(MOCHI[SLOTS[slot]]); return ks[Math.floor(Math.random() * ks.length)]; };
+    const any = slot => { const ks = Object.keys(MOCHI[SLOTS[slot]]).filter(k => PLUS.active || !MOCHI[SLOTS[slot]][k].p); return ks[Math.floor(Math.random() * ks.length)]; };
     const maybe = slot => Math.random() < .45 ? "none" : any(slot);
     this.look = {body: any("body"), skin: any("skin"), eyes: any("eyes"), mouth: Math.random() < .4 ? "smile" : any("mouth"), hat: maybe("hat"), glasses: Math.random() < .7 ? "none" : any("glasses"),
                  neck: maybe("neck"), outfit: maybe("outfit"), held: Math.random() < .6 ? "none" : any("held"), place: this.look.place};
@@ -5143,7 +5226,7 @@ async function render() {
   try {
     if (view === "detail") await loadDetail(r.k);
     else if (view === "admin") await admin.show(r.as);
-    else if (view === "settings") { settingsCat(r.sc); settingsFor(); backups.load(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); await loadSettings(); }
+    else if (view === "settings") { settingsCat(r.sc); settingsFor(); backups.load(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); plusCard.load(); await loadSettings(); }
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();

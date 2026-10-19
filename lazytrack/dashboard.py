@@ -107,6 +107,9 @@ def make_handler(cfg: dict):
                 return self._send(200, phone.status(cfg))
             if u.path == "/api/life":
                 return self._send(200, {**life.status(), "suggestions": life.suggestions()})
+            if u.path == "/api/plus":
+                from . import plus
+                return self._send(200, plus.status())
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_get(u.path, qs)
             if u.path == "/api/backups":
@@ -210,6 +213,12 @@ def make_handler(cfg: dict):
                 return None
             if not self._authed(qs):
                 return self._send(401, {"error": "log in first"})
+            if u.path in ("/api/plus/activate", "/api/plus/deactivate"):
+                from . import plus
+                try:
+                    return self._send(200, plus.activate(str(b.get("key", ""))) if u.path.endswith("/activate") else plus.deactivate())
+                except plus.PlusError as e:
+                    return self._send(400, {"error": str(e)})
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_post(u.path, b)
             if u.path == "/api/lab/system-popup":
