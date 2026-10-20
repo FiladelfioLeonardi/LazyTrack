@@ -216,6 +216,17 @@ def detail(kind: str, day: Optional[str] = None) -> dict:
         same_time_yesterday = (now - timedelta(days=1)).timestamp()
         by_now = total(kind, y, until=same_time_yesterday)
 
+    # the 30-day chart: always the last 30 days up to today, so opening an older day from it
+    # doesn't shift the bars (and newer days stay tappable). A day more than 30 days back gets
+    # a window around it instead, so its bar is still there to see.
+    today = date.today()
+    end = today if (today - d).days < 30 else min(today, d + timedelta(days=15))
+    chart = []
+    for i in range(29, -1, -1):
+        dd = end - timedelta(days=i)
+        key = dd.isoformat()
+        chart.append({"day": key, "value": history[key] if key in history else total(kind, dd)})
+
     its = items(kind, d)
     return {
         "kind": kind,
@@ -233,7 +244,7 @@ def detail(kind: str, day: Optional[str] = None) -> dict:
         "timeline_yesterday": timeline(kind, y),
         "day_start": _bounds(d)[0],
         "yesterday_start": _bounds(y)[0],
-        "history": [{"day": k, "value": v} for k, v in history.items()],
+        "history": chart,
         "items": its,
         "gaps": gaps(its) if info["type"] == "event" else {},
         "streak": streak(kind, d, info["bad"], history) if info["type"] in ("event", "commits", "github") else None,

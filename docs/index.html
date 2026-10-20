@@ -175,15 +175,16 @@
   .mech b { font: 13px var(--pixel); padding: 3px 8px; border: 2px solid var(--line); border-radius: 8px; white-space: nowrap; color: #1d1b20; }
   .mech b.up { background: var(--green); } .mech b.down { background: var(--pink); }
   /* coming next: on the first screen */
-  .soonbar { display: block; text-align: center; padding: 9px 16px; background: var(--ink); color: var(--bg); font-size: 15px; font-weight: 700; text-decoration: none; }
-  .soonbar b { color: var(--yellow); font-family: var(--pixel); font-weight: 400; font-size: 13px; letter-spacing: .04em; margin-right: 6px; }
+  .soonbar { display: block; text-align: center; padding: 10px 16px; background: #ff8fb1; color: #1d1b20; border-bottom: 3px solid #1d1b20; font-size: 15px; font-weight: 700; text-decoration: none; }
+  .soonbar b { display: inline-block; background: #1d1b20; color: #ffe45e; padding: 2px 8px; border-radius: 6px; font-family: var(--pixel); font-weight: 400; font-size: 12px; letter-spacing: .04em; margin-right: 8px; }
   .soonbar u { text-underline-offset: 3px; }
   .next { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 22px; max-width: 560px; }
   @media (max-width: 520px) { .next { grid-template-columns: 1fr; } }
-  .nextcard { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 3px dashed var(--line); border-radius: 14px; background: var(--card); text-decoration: none; }
-  .nextcard:hover { border-style: solid; }
+  .nextcard { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border: 3px solid #1d1b20; border-radius: 14px; background: #fff3c2; color: #1d1b20; box-shadow: 3px 3px 0 #1d1b20; text-decoration: none; }
+  .nextcard:nth-child(2) { background: #ffd6e6; }
+  .nextcard:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 #1d1b20; }
   .nextcard .ic { font-size: 28px; line-height: 1; }
-  .nextcard small { display: block; font: 11px var(--pixel); color: var(--ink-2); letter-spacing: .04em; }
+  .nextcard small { display: inline-block; font: 11px var(--pixel); background: #1d1b20; color: #ffe45e; padding: 2px 6px; border-radius: 5px; letter-spacing: .04em; margin-bottom: 3px; }
   .nextcard b { display: block; font-size: 16px; line-height: 1.25; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
