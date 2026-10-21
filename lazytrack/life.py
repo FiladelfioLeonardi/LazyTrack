@@ -40,6 +40,7 @@ MAX_LOSS = 25        # the most one day can take
 MAX_GAIN = 15        # the most one day can give
 LEARN_DAYS = 7
 _lock = threading.Lock()
+_test_hp: Optional[float] = None
 
 # things from the screen that can count for HP: minutes (or commits), and which way is good
 SCREEN_SCORED = {
@@ -348,18 +349,42 @@ def status() -> dict:
     today = day_score(date.today(), rs, until=datetime.now())
     age = (date.today() - date.fromisoformat(st["born"])).days
     now = max(0.0, min(100.0, st["hp"] + today["delta"]))
+    displayed_start = _test_hp if _test_hp is not None else st["hp"]
+    displayed_now = _test_hp if _test_hp is not None else now
     best = st["best"] if st["best"]["days"] >= age else {"days": age, "gen": st["gen"]}
     unseen = next((x for x in reversed(st["deaths"]) if not x.get("seen")), None)
     return {
         "gen": st["gen"], "born": st["born"], "age": age, "baby": age < 3,
-        "hp_start": round(st["hp"], 1),       # HP at the start of today
-        "hp": round(now),                     # with today's score so far
-        "today": today, "critical": now < 20, "dying": st["hp"] + today["delta"] <= 0,
+        "hp_start": round(displayed_start, 1), # HP at the start of today
+        "hp": round(displayed_now),            # with today's score so far
+        "test_hp": _test_hp,
+        "today": today, "critical": displayed_now < 20, "dying": displayed_now <= 0,
         "best": best, "deaths": len(st["deaths"]), "graveyard": st["deaths"][-10:], "unseen_death": unseen,
         "log": st["log"][-30:], "rules": rs, "confirmed": db.kv_get("rules_confirmed") == "1",
         "limits": {"regen": REGEN, "max_loss": MAX_LOSS, "max_gain": MAX_GAIN, "sizes": SIZES},
         "rhythm": _rhythm(),
     }
+
+
+def set_test_hp(value: object) -> float:
+    """Temporarily replace the displayed HP without changing the saved life state."""
+    global _test_hp
+    try:
+        hp = float(value)
+    except (TypeError, ValueError) as e:
+        raise ValueError("HP must be a number from 0 to 100.") from e
+    if not math.isfinite(hp) or hp < 0 or hp > 100:
+        raise ValueError("HP must be a number from 0 to 100.")
+    with _lock:
+        _test_hp = hp
+    return hp
+
+
+def reset_test_hp() -> None:
+    """Return the dashboard to the real saved HP."""
+    global _test_hp
+    with _lock:
+        _test_hp = None
 
 
 def _rhythm() -> Optional[dict]:

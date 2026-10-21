@@ -263,6 +263,17 @@ def make_handler(cfg: dict):
             if u.path == "/api/life/rules":
                 life.save_rules(b.get("rules") or {})
                 return self._send(200, life.status())
+            if u.path == "/api/life/test-hp":
+                try:
+                    if not cloud.is_admin(True):
+                        return self._send(403, {"error": "Only the admin can use the temporary HP control."})
+                    if b.get("hp") is None:
+                        life.reset_test_hp()
+                    else:
+                        life.set_test_hp(b.get("hp"))
+                    return self._send(200, life.status())
+                except (ValueError, cloud.CloudError) as e:
+                    return self._send(400 if isinstance(e, ValueError) else 502, {"error": str(e)})
             if u.path == "/api/life/seen":
                 life.mark_seen()
                 return self._send(200, {"ok": True})

@@ -1548,6 +1548,14 @@ applyTheme();
         <div class="labctl" id="labCtl"></div>
       </div>
       <label class="labflag"><input type="checkbox" id="labHome"> Show this Mochi on Home too (until you turn it off or restart)</label>
+      <div class="label" style="margin-top:18px">TEMPORARY HP</div>
+      <p class="note" style="margin-bottom:8px">Changes only what this local app displays. It is not saved to your Mochi, is not synced, and clears when Mochi restarts.</p>
+      <div class="actions" style="align-items:center">
+        <label for="labHP">HP</label><input id="labHP" type="number" min="0" max="100" step="1" value="100" style="width:110px">
+        <button type="button" class="btn primary" id="labHPSet">Use temporarily</button>
+        <button type="button" class="btn" id="labHPReset">Show real HP</button>
+        <span class="note" id="labHPNote"></span>
+      </div>
       <div class="label" style="margin-top:18px">SCREENS AND POPUPS</div>
       <div class="labbtns">
         <button type="button" class="btn" data-lab="rip">💀 Death screen</button>
@@ -4097,6 +4105,7 @@ function deviceSprite(look, mood, tier) {
 let lastPush = 0;
 function pushCard(force) {
   if (!CLOUD.connected || !O || !O.is_today) return;
+  if (O.life && O.life.test_hp != null) return;
   if (!force && Date.now() - lastPush < 150000) return;
   lastPush = Date.now();
   // on the phone, building the card (Mochi's pixels for friends and the egg) waits until the app is idle,
@@ -4897,6 +4906,32 @@ const admin = {
     draw(); this.labT = setInterval(draw, 300);
   },
   stopLab() { clearInterval(this.labT); this.labT = null; },
+  async setTestHP(value) {
+    const note = $("labHPNote");
+    try {
+      const r = await post("/api/life/test-hp", {hp: value});
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Couldn't change HP.");
+      await loadOverview();
+      renderHome();
+      note.textContent = `Temporary HP: ${j.hp}`;
+    } catch (e) {
+      note.textContent = String(e.message || "Couldn't change HP.");
+    }
+  },
+  async resetTestHP() {
+    const note = $("labHPNote");
+    try {
+      const r = await post("/api/life/test-hp", {hp: null});
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "Couldn't reset HP.");
+      await loadOverview();
+      renderHome();
+      note.textContent = `Real HP: ${j.hp}`;
+    } catch (e) {
+      note.textContent = String(e.message || "Couldn't reset HP.");
+    }
+  },
   labAction(a) {
     const L = (O && O.life) || {};
     if (a === "rip") { rip.preview = true; rip.show({died: "lab" + Date.now(), gen: L.gen || 1, days: L.age || 12, cause: {e: "🚬", n: "Cigarettes"}}, {gen: (L.gen || 1) + 1, best: L.best || {days: 12}, deaths: (L.deaths || 0) + 1}); }
@@ -4931,6 +4966,8 @@ document.addEventListener("click", async e => {
   if (e.target.closest("#admRefresh")) { admin.data = null; admin.overview(); return; }
   const k = e.target.closest("[data-nkind]"); if (k) { admin.kind = k.dataset.nkind; admin.drawNewsForm(); return; }
   if (e.target.closest("#nPost")) { admin.postNews(); return; }
+  if (e.target.id === "labHPSet") { admin.setTestHP($("labHP").value); return; }
+  if (e.target.id === "labHPReset") { admin.resetTestHP(); return; }
   const ns = e.target.closest("[data-nset]");
   if (ns) { try { await post("/api/cloud/admin/news/set", {id: +ns.dataset.nset, active: ns.dataset.on === "1"}); news.t = 0; } catch (_) {} admin.loadNews(); return; }
   const nd = e.target.closest("[data-ndel]");
