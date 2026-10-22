@@ -734,6 +734,8 @@
   .admin-only { text-decoration: none; } body.is-admin .admin-only { display: inline-flex; align-items: center; }
   body:not(.is-admin) .admin-only { display: none !important; }   /* wins over every other display rule (a.tourbtn showed it to everyone) */
   body.is-admin .form.admin-only { display: grid; }
+  #demoBar { position: fixed; top: 0; left: 0; right: 0; z-index: 99; text-align: center; font: 400 12px var(--pixel); padding: 4px; background: #ffd23f; color: #000; }
+  #demoBar a { color: #000; margin-left: 10px; } body.demo #demoBar { display: block; }
   #admin > .card { margin-top: 16px; } #admin [data-as].offcat { display: none; }
   .admtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   .admtile { border: 3px solid var(--line); border-radius: 14px; padding: 10px 12px; background: var(--soft); }
@@ -963,6 +965,7 @@ applyTheme();
 </script>
 </head>
 <body data-view="home" class="welcoming">
+<div id="demoBar" hidden>🎬 DEMO MODE · nothing is saved or sent <a href="#tab=admin&as=studio">Studio</a></div>
 <section class="welcome" id="welcome" aria-label="Welcome">
   <div class="wdeco" aria-hidden="true">
     <i style="--s:22px;--c:var(--yellow);left:9%;top:14%;--d:.3s;--from:-80px"></i>
@@ -1513,7 +1516,7 @@ applyTheme();
       <nav class="setcats" id="admCats" data-label="ADMIN" aria-label="Admin sections">
         <button type="button" data-goas="overview">📊 Overview</button><button type="button" data-goas="ideas">💡 Ideas</button>
         <button type="button" data-goas="news">📣 Announcements</button><button type="button" data-goas="users">👥 Users</button>
-        <button type="button" data-goas="lab">🧪 Test lab</button>
+        <button type="button" data-goas="lab">🧪 Test lab</button><button type="button" data-goas="studio">🎬 Content studio</button>
       </nav>
     </section>
     <section class="card pad" id="admNo" hidden></section>
@@ -1539,6 +1542,32 @@ applyTheme();
       <p class="sub">Everyone with a Mochi account. "Last active" is the last time their app sent their card. Only Mochi info shows here, never anyone's habits.</p>
       <input class="admsearch" id="uSearch" placeholder="Search name or @username" autocomplete="off">
       <div id="uList"><p class="note">Loading…</p></div>
+    </section>
+    <section class="card pad" data-as="studio">
+      <h2>🎬 Content studio</h2>
+      <p class="sub">A play copy of Home for filming. Everything you tap or edit changes only this copy: nothing is saved, nothing goes to your account or friends, and your real Mochi is not touched. Reload the page or press Stop to go back.</p>
+      <div class="actions"><button type="button" class="btn primary" id="stuToggle">▶ Start demo mode</button><a class="btn" href="#tab=home">Open Home</a><a class="btn" href="#tab=monitor">Open Screen time</a></div>
+      <div id="stuBody" hidden>
+        <div class="label" style="margin-top:18px">HP (Mochi's health)</div>
+        <div class="actions" style="align-items:center"><input id="stuHP" type="number" min="0" max="100" step="1" style="width:90px">
+          <button type="button" class="btn" data-stuhp="20">Sad · 20</button><button type="button" class="btn" data-stuhp="55">Okay · 55</button>
+          <button type="button" class="btn" data-stuhp="85">Almost legendary · 85</button><button type="button" class="btn" data-stuhp="95">Legendary · 95</button></div>
+        <p class="note">On Home, a good habit gives +8 HP and a bad one -5 (not the real scoring). From 85, one Gym tap makes him glow.</p>
+        <div class="label" style="margin-top:18px">LIFE</div>
+        <div class="actions" style="align-items:center">
+          <label>Mochi # <input type="number" min="1" step="1" style="width:64px" data-stulife="gen"></label>
+          <label>Days old <input type="number" min="0" step="1" style="width:64px" data-stulife="age"></label>
+          <label>Deaths <input type="number" min="0" step="1" style="width:64px" data-stulife="deaths"></label>
+          <button type="button" class="btn" id="stuKill">💀 Kill him</button></div>
+        <p class="note">Under 3 days old = baby. Kill him: death screen on Home, then a new baby hatches.</p>
+        <div id="stuMealsBox"><div class="label" style="margin-top:18px">MEALS TODAY</div><div id="stuMeals" class="actions"></div></div>
+        <div class="label" style="margin-top:18px">SCREEN TIME (MINUTES TODAY)</div>
+        <div id="stuScreen" class="actions"></div>
+        <div class="actions"><button type="button" class="btn primary" id="stuRamp">⏩ Fill in live (12 s)</button></div>
+        <p class="note">Press it, then open the Screen time page: it starts empty and fills up by itself.</p>
+        <div class="label" style="margin-top:18px">HABITS TODAY</div>
+        <div id="stuHabits" class="actions"></div>
+      </div>
     </section>
     <section class="card pad" data-as="lab">
       <h2>🧪 Test lab</h2>
@@ -1882,7 +1911,77 @@ function hm(s) { s = Math.round(s || 0); const h = Math.floor(s / 3600), m = Mat
 const unitOf = k => (INFO[k] && SCREEN.includes(INFO[k])) || k === "sleep" ? "seconds" : "count";
 const fmt = (unit, v) => unit === "seconds" ? hm(v) : Math.round(v || 0).toLocaleString();
 const clock = ts => new Date(ts * 1000).toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"});
-const api = (path, opts = {}) => fetch(path, {credentials: "same-origin", ...opts, headers: {...H, ...(opts.headers || {})}});
+const rawApi = (path, opts = {}) => fetch(path, {credentials: "same-origin", ...opts, headers: {...H, ...(opts.headers || {})}});
+const api = (path, opts = {}) => (DEMO.on && DEMO.fake(path, opts)) || rawApi(path, opts);
+// Content studio (Admin): a sandbox copy of Home for filming. While it is on, the overview comes from a copy that
+// the studio edits, every tap is applied to that copy only, and every other write (card, settings, friends) is dropped.
+const DEMO = {
+  on: false, o: null, f: 1, seq: 0, timer: null,
+  async start() {
+    this.o = await (await rawApi("/api/overview")).json();
+    this.on = true; this.f = 1; this.seq = 0;
+    document.body.classList.add("demo");
+  },
+  stop() {
+    clearInterval(this.timer); this.on = false; this.o = null; document.body.classList.remove("demo");
+  },
+  snapshot() {
+    const o = structuredClone(this.o), f = this.f, t = o.today;
+    for (const k in t.categories) t.categories[k] *= f;
+    t.screen_total *= f; t.screen_pc *= f; t.screen_phone *= f;
+    (o.week.top_apps || []).forEach(a => { a.seconds *= f; });
+    o.now = Date.now() / 1000;
+    return o;
+  },
+  json(b) { return Promise.resolve(new Response(JSON.stringify(b), {headers: {"Content-Type": "application/json"}})); },
+  fake(path, opts) {
+    const p = path.split("?")[0], get = !opts.method || opts.method === "GET";
+    if (/^\/api\/(cloud\/admin|lab\/)/.test(p)) return null;   // admin pages and test popups stay real
+    if (get) return p === "/api/overview" && !path.includes("day=") ? this.json(this.snapshot()) : null;
+    const b = opts.body ? JSON.parse(opts.body) : {};
+    if (p === "/api/event") return this.json({ok: true, id: this.log(b.kind)});
+    if (p === "/api/event/delete") { this.unlog(b.id); return this.json({ok: true}); }
+    if (p === "/api/feed") { const R = this.o.life.rhythm; if (R && R.hungry) this.meal(R.hungry, "fed"); return this.json({ok: true}); }
+    return this.json({ok: true});
+  },
+  hp(v) { const L = this.o.life; L.hp = Math.max(0, Math.min(100, Math.round(v))); L.hp_start = L.hp; L.test_hp = L.hp; },
+  // good habit +8 HP, bad one -5: enough to see Mochi react, not the real scoring
+  log(kind) {
+    const id = --this.seq, o = this.o, bad = !!(INFO[kind] || {}).bad, before = o.life.hp;
+    o.today.events[kind] = (o.today.events[kind] || 0) + 1;
+    o.recent_events.unshift({id, ts: Date.now() / 1000, device: "dashboard", kind, source: "manual"});
+    this.hp(before + (bad ? -5 : 8));
+    if (before < 90 && o.life.hp >= 90) setTimeout(() => { if (currentTab() === "home") petAnim.playCool(); }, 500);
+    return id;
+  },
+  unlog(id) {
+    const o = this.o, i = o.recent_events.findIndex(e => e.id === id); if (i < 0) return;
+    const [e] = o.recent_events.splice(i, 1), bad = !!(INFO[e.kind] || {}).bad;
+    o.today.events[e.kind] = Math.max(0, (o.today.events[e.kind] || 0) - 1);
+    this.hp(o.life.hp + (bad ? 5 : -8));
+  },
+  kill() {
+    const L = this.o.life, d = {died: "demo" + Date.now(), gen: L.gen || 1, days: L.age || 0, cause: {e: "📱", n: "Too much scrolling"}};
+    L.best = {days: Math.max((L.best || {}).days || 0, d.days), gen: d.gen};
+    Object.assign(L, {gen: d.gen + 1, age: 0, baby: true, deaths: (L.deaths || 0) + 1});
+    this.hp(100);
+    go({tab: "home"});
+    setTimeout(() => { rip.preview = true; rip.show(d, L); }, 700);   // preview: closing it posts nothing
+  },
+  meal(n, state) {
+    const R = this.o.life.rhythm; R.meals.find(m => m.n === n).state = state;
+    const h = R.meals.find(m => m.state === "hungry"); R.hungry = h ? h.n : null;
+  },
+  total() { const t = this.o.today; t.screen_total = Object.values(t.categories).reduce((a, b) => a + b, 0); t.screen_pc = t.screen_total - t.screen_phone; },
+  // screen time starts empty and fills up by itself, like a real day, over `secs` seconds
+  ramp(secs = 12) {
+    clearInterval(this.timer); const t0 = Date.now(); this.f = 0;
+    this.timer = setInterval(() => {
+      this.f = Math.min(1, (Date.now() - t0) / (secs * 1000)); render();
+      if (this.f >= 1) clearInterval(this.timer);
+    }, 500);
+  },
+};
 const post = (path, body) => api(path, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)});
 const plural = (n, word) => `${n} ${word}${n === 1 || /s$|food$|biting$|ing$/.test(word) ? "" : "s"}`;
 const css = v => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -4772,7 +4871,7 @@ document.addEventListener("click", e => {
 // ---------------------------------------------------------------- admin page (#tab=admin)
 // Who's admin is decided by the database (supabase/admin.sql); this page only shows what it allows.
 const OS_NAME = {darwin: "Mac", win32: "Windows", linux: "Linux", "?": "older app"};
-const ADMIN_SECS = ["overview", "ideas", "news", "users", "lab"];
+const ADMIN_SECS = ["overview", "ideas", "news", "users", "lab", "studio"];
 const admin = {
   is: false, data: null, newsList: [], kind: "info", sure: null, lab: {mood: "happy", tier: "okay", high: 0, drunk: 0, coughy: 0, place: ""}, labT: null, labN: 0,
   why: "",
@@ -4803,7 +4902,7 @@ const admin = {
       return;
     }
     if (sec !== "lab") this.stopLab();
-    ({overview: () => this.overview(), ideas: () => ideaBox.inbox(), news: () => this.loadNews(), users: () => this.users(), lab: () => this.startLab()})[sec]();
+    ({overview: () => this.overview(), ideas: () => ideaBox.inbox(), news: () => this.loadNews(), users: () => this.users(), lab: () => this.startLab(), studio: () => this.drawStudio()})[sec]();
   },
   async load(force) {
     if (!this.data || force || Date.now() - this.data.t > 60000) {
@@ -4906,6 +5005,25 @@ const admin = {
     draw(); this.labT = setInterval(draw, 300);
   },
   stopLab() { clearInterval(this.labT); this.labT = null; },
+  async toggleStudio() {
+    if (DEMO.on) DEMO.stop(); else await DEMO.start();
+    this.drawStudio(); render();
+  },
+  drawStudio() {
+    $("stuToggle").textContent = DEMO.on ? "■ Stop demo mode" : "▶ Start demo mode";
+    $("stuBody").hidden = !DEMO.on;
+    if (!DEMO.on) return;
+    const o = DEMO.o;
+    $("stuHP").value = o.life.hp;
+    document.querySelectorAll("[data-stulife]").forEach(i => { i.value = o.life[i.dataset.stulife] || 0; });
+    const R = o.life.rhythm, ST = [["later", "later"], ["hungry", "hungry"], ["fed", "eaten"], ["missed", "missed"]];
+    $("stuMealsBox").hidden = !(R && R.meals && R.meals.length);
+    if (!$("stuMealsBox").hidden) $("stuMeals").innerHTML = R.meals.map(m => `<label>${m.e} ${esc(m.n)} <select data-stumeal="${esc(m.n)}">${ST.map(([v, t]) => `<option value="${v}" ${m.state === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>`).join("");
+    $("stuScreen").innerHTML = SCREEN.filter(s => !["screen", "screen_pc", "screen_phone"].includes(s.k))
+      .map(s => `<label>${s.e} ${esc(s.n)} <input type="number" min="0" step="5" style="width:80px" data-stucat="${s.k}" value="${Math.round((o.today.categories[s.k] || 0) / 60)}"></label>`).join("");
+    $("stuHabits").innerHTML = HABITS.map(h => `<span>${h.e} ${esc(h.n)} <b>${o.today.events[h.k] || 0}</b>
+      <button type="button" class="btn" data-stulog="${h.k}">+</button><button type="button" class="btn" data-stulog="-${h.k}">−</button></span>`).join("");
+  },
   async setTestHP(value) {
     const note = $("labHPNote");
     try {
@@ -4977,6 +5095,23 @@ document.addEventListener("click", async e => {
   if (idl) { if (admin.sure !== "i" + idl.dataset.idel) { admin.sure = "i" + idl.dataset.idel; idl.textContent = "Sure? 🗑"; return; }
     admin.sure = null; try { await post("/api/cloud/idea/delete", {id: +idl.dataset.idel}); toast("Idea deleted", null); admin.data = null; } catch (_) {} ideaBox.inbox(); return; }
   const lb = e.target.closest("[data-lab]"); if (lb) admin.labAction(lb.dataset.lab);
+});
+document.addEventListener("click", e => {
+  if (e.target.id === "stuToggle") admin.toggleStudio();
+  if (!DEMO.on) return;
+  const hp = e.target.closest("[data-stuhp]"); if (hp) { DEMO.hp(+hp.dataset.stuhp); admin.drawStudio(); }
+  const lg = e.target.closest("[data-stulog]");
+  if (lg) { const k = lg.dataset.stulog; if (k[0] === "-") { const ev = DEMO.o.recent_events.find(x => x.kind === k.slice(1)); if (ev) DEMO.unlog(ev.id); } else DEMO.log(k); admin.drawStudio(); }
+  if (e.target.id === "stuRamp") { go({tab: "monitor"}); DEMO.ramp(); }
+  if (e.target.id === "stuKill") DEMO.kill();
+});
+document.addEventListener("change", e => {
+  if (!DEMO.on) return;
+  if (e.target.id === "stuHP") DEMO.hp(+e.target.value || 0);
+  const lf = e.target.dataset.stulife;
+  if (lf) { const v = Math.max(lf === "gen" ? 1 : 0, Math.round(+e.target.value || 0)); DEMO.o.life[lf] = v; if (lf === "age") DEMO.o.life.baby = v < 3; }
+  if (e.target.dataset.stumeal) DEMO.meal(e.target.dataset.stumeal, e.target.value);
+  if (e.target.dataset.stucat) { DEMO.o.today.categories[e.target.dataset.stucat] = Math.max(0, +e.target.value || 0) * 60; DEMO.total(); }
 });
 document.addEventListener("input", e => { if (e.target.id === "nBody") admin.drawNewsForm(); if (e.target.id === "uSearch") admin.users(); });
 document.addEventListener("change", e => {
