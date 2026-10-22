@@ -147,7 +147,7 @@ def last_line() -> str:
     return " · ".join(parts)
 
 
-USE_SYSTEM_DIALOG = False   # the old way: a system dialog that pops up over everything (off: just a notification)
+USE_SYSTEM_DIALOG = True   # a system dialog that pops up over everything when you're not using LazyTrack (off: a notification)
 APP_SEEN = {"t": 0.0}   # last time a LazyTrack page or window on this computer was on screen (it polls every 3 s)
 
 
@@ -162,7 +162,15 @@ def app_in_use() -> bool:
     return time.time() - APP_FOCUS["t"] < 7
 
 
-ASK_TIMEOUT = 30 * 60   # the smoking question waits up to 30 minutes for an answer
+ASK_TIMEOUT = 30 * 60   # the smoking question waits up to 30 minutes for an answer (also while held for full screen)
+
+
+def busy_full_screen() -> bool:
+    """A full-screen app or game in front: the popup would pull you out of it, so it waits."""
+    try:
+        return system.frontmost_is_fullscreen() or system.frontmost_is_game()
+    except Exception:
+        return False
 
 
 def _nudge(again: bool = False) -> None:
@@ -177,8 +185,8 @@ def _nudge(again: bool = False) -> None:
 
 
 def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
-    """Asks "cigarette or joint?" on every open LazyTrack page (it never jumps to the front: when you're not
-    using LazyTrack you get a notification with a sound instead, and answer when you open it).
+    """Asks "cigarette or joint?" on every open LazyTrack page, and with a system pop-up in front of everything
+    when the computer's own camera noticed it and you're not using LazyTrack right now.
     Returns the first answer, or None. Only one question at a time."""
     with _question_lock:
         if QUESTION["open"]:
@@ -187,16 +195,30 @@ def ask_everywhere(source: str, timeout: int = 120) -> Optional[str]:
         _answered.clear()
     if source == "computer" and USE_SYSTEM_DIALOG:
         def popup():
-            # LazyTrack open on this computer shows the question itself (and comes to the front):
-            # no system popup then. If it gets closed or hidden before an answer, the popup takes over.
+            # While you're using LazyTrack it shows the question itself: no system popup then.
+            # If you switch to another app (or close it) before answering, the popup takes over.
+            # While a full-screen app or game is in front, nothing shows: the question stays open
+            # (so no second one is asked) and pops up once you leave full screen.
             t0 = time.time()
-            while not _answered.is_set() and app_on_screen() and time.time() - t0 < timeout:
-                _answered.wait(1)
+            held = False
+            while not _answered.is_set() and time.time() - t0 < timeout:
+                if app_in_use():
+                    pass
+                elif busy_full_screen():
+                    if not held:
+                        log.info("smoke question: held until you leave full screen")
+                        held = True
+                else:
+                    break
+                _answered.wait(2)
             left = timeout - (time.time() - t0)
             if _answered.is_set() or left < 5:
                 return
+            system.chime()   # the popup comes with a sound, no notification
             line = last_line()
-            ans = system.ask(question_text() + (f"\n\n{line}" if line else ""), buttons(), ask_default(), timeout=int(left), cancel=_answered.is_set)
+            # "Already registered" stays in the app: without it the popup has real buttons (at most 3 on macOS)
+            btns = [b for b in buttons() if b != ALREADY]
+            ans = system.ask(question_text() + (f"\n\n{line}" if line else ""), btns, ask_default(), timeout=int(left), cancel=_answered.is_set)
             if ans:
                 answer_question(QUESTION["id"], ans)
         threading.Thread(target=popup, name="ask", daemon=True).start()
@@ -781,7 +803,7 @@ class SmokeDetector(threading.Thread):
         _set("off")
 
     def _ask(self, crop) -> str:
-        if not app_in_use():   # not in LazyTrack right now: a notification with a sound, no window popping up
+        if not USE_SYSTEM_DIALOG and not app_in_use():   # not in LazyTrack right now: a notification with a sound, no window popping up
             _nudge()
             t0 = time.time()
 

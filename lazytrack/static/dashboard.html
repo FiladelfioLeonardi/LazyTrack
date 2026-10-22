@@ -121,7 +121,6 @@
     border: 2px solid var(--line); border-radius: 8px; font-weight: 800; }
   .eggforget { justify-self: center; background: none; border: 0; color: #b4232c; font-weight: 700; text-decoration: underline; cursor: pointer; font-size: 14px; }
   .linkbtn { background: none; border: 0; padding: 0; color: var(--prev); font-weight: 700; text-decoration: underline; cursor: pointer; }
-  .pet.yum { animation: hop .6s cubic-bezier(.3, 0, .4, 1) 2; }
   /* ------------------------------------------------------------ the guided tour */
   .inapp[hidden] { display: none !important; }
   a.tourbtn { text-decoration: none; display: inline-flex; align-items: center; }
@@ -228,8 +227,9 @@
   .stat .sl { font-family: var(--pixel); font-size: 14px; font-weight: 700; flex: none; }
   .stat .sq { font-family: var(--pixel); font-size: 13px; opacity: .7; flex: none; }
   .stat .sv { font: 800 18px/1 var(--body); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .stat .sa { margin-left: 2px; flex: none; width: 24px; height: 24px; display: grid; place-items: center; background: #ffffff; border: 2px solid #1d1b20; border-radius: 7px; font: 700 12px/1 var(--body); }
-  .stat .sa.good { color: #0f6b34; } .stat .sa.bad { color: #b3261e; } .stat .sa.same { color: #6a6475; }
+  /* margin-left: auto puts every arrow at the right edge of its column, so they line up */
+  .stat .sa { margin-left: auto; flex: none; width: 24px; height: 24px; display: grid; place-items: center; background: #ffffff; border: 2px solid #1d1b20; border-radius: 7px; font: 700 12px/1 var(--body); }
+  .stat .sa.good { background: #1fa64f; color: #ffffff; } .stat .sa.bad { background: #e0362c; color: #ffffff; } .stat .sa.same { color: #6a6475; }
   .petcard[data-mood="smoky"] { background: #d9d2e9; } .petcard[data-mood="proud"] { background: var(--green); }
   .petcard[data-mood="sleepy"] { background: #b9c7f5; } .petcard[data-mood="meh"] { background: var(--orange); }
   .petbox { flex: none; width: 132px; height: 132px; background: #ffffff; border: 3px solid var(--line); border-radius: 16px; display: grid; place-items: center; }
@@ -276,9 +276,16 @@
     .pettop { gap: 12px; align-items: flex-start; }
     .petbox { width: 96px; height: 96px; } .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
     .petbox.scene { width: 120px; height: 120px; } .petbox.scene .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
-    .statsheet { grid-template-columns: 1fr; gap: 0; } .petwho { padding: 0 4px 6px; margin-bottom: 4px; } .petwho b { font-size: 21px; }
-    .stat { padding: 3px 4px; } .stat .sv { font-size: 16px; }
+    /* phone: Mochi + name on top, the stats under them across the whole card, two per row */
+    .pettop { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; row-gap: 10px; }
+    .petside { display: contents; }
+    .statsheet { grid-column: 1 / -1; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 8px; }
+    .petwho { padding: 0 4px 6px; margin-bottom: 4px; } .petwho b { font-size: 21px; }
+    .stat { padding: 3px 2px; gap: 4px; } .stat .sq { display: none; }
+    .stat .sl { font-size: 11px; } .stat .sv { font-size: 14px; letter-spacing: -.02em; }
+    .stat .sa { width: 20px; height: 20px; font-size: 11px; }
   }
+  @media (max-width: 359px) { .statsheet { grid-template-columns: 1fr; } }   /* the smallest phones: one per row so times fit */
 
   /* HP + tiers: the pet card follows how Mochi is doing */
   .petcard { --hpc: #7ad3ff; }
@@ -292,18 +299,6 @@
     background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.85) 50%, transparent 58%); animation: shine 4.5s ease-in-out infinite; }
   @keyframes shine { 0%, 55% { transform: translateX(-70%); } 100% { transform: translateX(70%); } }
   .hp { display: grid; gap: 10px; }
-  /* meals: up to 3 a day at your times, and the Feed button when Mochi is hungry */
-  .meals { display: grid; gap: 6px; margin: -4px 0 14px; }
-  .mealrow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-  .mealrow .lbl { font: 700 14px var(--pixel); letter-spacing: .06em; margin-right: 4px; color: #1d1b20; }
-  /* the pet card is always a light color (also in dark mode), so meal text is always dark */
-  .meal { border: 3px solid #1d1b20; border-radius: 12px; padding: 5px 10px; font: 800 16px var(--body); background: #ffffff; color: #1d1b20; box-shadow: 2px 2px 0 #1d1b20; }
-  .meal.fed { background: #c9f2d4; } .meal.missed { background: #ece8f3; color: #6a6475; text-decoration: line-through; box-shadow: none; }
-  .meal.hungry { background: #ffe45e; color: #1d1b20; animation: mealPulse 1.2s ease-in-out infinite; }
-  @keyframes mealPulse { 50% { transform: scale(1.06); } }
-  @media (prefers-reduced-motion: reduce) { .meal.hungry { animation: none; } }
-  .feedbtn { margin-left: auto; }
-  .meals .note { margin: 0; font-size: 14px; line-height: 1.4; color: #1d1b20; opacity: .85; font-weight: 600; }
   .hprow { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
   .hpl { font: 700 14px var(--pixel); }
   .hpbar { display: flex; gap: 3px; }
@@ -1165,7 +1160,6 @@ applyTheme();
         <h1 id="headline">Loading your day…</h1>
         <p class="mood" id="petMood"></p>
       </div>
-      <div class="meals" id="meals" hidden></div>
       <div class="hp" id="hp"></div>
     </section>
 
@@ -1354,7 +1348,6 @@ applyTheme();
           Nothing at all = a small loss (0.4× its size), goal reached = +0.6× its size, a bit more for going past it.</li>
         <li><b>Size</b> is how much a thing matters: <b>small 3, medium 6, big 10 HP</b>. You pick it per habit.</li>
         <li><b>+2 HP every day</b> just for being alive.</li>
-        <li><b>Meals:</b> Mochi gets hungry up to 3 times a day (breakfast, lunch, dinner, at times that fit your day, never while you sleep). Feed him in the app, on your phone or on the egg: <b>+1 HP</b>. A missed meal: <b>−3 HP</b>. So ignoring him for days slowly hurts.</li>
         <li><b>Sleep:</b> he learns when you usually go to bed and wake up, and sleeps then. But never while you're still on the computer.</li>
         <li><b>Limits:</b> one day can take at most <b>25 HP</b> and give at most <b>15</b>. So a healthy Mochi survives at least 4 terrible days in a row.</li>
         <li>Days with no data at all (computer off, nothing logged) only get the +2.</li>
@@ -1560,7 +1553,6 @@ applyTheme();
           <label>Deaths <input type="number" min="0" step="1" style="width:64px" data-stulife="deaths"></label>
           <button type="button" class="btn" id="stuKill">💀 Kill him</button></div>
         <p class="note">Under 3 days old = baby. Kill him: death screen on Home, then a new baby hatches.</p>
-        <div id="stuMealsBox"><div class="label" style="margin-top:18px">MEALS TODAY</div><div id="stuMeals" class="actions"></div></div>
         <div class="label" style="margin-top:18px">SCREEN TIME (MINUTES TODAY)</div>
         <div id="stuScreen" class="actions"></div>
         <div class="actions"><button type="button" class="btn primary" id="stuRamp">⏩ Fill in live (12 s)</button></div>
@@ -1941,7 +1933,6 @@ const DEMO = {
     const b = opts.body ? JSON.parse(opts.body) : {};
     if (p === "/api/event") return this.json({ok: true, id: this.log(b.kind)});
     if (p === "/api/event/delete") { this.unlog(b.id); return this.json({ok: true}); }
-    if (p === "/api/feed") { const R = this.o.life.rhythm; if (R && R.hungry) this.meal(R.hungry, "fed"); return this.json({ok: true}); }
     return this.json({ok: true});
   },
   hp(v) { const L = this.o.life; L.hp = Math.max(0, Math.min(100, Math.round(v))); L.hp_start = L.hp; L.test_hp = L.hp; },
@@ -1967,10 +1958,6 @@ const DEMO = {
     this.hp(100);
     go({tab: "home"});
     setTimeout(() => { rip.preview = true; rip.show(d, L); }, 700);   // preview: closing it posts nothing
-  },
-  meal(n, state) {
-    const R = this.o.life.rhythm; R.meals.find(m => m.n === n).state = state;
-    const h = R.meals.find(m => m.state === "hungry"); R.hungry = h ? h.n : null;
   },
   total() { const t = this.o.today; t.screen_total = Object.values(t.categories).reduce((a, b) => a + b, 0); t.screen_pc = t.screen_total - t.screen_phone; },
   // screen time starts empty and fills up by itself, like a real day, over `secs` seconds
@@ -3031,32 +3018,6 @@ const labels14 = () => days14().map(d => new Date(d + "T12:00:00").toLocaleDateS
 const openDay = (e, els) => { if (els.length) { const dd = days14()[els[0].index]; go({tab: currentTab(), day: dd >= todayISO() ? "" : dd}); } };
 
 // ---------------------------------------------------------------- HOME
-// meals: what Mochi ate today, and the Feed button while he's hungry
-let lastHungry = null;
-function renderMeals(R) {
-  const box = $("meals");
-  box.hidden = !R || !R.meals;
-  if (box.hidden) return;
-  const cap = s => s[0].toUpperCase() + s.slice(1);
-  const tip = {fed: "eaten", missed: "missed", hungry: "hungry now", later: "later"};
-  const m = R.meals.find(x => x.n === R.hungry);
-  box.innerHTML = `<div class="mealrow"><span class="lbl">MEALS</span>${R.meals.length ? R.meals.map(x => `<span class="meal ${x.state}" title="${cap(x.n)} at ${x.at}: ${tip[x.state]}">${x.e} ${x.at}${x.state === "fed" ? " ✓" : ""}</span>`).join("")
-      : `<span class="note">none today (you sleep through meal times)</span>`}${m ? `<button type="button" class="btn primary feedbtn" id="feedBtn">${m.e} Feed Mochi</button>` : ""}</div>
-    <p class="note">He gets hungry up to 3 times a day, never while you sleep (around ${R.bed}–${R.wake}${R.learned ? "" : ", still learning your nights"}). Fed on time ${fmtHp(R.fed_hp)} HP, missed ${fmtHp(R.missed_hp)}.</p>`;
-  if (R.hungry && R.hungry !== lastHungry && lastHungry !== null) { sfx.play("msg"); toast(`${m ? m.e : "🍙"} Mochi is hungry!`, null); }
-  const ate = lastHungry && !R.hungry && R.meals.find(x => x.n === lastHungry && x.state === "fed");
-  if (ate) { sfx.play("poke"); toast("😋 Mochi ate (fed on your egg)", null); petYum(); }   // fed somewhere else: same happy hop as here
-  lastHungry = R.hungry || "";
-}
-document.addEventListener("click", async e => {
-  const b = e.target.closest("#feedBtn"); if (!b) return;
-  b.disabled = true;
-  const r = await post("/api/feed", {device: "app"}), j = await r.json().catch(() => ({}));
-  if (j.ok) { sfx.play("poke"); toast("Yum! Mochi is full 😋", null); lastHungry = ""; petYum(); }
-  else toast(j.why === "full" ? `He's not hungry right now${j.next ? `. Next meal at ${j.next}` : ""}.` : "Couldn't feed him.", null);
-  render();
-});
-function petYum() { const p = $("pet"); if (!p) return; p.classList.remove("yum"); void p.offsetWidth; p.classList.add("yum"); setTimeout(() => p.classList.remove("yum"), 1300); }
 function renderHome() {
   const t = O.today, ref = O.ref, val = O.val, isToday = O.is_today, against = O.against;
   // the "main" bad habit (the first one in the list) leads the headline and the mood
@@ -3087,7 +3048,7 @@ function renderHome() {
 
   // the pet's mood follows the day
   let mood = "happy", say = "Nice and calm today. Keep it up.";
-  const R = (O.life || {}).rhythm;   // learned sleep + meals (rhythm.py); older Mochi: just the clock
+  const R = (O.life || {}).rhythm;   // learned sleep (rhythm.py); older Mochi: just the clock
   if (isToday && (R ? R.asleep : hour >= 1 && hour < 5)) { mood = "sleepy"; say = R ? "Zzz… sleeping. I wake up when you're back." : "It's really late. Bed soon?"; }
   else if (cig && cig > cigRef) { mood = lead.smoke ? "smoky" : "meh"; say = lead.smoke ? "I'm a little smoky today." : `More ${lead.n.toLowerCase()} than yesterday. We can do better.`; }
   else if (coding >= 2 * 3600 || commits >= 3) { mood = "proud"; say = "Look at you, getting stuff done!"; }
@@ -3105,9 +3066,7 @@ function renderHome() {
   else if (st.high) say = isToday ? (st.high === 2 ? "Everything's sooo slow and wavy right now." : "Feeling a little floaty, ngl.") : say;
   else if (st.drunk === 1 && isToday) say = "Just a little tipsy. One glass of water for me?";
   else if (st.coughy >= 2 && isToday) say = "*cough cough* My little lungs are working hard today.";
-  if (isToday && R && R.hungry && mood !== "sleepy") { const m = R.meals.find(x => x.n === R.hungry) || {}; say = `I'm hungry! ${m.e || "🍙"} ${R.hungry[0].toUpperCase() + R.hungry.slice(1)} time?`; }
   $("petMood").textContent = say;
-  renderMeals(isToday ? R : null);
   const fxName = st.drunk ? ", a bit drunk" : st.high ? ", a bit high" : st.coughy >= 2 ? ", coughing" : "";
   drawPet(mood, `Your pet Mochi, feeling ${mood}${fxName}, ${H.name.toLowerCase()} at ${H.hp} HP`, H.tier, st);
   $("petcard").dataset.tier = H.tier;
@@ -4024,10 +3983,9 @@ const eggPanel = {
     box(162, 8, 70, 24);
     g.font = "16px Silkscreen, monospace"; g.textBaseline = "top"; g.fillStyle = "#fff";
     g.fillText(new Date().toTimeString().slice(0, 5), 168, 11);
-    const R = (O.life || {}).rhythm || {};
-    const line = e.asleep ? "SLEEPING... ZZZ" : R.hungry ? "HUNGRY! A = FEED" : "HANGING OUT";
+    const line = e.asleep ? "SLEEPING... ZZZ" : "HANGING OUT";
     g.fillStyle = "#1d1b20"; g.fillRect(11, 273, 224, 26); g.fillStyle = "#fff"; g.fillRect(8, 270, 224, 26); g.strokeRect(9, 271, 222, 24);
-    g.fillStyle = e.asleep ? "#c9b8ff" : R.hungry ? "#ffe45e" : "#3fbf6f"; g.beginPath(); g.arc(22, 283, 5, 0, 7); g.fill(); g.stroke();
+    g.fillStyle = e.asleep ? "#c9b8ff" : "#3fbf6f"; g.beginPath(); g.arc(22, 283, 5, 0, 7); g.fill(); g.stroke();
     g.fillStyle = "#1d1b20"; g.font = "13px Silkscreen, monospace"; g.fillText(line, 34, 277);
   },
   viaPhone(c) {   // inside the iPhone app with the egg connected over Bluetooth: send it straight there (instant)
@@ -5016,9 +4974,6 @@ const admin = {
     const o = DEMO.o;
     $("stuHP").value = o.life.hp;
     document.querySelectorAll("[data-stulife]").forEach(i => { i.value = o.life[i.dataset.stulife] || 0; });
-    const R = o.life.rhythm, ST = [["later", "later"], ["hungry", "hungry"], ["fed", "eaten"], ["missed", "missed"]];
-    $("stuMealsBox").hidden = !(R && R.meals && R.meals.length);
-    if (!$("stuMealsBox").hidden) $("stuMeals").innerHTML = R.meals.map(m => `<label>${m.e} ${esc(m.n)} <select data-stumeal="${esc(m.n)}">${ST.map(([v, t]) => `<option value="${v}" ${m.state === v ? "selected" : ""}>${t}</option>`).join("")}</select></label>`).join("");
     $("stuScreen").innerHTML = SCREEN.filter(s => !["screen", "screen_pc", "screen_phone"].includes(s.k))
       .map(s => `<label>${s.e} ${esc(s.n)} <input type="number" min="0" step="5" style="width:80px" data-stucat="${s.k}" value="${Math.round((o.today.categories[s.k] || 0) / 60)}"></label>`).join("");
     $("stuHabits").innerHTML = HABITS.map(h => `<span>${h.e} ${esc(h.n)} <b>${o.today.events[h.k] || 0}</b>
@@ -5110,7 +5065,6 @@ document.addEventListener("change", e => {
   if (e.target.id === "stuHP") DEMO.hp(+e.target.value || 0);
   const lf = e.target.dataset.stulife;
   if (lf) { const v = Math.max(lf === "gen" ? 1 : 0, Math.round(+e.target.value || 0)); DEMO.o.life[lf] = v; if (lf === "age") DEMO.o.life.baby = v < 3; }
-  if (e.target.dataset.stumeal) DEMO.meal(e.target.dataset.stumeal, e.target.value);
   if (e.target.dataset.stucat) { DEMO.o.today.categories[e.target.dataset.stucat] = Math.max(0, +e.target.value || 0) * 60; DEMO.total(); }
 });
 document.addEventListener("input", e => { if (e.target.id === "nBody") admin.drawNewsForm(); if (e.target.id === "uSearch") admin.users(); });

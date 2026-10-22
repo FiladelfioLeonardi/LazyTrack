@@ -66,7 +66,7 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 
 | | A | B | C |
 |---|---|---|---|
-| **Home** (your Mochi) | pet Mochi (hearts); feed him when he's hungry | menu | screen off (any button wakes it). Right after logging: undo |
+| **Home** (your Mochi) | pet Mochi (hearts) | menu | screen off (any button wakes it). Right after logging: undo |
 | **Menu** (a ring around Mochi) | back | open the one on top | turn the ring |
 | **Log** | back | log it (Mochi reacts right away) | next |
 | **Friends** | back | poke them (their egg buzzes, their app plays a sound) | next friend |
@@ -75,8 +75,8 @@ anywhere else for the menu. In Friends, tap their Mochi to poke. To set it up ag
 | **Phone** (Info → C) | back / no | pairing mode / yes (the code) | forget all phones (press twice) |
 
 - **Home** is a little game screen: hearts for HP (each heart is 20 HP) with Mochi's level under them, the clock
-  top right, and a bar at the bottom with what you're doing, or HUNGRY / SLEEPING.
-- **Menu** is a ring of five round buttons around Mochi: Log, Feed, Friends, Today, Info. C turns it (the one on
+  top right, and a bar at the bottom with what you're doing, or SLEEPING.
+- **Menu** is a ring of four round buttons around Mochi: Log, Friends, Today, Info. C turns it (the one on
   top is big and yellow, with its name and a live line above it), B opens it. With touch: tap a button.
 - **Your egg on the computer and phone:** run `supabase/egg_status.sql` in Supabase once. The egg then checks in every
   minute, and LazyTrack shows an **Egg** button at the top (green dot = online): it mirrors the egg's screen, shows how it's
@@ -106,9 +106,8 @@ Compiled and checked with ESP32 board package 3.3.12, GFX Library for Arduino 1.
   egg and **Pair** on the iPhone. Only phones paired this way can use the egg; others are turned away. Phone screen
   → C twice forgets all paired phones. The phone only passes the egg's requests to the LazyTrack server (encrypted link), and gives it
   the time. Info on the egg says "Online via: phone (Bluetooth)". Rebuild the iPhone app once (./setup.sh, ▶ in Xcode).
-- **Fully offline:** LazyTrack sends the egg today's and tomorrow's meal times and your sleep window. With no
-  connection at all, the egg keeps Mochi's day going on its own clock: he gets hungry, A feeds him, he sleeps at
-  your usual time. Logs and meals wait on the egg and go out when it's back online.
+- **Fully offline:** LazyTrack sends the egg your sleep window. With no connection at all, the egg keeps Mochi's
+  day going on its own clock: he sleeps at your usual time. Logs wait on the egg and go out when it's back online.
 
 ## Songs
 

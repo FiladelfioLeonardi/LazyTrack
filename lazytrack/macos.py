@@ -56,6 +56,28 @@ def frontmost_is_game() -> bool:
     return any(d in path for d in GAME_DIRS)
 
 
+def frontmost_is_fullscreen() -> bool:
+    """Is the window in front covering a whole screen (a full-screen app or game)? Reads only window
+    sizes, so no Screen Recording permission is needed."""
+    try:
+        import Quartz  # type: ignore
+        err, ids, n = Quartz.CGGetActiveDisplayList(16, None, None)
+        screens = set()
+        for d in (ids or [])[:n]:
+            r = Quartz.CGDisplayBounds(d)
+            screens.add((round(r.origin.x), round(r.origin.y), round(r.size.width), round(r.size.height)))
+        wins = Quartz.CGWindowListCopyWindowInfo(
+            Quartz.kCGWindowListOptionOnScreenOnly | Quartz.kCGWindowListExcludeDesktopElements, Quartz.kCGNullWindowID) or []
+    except Exception:
+        return False
+    for w in wins:   # front to back: the first normal window is the one in front
+        if w.get("kCGWindowLayer", 0) != 0 or w.get("kCGWindowAlpha", 1) == 0:
+            continue
+        b = w.get("kCGWindowBounds") or {}
+        return (round(b.get("X", 0)), round(b.get("Y", 0)), round(b.get("Width", 0)), round(b.get("Height", 0))) in screens
+    return False
+
+
 def browser_tab(app: str):
     """Returns (url, title) of the active tab, or ("", "")."""
     script = BROWSER_SCRIPTS.get(app)
@@ -166,7 +188,9 @@ def ask(message: str, buttons: List[str], default: str, timeout: int = 120, canc
     cancel: a function; when it returns True (answered somewhere else) the dialog closes."""
     if len(buttons) <= 3:
         btns = ", ".join('"' + _esc(b) + '"' for b in buttons)
-        script = (f'display dialog "{_esc(message)}" with title "Mochi" buttons {{{btns}}} '
+        # activate: the dialog comes to the front even when you're in another app
+        script = (f'activate\n'
+                  f'display dialog "{_esc(message)}" with title "Mochi" buttons {{{btns}}} '
                   f'default button "{_esc(default)}" giving up after {int(timeout)}')
     else:
         items = ", ".join('"' + _esc(b) + '"' for b in buttons)

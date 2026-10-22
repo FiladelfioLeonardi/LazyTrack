@@ -100,6 +100,17 @@ def frontmost_is_game() -> bool:
     return any(d in path for d in GAME_DIRS)
 
 
+def frontmost_is_fullscreen() -> bool:
+    """Is a full-screen app, game or presentation in front? (what Windows itself uses to hold back notifications)"""
+    try:
+        state = ctypes.c_int()
+        if ctypes.windll.shell32.SHQueryUserNotificationState(ctypes.byref(state)) != 0:
+            return False
+    except (AttributeError, OSError):
+        return False
+    return state.value in (2, 3, 4)   # QUNS_BUSY (full screen), QUNS_RUNNING_D3D_FULL_SCREEN, QUNS_PRESENTATION_MODE
+
+
 def _exe_path_of(hwnd) -> str:
     pid = wintypes.DWORD()
     user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))

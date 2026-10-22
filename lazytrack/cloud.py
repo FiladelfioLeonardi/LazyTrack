@@ -232,12 +232,11 @@ def _with_now(card: dict) -> dict:
         card["built"] = int(time.time())
     except Exception as e:
         log.debug("pet fx failed: %s", e)
-    try:   # sleeping (when you sleep, never while you're up) and hungry (meal times): for friends and the egg
-        r = _rhythm()
-        card["asleep"], card["hungry"] = r
+    try:   # sleeping (when you sleep, never while you're up): for friends and the egg
+        card["asleep"] = _rhythm()
         from . import rhythm
         card["plan"] = rhythm.device_plan()   # the egg keeps Mochi's day going offline
-        if r[0]:
+        if card["asleep"]:
             card["mood"] = "sleepy"
         elif card.get("mood") == "sleepy":
             card["mood"] = "happy"
@@ -246,10 +245,9 @@ def _with_now(card: dict) -> dict:
     return card
 
 
-def _rhythm() -> tuple:
+def _rhythm() -> bool:
     from . import rhythm
-    h = rhythm.hungry()
-    return rhythm.asleep(), (h["n"] if h else None)
+    return rhythm.asleep()
 
 
 def push_card(card: dict) -> bool:
@@ -269,7 +267,7 @@ def push_card(card: dict) -> bool:
           prefer="resolution=merge-duplicates,return=minimal")
     d = _doing()
     _last_card.update(t=time.time(), body=body, what=d.get("what"), label=d.get("label"), fx=card.get("fx"),
-                      rh=(card.get("asleep"), card.get("hungry")))
+                      rh=card.get("asleep"))
     return True
 
 
@@ -303,7 +301,7 @@ def heartbeat() -> None:
         _http("POST", "/rest/v1/cards", {"user_id": state()["uid"], "card": card, "updated_at": _now()},
               token=_token(), prefer="resolution=merge-duplicates,return=minimal")
         _last_card.update(t=time.time(), body=json.dumps(card, sort_keys=True), what=d.get("what"),
-                          label=d.get("label"), fx=card.get("fx"), rh=(card.get("asleep"), card.get("hungry")))
+                          label=d.get("label"), fx=card.get("fx"), rh=card.get("asleep"))
     except (CloudError, ValueError) as e:
         log.debug("heartbeat failed: %s", e)
 
@@ -662,7 +660,7 @@ def egg_sync() -> int:
     if not rows:
         return 0
     import datetime as _dt
-    known, n = set(_habits.keys()) | {"feed"}, 0   # "feed": Mochi fed on the egg
+    known, n = set(_habits.keys()), 0   # anything else (like "feed" from older egg firmware) is dropped
     for r in rows:
         if r.get("kind") not in known:
             continue

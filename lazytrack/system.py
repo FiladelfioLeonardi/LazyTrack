@@ -7,6 +7,7 @@ Both files offer the same functions (like a header with two .c files behind it):
   screen_locked()      is the screen locked               pump_runloop(seconds)
   notify(title, msg)   a notification                     ask(msg, buttons, default) -> button or None
   frontmost_is_game()  app in front comes from Steam / Riot / Epic...
+  frontmost_is_fullscreen()  a full-screen app or game is in front
   BROWSERS, BROWSER_SCRIPTS   which apps are browsers
 """
 import sys

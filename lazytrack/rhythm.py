@@ -1,4 +1,4 @@
-"""Mochi's day: he learns when you sleep, and gets hungry up to 3 times a day at sensible times.
+"""Mochi's day: he learns when you sleep.
 
 Sleep
 - Learned from the last 14 nights of activity (computer, phone, anything logged): each night's sleep is the
@@ -7,36 +7,19 @@ Sleep
 - Mochi sleeps inside that window, but never while you're up: anything on the computer (or a log) in the last
   15 minutes keeps him awake. Late night gaming? He's up with you.
 
-Meals (at most 3 a day, never while you sleep)
-- Breakfast about an hour after you wake up (7:00-11:00), lunch around the middle of your day (11:30-14:30),
-  dinner about 3.5 hours before bed (17:30-21:30). A meal that doesn't fit your awake hours that day is skipped
-  (wake up at 1 pm: no breakfast).
-- From the meal time he's hungry for up to 3 hours (until the next meal or midnight at the latest). Feed him in the app, on the phone
-  or on the egg. Fed: +1 HP. Missed: -3 HP. So ignoring Mochi for days slowly costs HP (about -7 a day with the
-  +2 he heals), while a normal day of feeding him costs nothing.
-- Each day's meal times are fixed the first time that day is looked at, so learning more later never changes
-  a day that already happened. Meals count from the day this came in (kv "meals_since"), not before.
+(Meals and hunger were removed on 2026-10-23. Old "feed" events and the kv keys meal_plans / meals_since stay
+in the database untouched; nothing reads them any more.)
 """
 from __future__ import annotations
 
-import json
 import statistics
-import threading
 import time
 from datetime import date, datetime, timedelta
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from . import db
 
-FED_HP, MISSED_HP = 1.0, -3.0
-HUNGRY_HOURS = 3
 DEFAULT_BED, DEFAULT_WAKE = 30, 8 * 60 + 30          # minutes after midnight
-MEALS = [   # name, emoji, earliest, latest (minutes after midnight)
-    ("breakfast", "🥞", 7 * 60, 11 * 60),
-    ("lunch", "🍜", 11 * 60 + 30, 14 * 60 + 30),
-    ("dinner", "🍛", 17 * 60 + 30, 21 * 60 + 30),
-]
-_lock = threading.Lock()
 _cache = {"t": 0.0, "val": None}
 
 
@@ -123,125 +106,15 @@ def asleep(now: Optional[float] = None) -> bool:
     return in_sleep_window(dt.hour * 60 + dt.minute, schedule()) and not _active(now)
 
 
-# ---------------------------------------------------------------- meals
-def _plan_for(sch: dict) -> List[tuple]:
-    """[(name, minutes after midnight)] for a day with this sleep schedule."""
-    wake, bed = sch["wake"], sch["bed"]
-    end = bed if bed > wake else bed + 1440                 # bedtime, counted on the same day
-    want = {"breakfast": wake + 60, "lunch": wake + (end - wake) * 0.42, "dinner": end - 210}
-    out = []
-    for name, _, lo, hi in MEALS:
-        t = min(hi, max(lo, want[name]))
-        if wake + 30 <= t <= end - 60:
-            out.append((name, round(t)))
-    return out
-
-
-def plan(d: date) -> List[dict]:
-    """The meals of day d: [{"n", "e", "start", "end"}] (timestamps). Fixed once made."""
-    key = d.isoformat()
-    with _lock:
-        plans = json.loads(db.kv_get("meal_plans") or "{}")
-        if key not in plans:
-            plans[key] = [[n, m] for n, m in _plan_for(schedule())]
-            keep = (d - timedelta(days=21)).isoformat()
-            plans = {k: v for k, v in plans.items() if k >= keep}
-            db.kv_set("meal_plans", json.dumps(plans))
-        rows = plans[key]
-    base = _midnight(d)
-    emoji = {n: e for n, e, _, _ in MEALS}
-    out = []
-    for i, (n, m) in enumerate(rows):
-        start = base + m * 60
-        end = min(start + HUNGRY_HOURS * 3600, base + 86400)   # a day's meals are over at midnight
-        if i + 1 < len(rows):
-            end = min(end, base + rows[i + 1][1] * 60)
-        out.append({"n": n, "e": emoji.get(n, "🍙"), "start": start, "end": end})
-    return out
-
-
-def since() -> date:
-    v = db.kv_get("meals_since")
-    if not v:
-        v = date.today().isoformat()
-        db.kv_set("meals_since", v)
-    return date.fromisoformat(v)
-
-
-def meals(d: date, now: Optional[float] = None) -> List[dict]:
-    """Day d's meals with their state: later / hungry / fed / missed."""
-    now = now or time.time()
-    c = db.conn()
-    out = []
-    for m in plan(d):
-        fed = c.execute("SELECT MIN(ts) FROM events WHERE kind='feed' AND ts >= ? AND ts < ?", (m["start"], m["end"])).fetchone()[0]
-        state = "fed" if fed else "later" if now < m["start"] else "hungry" if now < m["end"] else "missed"
-        out.append({**m, "state": state, "fed": fed, "at": datetime.fromtimestamp(m["start"]).strftime("%H:%M")})
-    return out
-
-
-def day_part(d: date, until: Optional[datetime] = None) -> Optional[dict]:
-    """What the meals of day d did to HP (so far, for today). None before meals came in."""
-    if d < since():
-        return None
-    now = until.timestamp() if until else _midnight(d) + 86400
-    ms = meals(d, now)
-    fed = sum(1 for m in ms if m["state"] == "fed")
-    missed = sum(1 for m in ms if m["state"] == "missed")
-    return {"d": fed * FED_HP + missed * MISSED_HP, "fed": fed, "missed": missed, "planned": len(ms)}
-
-
-def hungry(now: Optional[float] = None) -> Optional[dict]:
-    now = now or time.time()
-    return next((m for m in meals(date.today(), now) if m["state"] == "hungry"), None)
-
-
-def feed(device: str = "app", source: str = "manual", ts: Optional[float] = None) -> dict:
-    """Feeds Mochi if he's hungry. {"ok", "meal"} or {"ok": False, "why": "full"}."""
-    ts = ts or time.time()
-    m = hungry(ts)
-    if not m:
-        nxt = next((x for x in meals(date.today(), ts) if x["state"] == "later"), None)
-        return {"ok": False, "why": "full", "next": nxt["at"] if nxt else None}
-    db.add_event("feed", device, source=source, ts=ts)
-    return {"ok": True, "meal": m["n"]}
-
-
 def now_state() -> dict:
     """Everything the app, friends' cards and the egg need right now."""
     sch = schedule()
-    t = time.time()
-    ms = meals(date.today(), t)
-    h = next((m for m in ms if m["state"] == "hungry"), None)
-    return {"asleep": asleep(t), "bed": _clock(sch["bed"]), "wake": _clock(sch["wake"]), "learned": sch["learned"],
-            "nights": sch["nights"], "hungry": h["n"] if h else None, "hungry_until": h["end"] if h else None,
-            "meals": [{"n": m["n"], "e": m["e"], "at": m["at"], "state": m["state"]} for m in ms],
-            "fed_hp": FED_HP, "missed_hp": MISSED_HP}
+    return {"asleep": asleep(), "bed": _clock(sch["bed"]), "wake": _clock(sch["wake"]), "learned": sch["learned"],
+            "nights": sch["nights"]}
 
 
 def device_plan() -> dict:
-    """For the egg's offline mode (no internet, or LazyTrack closed): today's and tomorrow's meals and your sleep
-    window, so it can keep Mochi's day going on its own clock. Meals: [letter, start, end (minutes after
-    midnight, your time), fed 0/1]; bed/wake in minutes after midnight."""
+    """For the egg's offline mode (no internet, or LazyTrack closed): your sleep window in minutes after
+    midnight. "m"/"m2" (meals) stay as empty lists so eggs with older firmware just see no meals."""
     sch = schedule()
-    t = time.time()
-    today = date.today()
-
-    def rows(d: date) -> list:
-        base = _midnight(d)
-        return [[m["n"][0], int((m["start"] - base) // 60), int((m["end"] - base) // 60), 1 if m["state"] == "fed" else 0]
-                for m in meals(d, t)]
-    return {"day": today.isoformat(), "bed": sch["bed"], "wake": sch["wake"], "m": rows(today), "m2": rows(today + timedelta(days=1))}
-
-
-def tick(notify) -> None:
-    """Every ~30 s (from the sync worker): when a meal starts, tells you once (notification + sound)."""
-    since()
-    m = hungry()
-    if not m or asleep():
-        return
-    key = f"{date.today().isoformat()}:{m['n']}"
-    if db.kv_get("meal_told") == key:
-        return
-    db.kv_set("meal_told", key)
-    notify(m)
+    return {"day": date.today().isoformat(), "bed": sch["bed"], "wake": sch["wake"], "m": [], "m2": []}
