@@ -11,7 +11,7 @@
 <title>Mochi</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;500;600;700&family=Rubik:wght@400;500;700;800&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   /* ------------------------------------------------------------ tokens */
@@ -955,6 +955,71 @@
   @media (max-width: 560px) {
     .wpet { width: 150px; height: 150px; } .wpet .pet { grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; }
   }
+
+  /* ============================================================ pixel redesign: one layer over everything above */
+  /* square corners and the pixel font everywhere; the egg keeps its shape */
+  :root { --r: 0px; --body: "Pixelify Sans", "Rubik", ui-monospace, monospace;
+    --pxf: 3px 0 0 var(--line), -3px 0 0 var(--line), 0 3px 0 var(--line), 0 -3px 0 var(--line);
+    --pxs: 6px 6px 0 color-mix(in srgb, var(--line) 28%, transparent); --pxb: 4px 4px 0 color-mix(in srgb, var(--line) 35%, transparent); }
+  *:not(.eggshell), *::before, *::after { border-radius: 0 !important; }
+  /* 8-bit frames: four offset shadows instead of a border leave the corners notched */
+  .card, .fcard, .chip, .petcard, #eggPop, #tour .tcard, .ideahint { border: 0 !important; box-shadow: var(--pxf), var(--pxs) !important; }
+  button.fcard:hover { box-shadow: var(--pxf), 8px 8px 0 color-mix(in srgb, var(--line) 28%, transparent) !important; }
+  .btn, .tourbtn, .logbtn, .daynav, .ideabtn { border: 0 !important; box-shadow: var(--pxf), var(--pxb) !important; }
+  .btn:active, .logbtn:active, .tourbtn:active, .logbtn:hover:active { box-shadow: var(--pxf) !important; }
+  @media (min-width: 821px) {
+    .tab { border: 0; box-shadow: var(--pxf), var(--pxb); font: 400 12px var(--pixel); }
+    .tab[aria-current="page"] { box-shadow: var(--pxf); }
+  }
+  @media (max-width: 820px) { .tabs { border: 0; box-shadow: var(--pxf), var(--pxs); } .tab { font: 400 9px var(--pixel); } }
+  .tab svg { width: 24px; height: 24px; }   /* the pixel icons are 7-8 px wide, so 3x */
+  .brand .mini { border-radius: 0; }
+
+  /* Home: Mochi's big window first, then the log buttons as a bag */
+  #home .hmid { display: flex; flex-direction: column; }
+  #home .hmid > #petcard { order: -1; }
+  #home h2.quickh, #home h2.quickh + .sub { display: none; }
+  #petcard .pettop { display: flex; flex-direction: column; flex-wrap: nowrap !important; align-items: stretch; gap: 14px; }
+  .pwin { position: relative; flex: none; }
+  #petBox.scene { width: 100%; height: auto; aspect-ratio: 4 / 3; border: 0; box-shadow: var(--pxf);
+    background-size: 100% auto !important; background-position: center bottom !important; }
+  /* the scenes are square with the ground 16% from the bottom; on a 4:3 window that is 21.33% of the height */
+  #petBox.scene > .pet { bottom: 21.33%; }
+  #petBox.scene .pet { grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; }
+  #petBox.scene .pet.baby0 { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
+  #petBox.scene .pet.baby1 { grid-template-columns: repeat(16, 6px); grid-auto-rows: 6px; }
+  #petBox .dress { left: 10px; top: 10px; right: auto; bottom: auto; }
+  .phud { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; pointer-events: none; }
+  .phud > span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--card); color: var(--ink); box-shadow: var(--pxf); font: 400 11px var(--pixel); }
+  .phud .hpbar { gap: 2px; } .phud .hpbar i { width: 8px; height: 12px; border: 0; background: var(--soft); } .phud .hpbar i.on { background: var(--hpc); }
+  .pgear { position: absolute; top: 10px; right: 10px; z-index: 2; width: 40px; height: 40px; display: grid; place-items: center; background: var(--card); color: var(--ink); box-shadow: var(--pxf); }
+  .pgear svg { width: 21px; height: 21px; }
+  .pgear:hover { background: var(--yellow); color: var(--on-fill); }
+  .speech { background: var(--card); color: var(--ink); box-shadow: var(--pxf); padding: 12px 14px; margin: 3px; }
+  #home #logbar { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
+  #logbar::before { content: "BAG · TAP TO LOG"; grid-column: 1 / -1; font: 400 12px var(--pixel); color: var(--ink-2); }
+  .logbtn { height: 84px; flex-direction: column; gap: 6px; font: 600 14px var(--body); }
+  .logbtn .e { font-size: 28px; line-height: 1; }
+  @media (max-width: 560px) {
+    #petBox.scene .pet { grid-template-columns: repeat(16, 6px); grid-auto-rows: 6px; }
+    #petBox.scene .pet.baby0, #petBox.scene .pet.baby1 { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
+    .logbtn { height: 76px; font-size: 13px; } .phud > span { font-size: 9px; padding: 3px 6px; }
+  }
+  @media (max-width: 620px) { #logbar { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; } }
+
+  /* Monitoring: screen time per day with exact times */
+  .sdays { display: grid; gap: 2px; }
+  .sday { display: grid; grid-template-columns: 92px minmax(0, 1fr) 70px; align-items: center; gap: 10px; width: 100%; padding: 6px; border: 0; background: none; color: inherit; text-align: left; cursor: pointer; }
+  .sday:hover, .sday.on { background: var(--soft); }
+  .sdl { font: 400 11px var(--pixel); } .sdv { font: 400 11px var(--pixel); text-align: right; }
+  .sdt { position: relative; height: 16px; background: var(--soft); box-shadow: inset 0 0 0 2px var(--line); }
+  .sdt i { position: absolute; left: 0; top: 0; bottom: 0; display: block; box-shadow: inset 0 0 0 2px var(--line); }
+  .sdt b { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1px; background: var(--line); }
+  .sdavg { font: 400 11px var(--pixel); color: var(--ink-2); margin: 8px 6px 0; }
+  .sdpick { margin-top: 14px; padding-top: 12px; border-top: 2px dashed var(--soft); }
+  .sdhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .sdhead b { font: 400 13px var(--pixel); }
+  @media (max-width: 560px) { .sday { grid-template-columns: 70px minmax(0, 1fr) 58px; gap: 6px; } }
 </style>
 <script>
 // Color themes. Each one overrides a few tokens, separately for light and dark.
@@ -1171,11 +1236,11 @@ applyTheme();
   </header>
 
   <nav class="tabs" aria-label="Sections">
-    <a class="tab" data-tab="home" href="#tab=home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"/><path d="M9 20v-6h6v6"/></svg>Home</a>
-    <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-4.6-8-10.2C4 6.9 6 5 8.4 5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2C18 5 20 6.9 20 9.8 20 15.4 12 20 12 20z"/><path d="M12 7l-1.5 4 3 2-1.5 4"/></svg><span class="hidesm">Habits</span><span class="showsm">Habits</span></a>
-    <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 12l3-3 2 2 4-4"/></svg><span class="hidesm">Monitoring</span><span class="showsm">Monitor</span></a>
-    <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.8 3.2-6 6.5-6s5.9 2.2 6.5 6"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14c2.7.2 4.6 2.2 5 5.5"/></svg>Friends<span class="tbadge" id="fBadge" hidden></span></a>
-    <a class="tab" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</a>
+    <a class="tab" data-tab="home" href="#tab=home"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h1v1h-1zM4 0h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z"/></svg>Home</a>
+    <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg><span class="hidesm">Habits</span><span class="showsm">Habits</span></a>
+    <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M6 0h1v1h-1zM7 0h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg><span class="hidesm">Monitoring</span><span class="showsm">Monitor</span></a>
+    <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 8 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 0h1v1h-1zM2 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1z"/></svg>Friends<span class="tbadge" id="fBadge" hidden></span></a>
+    <a class="tab" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1z"/></svg>Settings</a>
   </nav>
   <div class="offline" id="offline">Can't reach Mochi. Is its window still open?</div>
 
@@ -1190,7 +1255,7 @@ applyTheme();
     <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
     <section class="card petcard" id="petcard">
       <div class="pettop">
-        <button type="button" class="petbox" id="petBox" aria-label="Dress up Mochi"><canvas class="petfx" id="petFx" width="21" height="21" aria-hidden="true"></canvas><div class="pet" id="pet" role="img" aria-label="Your pet"></div><span class="dress" aria-hidden="true">👕</span></button>
+        <div class="pwin"><button type="button" class="petbox" id="petBox" aria-label="Dress up Mochi"><canvas class="petfx" id="petFx" width="21" height="21" aria-hidden="true"></canvas><div class="pet" id="pet" role="img" aria-label="Your pet"></div><span class="dress" aria-hidden="true">👕</span></button><div class="phud" id="petHud"></div><a class="pgear" href="#tab=settings" aria-label="Settings"><svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1z"/></svg></a></div>
         <div class="petside"><div class="petwho" id="petWho" hidden></div><div class="statsheet" id="statsheet" aria-label="Today's stats"></div></div>
       </div>
       <div class="speech">
@@ -1267,8 +1332,8 @@ applyTheme();
     </div>
 
     <h2 class="sec">Last two weeks</h2>
-    <p class="sub">Hours per day. Tap a bar to open that day.</p>
-    <div class="card pad"><div class="chartbox tall"><canvas id="cScreen"></canvas></div></div>
+    <p class="sub">Exact time per day. The line is your average; tap a day to see what it went to.</p>
+    <div class="card pad" id="sDays"></div>
 
     <h2 class="sec">This week</h2>
     <p class="sub">So far, compared with last week up to the same point.</p>
@@ -3132,6 +3197,10 @@ function renderHome() {
     ${H.quests.length && isToday ? `<div class="quests"><div class="ql">${H.hp < 50 ? "WAYS TO HEAL MOCHI" : "RIGHT NOW"}</div>
       ${H.quests.map(([a, b]) => `<div class="q"><span class="qa">${esc(a)}</span><span class="qb">${esc(b)}</span></div>`).join("")}</div>` : ""}`;
 
+  // the same HP inside Mochi's window, game-HUD style, with which Mochi this is and how old
+  $("petHud").innerHTML = `<span><b>HP</b><span class="hpbar" role="img" aria-label="${H.hp} out of 100">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>${H.hp}</span>
+    <span>MOCHI #${L.gen || 1} · ${L.age ? `DAY ${L.age}` : "BORN TODAY"}</span>`;
+
   // game-style stats vs yesterday at this time. Arrow = what happened (▲ more, ▼ less),
   // color = was it good: more cigs = red ▲, fewer = green ▼; more coding = green ▲, less = red ▼.
   const STATS = [...HABITS.map(h => [h.k, h.s || h.n.slice(0, 5).toUpperCase()]), ...SHOW_SCREEN.filter(k => INFO[k]).map(k => [k, SCREEN_LABEL[k] || k.toUpperCase()])];
@@ -3395,13 +3464,31 @@ function renderScreen() {
   $("apps").innerHTML = apps.map(a => `<li style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><b>${esc(a.app)}</b><span class="when">${hm(a.seconds)}</span></div>
       <div class="appbar" style="width:${(100 * a.seconds / max).toFixed(1)}%"></div></li>`).join("") || `<li class="empty">Nothing tracked yet.</li>`;
   const cats = ["coding", "youtube", "social", "streaming", "gaming", "browsing", "other"].filter(c => O.daily.some(d => d.categories[c]));
-  chart("cScreen", "bar", {labels: labels14(), datasets: cats.map(c => ({label: INFO[c].n, backgroundColor: catColor(c), ...BAR(), borderRadius: 3,
-    data: O.daily.map(d => +((d.categories[c] || 0) / 3600).toFixed(2))}))}, {stacked: true, hours: true, labels: true, onClick: openDay});
+  screenDays(cats);
   const w = O.week, lw = O.last_week;
   $("sWeek").innerHTML = ["screen_pc", "screen_phone", "screen", "youtube", "social", "coding"].map(k => {
     const a = O.val(w, k), b = O.val(lw, k);
     return rowHTML(k, hm(a), compare(k, a, b, "last week"));
   }).join("");
+}
+
+/**
+ * Last two weeks of screen time as one bar per day with the exact time, a line at the average of the days
+ * with any screen time (over it red, under it green), and the picked day split by category underneath.
+ */
+let screenDay = null;   // index into days14(); null = today
+function screenDays(cats) {
+  const days = days14(), labels = labels14(), tot = O.daily.map(d => cats.reduce((a, c) => a + (d.categories[c] || 0), 0));
+  const used = tot.filter(v => v > 0), avg = used.length ? used.reduce((a, b) => a + b, 0) / used.length : 0, max = Math.max(1, ...tot);
+  const i = screenDay == null ? days.length - 1 : screenDay, m = O.daily[i] || {categories: {}}, t = tot[i] || 0, dd = days[i];
+  $("sDays").innerHTML = `<div class="sdays">${tot.map((v, j) => `<button type="button" class="sday${j === i ? " on" : ""}" data-sday="${j}" aria-label="${esc(labels[j])}: ${hm(v)}">
+      <span class="sdl">${esc(labels[j])}</span><span class="sdt"><i style="width:${(100 * v / max).toFixed(1)}%;background:${v > avg ? "var(--red)" : "var(--green)"}"></i>${avg ? `<b style="left:${(100 * avg / max).toFixed(1)}%"></b>` : ""}</span><span class="sdv">${hm(v)}</span></button>`).join("")}</div>
+    <div class="sdavg">AVERAGE ${hm(avg)}</div>
+    <div class="sdpick"><div class="sdhead"><b>${esc(labels[i])} · ${hm(t)}</b><button type="button" class="btn" data-sopen="${dd}">Open that day</button></div>
+      ${t ? `<div class="segbar">${cats.filter(c => m.categories[c]).map(c => `<i style="width:${(100 * m.categories[c] / t).toFixed(1)}%;background:${catColor(c)}"></i>`).join("")}</div>
+      <div class="seglegend">${cats.filter(c => m.categories[c]).map(c => `<span><i class="sw" style="background:${catColor(c)}"></i>${esc(INFO[c].n)}<b>${hm(m.categories[c])}</b></span>`).join("")}</div>` : `<p class="note">No screen time that day.</p>`}</div>`;
+  $("sDays").querySelectorAll("[data-sday]").forEach(b => b.onclick = () => { screenDay = +b.dataset.sday; screenDays(cats); });
+  $("sDays").querySelector("[data-sopen]").onclick = e => { const d = e.currentTarget.dataset.sopen; go({tab: currentTab(), day: d >= todayISO() ? "" : d}); };
 }
 
 // ---------------------------------------------------------------- SCHOOL
