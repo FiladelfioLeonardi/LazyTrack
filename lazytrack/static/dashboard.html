@@ -296,9 +296,6 @@
   .petcard[data-tier="sick"]   { --hpc: #e0735a; background: #d3dbc4; }
   .petbox { position: relative; overflow: hidden; }
   .petcard[data-tier="legend"] .petbox { border-color: #b88a00; box-shadow: 0 0 0 3px #ffe07a; }
-  .petcard[data-tier="legend"] .petbox::after { content: ""; position: absolute; inset: -40%; pointer-events: none;
-    background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.85) 50%, transparent 58%); animation: shine 4.5s ease-in-out infinite; }
-  @keyframes shine { 0%, 55% { transform: translateX(-70%); } 100% { transform: translateX(70%); } }
   .hp { display: grid; gap: 10px; }
   .hprow { display: flex; align-items: center; gap: 8px 10px; flex-wrap: wrap; }
   .hpl { font: 700 14px var(--pixel); }
@@ -1041,8 +1038,8 @@
   /* what Mochi says: a speech bubble inside his window (headline only) */
   #petcard { position: relative; }
   /* what Mochi says: the box, then an arrow at its end that slides it away (and back); remembered on this device */
-  .saywrap { position: absolute; top: 24px; left: 24px; right: 24px; z-index: 3; padding: 4px; overflow: hidden; pointer-events: none; }   /* clips the box as it slides out */
-  #petcard .speech { position: relative; display: inline-block; vertical-align: top; max-width: calc(100% - 52px); margin: 0; padding: 8px 10px; pointer-events: auto;
+  .saywrap { position: absolute; top: 24px; left: 24px; right: 24px; z-index: 3; padding: 4px; overflow: hidden; pointer-events: none; min-height: 54px; }   /* clips the box as it slides out; tall enough for the ◀ button */
+  #petcard .speech { position: relative; display: inline-block; vertical-align: top; max-width: calc(100% - 62px); margin: 0; padding: 8px 10px; pointer-events: auto;
     transition: transform .35s cubic-bezier(.2, .8, .2, 1), opacity .3s ease; }
   .saytog { position: absolute; top: 7px; left: calc(var(--sw, 0px) + 4px); width: 36px; height: 36px; margin: 0 0 0 9px; border: 0; background: var(--card); color: var(--ink);
     box-shadow: var(--pxf); font: 700 14px var(--pixel); cursor: pointer; display: grid; place-items: center; pointer-events: auto; transition: left .35s cubic-bezier(.2, .8, .2, 1); }
@@ -2868,8 +2865,8 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
     for (let i = 0; i < 3; i++) { const y = fx.shades + i; if (y >= 0 && y < 16) for (let x = 0; x < 16; x++) if (COOL_SHADES[i][x] === "g") g[y][x] = "#3a3648"; }
     for (const gx of fx.glint || []) if (fx.shades + 1 >= 0 && fx.shades + 1 < 16) g[fx.shades + 1][gx] = "#ffffff";
   }
-  // breathing out: everything above the belly sinks one pixel, the feet stay on the ground
-  if (fx.breath) { for (let y = 10; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
+  // breathing out: everything above the feet (rows 14-15) sinks one pixel; stopping higher painted over 2-row mouths
+  if (fx.breath) { for (let y = 13; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
   return petImg(g);
 }
 // Mochi as one pixelated picture spanning the cell grid: 256 separate cells showed thin seams on scaled screens
