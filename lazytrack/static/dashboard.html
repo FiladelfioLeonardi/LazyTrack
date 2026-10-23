@@ -1054,8 +1054,6 @@
   .logbtn { position: relative; }
   .logbtn[data-n]::after { content: attr(data-n); position: absolute; top: 5px; right: 7px; font: 400 10px var(--pixel); }
   .logbtn.done { background: var(--green) !important; }
-  /* Settings moved into the gear in Mochi's window; the tab stays for the code that looks it up */
-  .tab.tabset { display: none !important; }
   /* Quests tab: all quests and all curses with the last 7 days, like the sketch */
   .qgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 22px 0 18px; align-items: start; }
   @media (max-width: 820px) { .qgrid { grid-template-columns: 1fr; } }
@@ -4032,6 +4030,9 @@ const wardrobe = {
     $("wrHead").innerHTML = `<h2 id="wrTitle">${cat[1]} ${cat[2]}</h2>${WR_HINT[this.tab] ? `<p>${WR_HINT[this.tab]}</p>` : ""}
       <div class="wrchips">${WR_CATS.map(([k, ic, n]) => `<button type="button" data-wrtab="${k}" aria-pressed="${k === this.tab}">${ic} ${esc(n)}</button>`).join("")}</div>`;
     $("wrBackBtn").hidden = true; $("wrKeys").hidden = true;   // the chips are the way between categories
+    // a tile shows your body, skin, eyes and mouth wearing only that piece, so the piece is easy to see
+    const L = this.look, only = (slot, k) => ({body: L.body, skin: L.skin, eyes: L.eyes, eyesColor: L.eyesColor, mouth: L.mouth, place: L.place, [slot]: k,
+      ...(COLOR_SLOTS.includes(slot) && slot !== "eyes" && L[slot] === k && L[slot + "Color"] ? {[slot + "Color"]: L[slot + "Color"]} : {})});
     let items;
     if (this.tab === "girl" || this.tab === "plus") {   // pieces from every category, in sections; each tile changes its own part
       const flag = this.tab === "girl" ? "g" : "p";
@@ -4045,14 +4046,14 @@ const wardrobe = {
           if (!v[flag]) continue;
           if (slot === "looks") { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
             items.push({k: "looks:" + k, n: v.n, p: v.p, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}); }
-          else items.push({k: slot + ":" + k, n: v.n, p: v.p, look: {...this.look, [slot]: k}, on: this.look[slot] === k});
+          else items.push({k: slot + ":" + k, n: v.n, p: v.p, look: only(slot, k), on: this.look[slot] === k});
         }
       }
     } else if (this.tab === "looks") {
       items = Object.entries(MOCHI.looks).map(([k, v]) => { const look = {...LOOK_DEFAULT, ...v.look, place: this.look.place};
         return {k, n: v.n, p: v.p, look, on: Object.keys(LOOK_DEFAULT).every(s => look[s] === this.look[s])}; });
     } else {
-      items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, p: v.p, look: {...this.look, [this.tab]: k}, on: this.look[this.tab] === k}));
+      items = Object.entries(MOCHI[SLOTS[this.tab]]).map(([k, v]) => ({k, n: v.n, p: v.p, look: only(this.tab, k), on: this.look[this.tab] === k}));
     }
     const fresh = !!dir;   // the tiles drop in only when the page opens, not on every pick
     $("wrList").innerHTML = `<div class="writems ${fresh ? "" : "settled"}">${items.map((it, n) => { if (it.sec) return `<div class="wrsec">${esc(it.sec)}</div>`; const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
