@@ -143,7 +143,10 @@ def apply(repo: str, branch: str, info: dict) -> None:
     if _hash(APP_DIR / _req_file()) != req_before:
         log.info("updater: new packages needed, installing...")
         py = Path(sys.executable)
-        subprocess.run([str(py), "-m", "pip", "install", "-q", "-r", str(APP_DIR / _req_file())], cwd=APP_DIR, timeout=1800)
+        kw = {}
+        if os.name == "nt":   # Mochi runs as pythonw (no console): pip needs python.exe, hidden
+            py, kw = py.with_name("python.exe"), {"creationflags": 0x08000000, "capture_output": True}
+        subprocess.run([str(py), "-m", "pip", "install", "-q", "-r", str(APP_DIR / _req_file())], cwd=APP_DIR, timeout=1800, **kw)
     VERSION_FILE.write_text(info["sha"] + "\n")
     db.kv_set("update_available", "")
     db.kv_set("update_done_at", time.time())

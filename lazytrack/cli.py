@@ -348,6 +348,9 @@ def main() -> None:
     lg.add_argument("--note")
     args = p.parse_args()
 
+    if sys.stderr is None and args.cmd == "run":   # pythonw on Windows (no console): keep the log run-hidden.bat used to write
+        config.HOME.mkdir(parents=True, exist_ok=True)
+        sys.stdout = sys.stderr = open(config.HOME / "lazytrack.log", "a", encoding="utf-8", buffering=1)
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)-7s %(name)s: %(message)s", datefmt="%H:%M:%S")
     cfg = config.load()

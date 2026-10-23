@@ -1,7 +1,7 @@
 ' Starts LazyTrack without a black window. Used by the Start menu, desktop and startup shortcuts.
 ' If it's already running, it just opens its window. "/background" = start without opening the browser.
 Option Explicit
-Dim sh, fso, dir, background, running, http
+Dim sh, fso, dir, background, running, http, py, rc
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 dir = fso.GetParentFolderName(fso.GetParentFolderName(WScript.ScriptFullName))
@@ -31,4 +31,15 @@ End If
 
 If background Then sh.Environment("PROCESS")("LAZYTRACK_RESTARTED") = "1"
 sh.CurrentDirectory = dir
-sh.Run """" & dir & "\windows\run-hidden.bat""", 0, False
+' pythonw has no console at all, so no window can pop up (Windows Terminal ignores "hidden" for console programs).
+' It logs to %USERPROFILE%\.lazytrack\lazytrack.log itself. Exit code 3 = restart me (e.g. after an update).
+py = dir & "\.venv\Scripts\pythonw.exe"
+If Not fso.FileExists(py) Then
+  sh.Run """" & dir & "\windows\run-hidden.bat""", 0, False
+  WScript.Quit
+End If
+sh.Environment("PROCESS")("PYTHONUTF8") = "1"
+Do
+  rc = sh.Run("""" & py & """ -m lazytrack run", 0, True)
+  sh.Environment("PROCESS")("LAZYTRACK_RESTARTED") = "1"
+Loop While rc = 3

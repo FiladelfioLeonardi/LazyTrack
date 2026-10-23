@@ -44,7 +44,8 @@ def find_repos(roots: List[str], max_depth: int) -> List[Path]:
 
 def _git(args: List[str], cwd=None) -> str:
     try:
-        out = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, timeout=30)
+        out = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, timeout=30,
+                             creationflags=0x08000000 if os.name == "nt" else 0)   # CREATE_NO_WINDOW
         return out.stdout if out.returncode == 0 else ""
     except (OSError, subprocess.TimeoutExpired):
         return ""
