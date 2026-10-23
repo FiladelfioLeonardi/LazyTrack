@@ -991,9 +991,6 @@
   .phud { position: absolute; left: 10px; right: 10px; bottom: 10px; z-index: 2; display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; pointer-events: none; }
   .phud > span { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--card); color: var(--ink); box-shadow: var(--pxf); font: 400 11px var(--pixel); }
   .phud .hpbar { gap: 2px; } .phud .hpbar i { width: 8px; height: 12px; border: 0; background: var(--soft); } .phud .hpbar i.on { background: var(--hpc); }
-  .pgear { position: absolute; top: 10px; right: 10px; z-index: 2; width: 40px; height: 40px; display: grid; place-items: center; background: var(--card); color: var(--ink); box-shadow: var(--pxf); }
-  .pgear svg { width: 21px; height: 21px; }
-  .pgear:hover { background: var(--yellow); color: var(--on-fill); }
   .speech { background: var(--card); color: var(--ink); box-shadow: var(--pxf); padding: 12px 14px; margin: 3px; }
   #home #logbar { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 24px; }
   #logbar::before { content: "BAG · TAP TO LOG"; grid-column: 1 / -1; font: 400 12px var(--pixel); color: var(--ink-2); }
@@ -1028,12 +1025,16 @@
   @media (min-width: 1240px) { .homegrid .hleft, .homegrid .hright { padding-top: 0; } #home .hmid > #petcard { margin-top: 0; } }
   /* what Mochi says: a speech bubble inside his window (headline only) */
   #petcard { position: relative; }
-  #petcard .speech { position: absolute; top: 28px; left: 72px; max-width: calc(100% - 194px); z-index: 3; margin: 0; padding: 8px 10px; }
-  /* the arrow folds what Mochi says away (remembered on this device) */
-  .saytog { position: absolute; top: 28px; left: 28px; z-index: 4; width: 36px; height: 36px; margin: 3px; border: 0; background: var(--card); color: var(--ink);
-    box-shadow: var(--pxf); font: 700 14px var(--pixel); cursor: pointer; display: grid; place-items: center; }
+  /* what Mochi says: the box, then an arrow at its end that slides it away (and back); remembered on this device */
+  .saywrap { position: absolute; top: 24px; left: 24px; right: 24px; z-index: 3; padding: 4px; overflow: hidden; pointer-events: none; }   /* clips the box as it slides out */
+  #petcard .speech { position: relative; display: inline-block; vertical-align: top; max-width: calc(100% - 52px); margin: 0; padding: 8px 10px; pointer-events: auto;
+    transition: transform .4s steps(8), opacity .4s steps(8); }
+  .saytog { position: absolute; top: 7px; left: calc(var(--sw, 0px) + 4px); width: 36px; height: 36px; margin: 0 0 0 9px; border: 0; background: var(--card); color: var(--ink);
+    box-shadow: var(--pxf); font: 700 14px var(--pixel); cursor: pointer; display: grid; place-items: center; pointer-events: auto; transition: left .4s steps(8); }
   .saytog:hover { background: var(--yellow); color: var(--on-fill); }
-  #petcard.sayoff .speech { display: none; }
+  #petcard.sayoff .speech { transform: translateX(calc(-100% - 40px)); opacity: 0; pointer-events: none; }
+  #petcard.sayoff .saytog { left: -5px; }
+  html.still .saytog, html.still #petcard .speech { transition: none; }
   #petBox { cursor: default; } #petBox:hover { transform: none; }   /* only a picture now: Looks is its own tab */
   #petcard .speech .who, #petcard .speech .mood { display: none; }
   #petcard .speech h1 { font: 600 15px/1.25 var(--body); margin: 0; }
@@ -1144,7 +1145,7 @@
   #sTargets .tmore { grid-column: 2 / -1; } #sTargets .tmore summary { font: 400 10px var(--pixel); color: var(--ink-3); padding-top: 4px; }
   @media (max-width: 560px) { #sTargets .tline { grid-column: 2 / -1; grid-row: auto; margin-top: 6px; } }
   /* the one-time "new look" moment: the old screen bursts into pixels, then a big card */
-  .nlboom { position: fixed; inset: 0; z-index: 60; pointer-events: none; image-rendering: pixelated; }
+  .nlboom { position: fixed; inset: 0; z-index: 60; cursor: wait; image-rendering: pixelated; }   /* catches every click while it plays */
   .nlmodal { z-index: 61; }
   .nlcard { width: min(520px, 100%); padding: 28px 26px 24px; background: var(--card); color: var(--ink); box-shadow: var(--pxf), var(--pxs); text-align: center;
     animation: nlIn .45s steps(6) both; }
@@ -1424,14 +1425,16 @@ applyTheme();
     <div class="logmore"><button class="btn" id="moreLogs">More things to log</button></div>
     <section class="card petcard" id="petcard">
       <div class="pettop">
-        <div class="pwin"><div class="petbox" id="petBox"><canvas class="petfx" id="petFx" width="21" height="21" aria-hidden="true"></canvas><div class="pet" id="pet" role="img" aria-label="Your pet"></div></div><div class="phud" id="petHud"></div><a class="pgear" href="#tab=settings" aria-label="Settings"><svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1z"/></svg></a></div>
+        <div class="pwin"><div class="petbox" id="petBox"><canvas class="petfx" id="petFx" width="21" height="21" aria-hidden="true"></canvas><div class="pet" id="pet" role="img" aria-label="Your pet"></div></div><div class="phud" id="petHud"></div></div>
         <div class="petside"><div class="petwho" id="petWho" hidden></div><div class="statsheet" id="statsheet" aria-label="Today's stats"></div></div>
       </div>
-      <button type="button" class="saytog" id="sayTog" aria-expanded="true" aria-controls="petSpeech" aria-label="Hide what Mochi says">◀</button>
+      <div class="saywrap" id="sayWrap">
       <div class="speech" id="petSpeech">
         <div class="who" id="petWho">MOCHI SAYS</div>
         <h1 id="headline">Loading your day…</h1>
         <p class="mood" id="petMood"></p>
+      </div>
+      <button type="button" class="saytog" id="sayTog" aria-expanded="true" aria-controls="petSpeech" aria-label="Hide what Mochi says">◀</button>
       </div>
       <div class="hp" id="hp"></div>
     </section>
@@ -5991,32 +5994,52 @@ const newLook = {
     }
     return c;
   },
+  // 2.4 s of rumble that keeps getting worse (cracks spreading from the middle, flickers), a white flash, then the blast.
+  // Nothing on the page can be clicked or typed into until the card shows.
   explode() {
-    const w = innerWidth, h = innerHeight, T = 16, old = this.oldScreen(w, h);
+    const w = innerWidth, h = innerHeight, T = 16, old = this.oldScreen(w, h), ox = old.getContext("2d");
     const cv = document.createElement("canvas"); cv.className = "nlboom"; cv.width = w; cv.height = h;
     document.body.appendChild(cv);
-    const x = cv.getContext("2d"); x.drawImage(old, 0, 0);
-    const cx = w / 2, cy = h * .45, tiles = [];
+    const block = e => { e.preventDefault(); e.stopPropagation(); };
+    for (const k of ["keydown", "wheel", "touchmove"]) addEventListener(k, block, {capture: true, passive: false});
+    const x = cv.getContext("2d"), cx = w / 2, cy = h * .45, RUMBLE = 2.4, FLASH = .12, DUR = 1.6;
+    // cracks: jagged lines out from the middle, drawn longer as the rumble grows
+    const cracks = Array.from({length: 9}, (_, i) => { const a0 = i / 9 * Math.PI * 2 + Math.random() * .5, pts = [[cx, cy]];
+      let px = cx, py = cy, a = a0; for (let n = 0; n < 14; n++) { a += (Math.random() - .5) * .9; px += Math.cos(a) * R(30, 70); py += Math.sin(a) * R(30, 70); pts.push([px, py]); } return pts; });
+    const drawCracks = (c, f) => { c.strokeStyle = "#1d1b20"; c.lineWidth = 4; c.lineCap = "square";
+      for (const pts of cracks) { const n = Math.max(1, Math.floor(pts.length * f)); c.beginPath(); c.moveTo(snap(pts[0][0]), snap(pts[0][1]));
+        for (let i = 1; i < n; i++) c.lineTo(snap(pts[i][0]), snap(pts[i][1])); c.stroke(); } };
+    const tiles = [];
     for (let ty = 0; ty < h; ty += T) for (let tx = 0; tx < w; tx += T) {
-      const dx = tx + T / 2 - cx, dy = ty + T / 2 - cy, d = Math.hypot(dx, dy) || 1, f = 500 + Math.random() * 700;
-      tiles.push({sx: tx, sy: ty, x: tx, y: ty, vx: dx / d * f * (.6 + Math.random()), vy: dy / d * f * (.6 + Math.random()) - 300 * Math.random(),
-        r: 0, vr: (Math.random() - .5) * 12, delay: d / Math.hypot(cx, cy) * .25});   // the middle goes first, like a blast
+      const dx = tx + T / 2 - cx, dy = ty + T / 2 - cy, d = Math.hypot(dx, dy) || 1, f = 600 + Math.random() * 900;
+      tiles.push({sx: tx, sy: ty, vx: dx / d * f * (.6 + Math.random()), vy: dy / d * f * (.6 + Math.random()) - 350 * Math.random(),
+        vr: (Math.random() - .5) * 14, delay: d / Math.hypot(cx, cy) * .2});   // the middle goes first, like a blast
     }
-    sfx.play("req");
-    const t0 = performance.now(), dur = 1.6;
+    let blasted = false;
+    const t0 = performance.now();
     const step = now => {
       const t = (now - t0) / 1000;
       x.clearRect(0, 0, w, h);
-      if (t < .35) { x.drawImage(old, (Math.random() - .5) * 8 * t / .35, (Math.random() - .5) * 8 * t / .35); requestAnimationFrame(step); return; }   // a little shake first
-      const e = t - .35;
+      if (t < RUMBLE) {
+        const k = t / RUMBLE, amp = 2 + 22 * k * k;
+        x.save(); x.translate(snap((Math.random() - .5) * amp), snap((Math.random() - .5) * amp)); x.drawImage(old, 0, 0); drawCracks(x, k); x.restore();
+        if (Math.random() < .08 + .25 * k) { x.fillStyle = `rgba(255,255,255,${.1 + .3 * k})`; x.fillRect(0, 0, w, h); }   // flicker
+        requestAnimationFrame(step); return;
+      }
+      if (!blasted) { blasted = true; drawCracks(ox, 1); sfx.play("req"); }
+      if (t < RUMBLE + FLASH) { x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); requestAnimationFrame(step); return; }
+      const e = t - RUMBLE - FLASH;
       for (const p of tiles) {
-        const k = Math.max(0, e - p.delay); if (!k) { x.drawImage(old, p.sx, p.sy, T, T, p.x, p.y, T, T); continue; }
-        const px = p.sx + p.vx * k, py = p.sy + p.vy * k + 900 * k * k, a = Math.max(0, 1 - k / (dur - .35));
+        const k = Math.max(0, e - p.delay); if (!k) { x.drawImage(old, p.sx, p.sy, T, T, p.sx, p.sy, T, T); continue; }
+        const px = p.sx + p.vx * k, py = p.sy + p.vy * k + 1000 * k * k, a = Math.max(0, 1 - k / DUR);
         if (!a || py > h + 40) continue;
         x.globalAlpha = a; x.save(); x.translate(px + T / 2, py + T / 2); x.rotate(p.vr * k); x.drawImage(old, p.sx, p.sy, T, T, -T / 2, -T / 2, T, T); x.restore();
       }
       x.globalAlpha = 1;
-      if (t < dur + .35) requestAnimationFrame(step); else { cv.remove(); this.announce(); }
+      if (e < DUR + .2) { requestAnimationFrame(step); return; }
+      cv.remove();
+      for (const k of ["keydown", "wheel", "touchmove"]) removeEventListener(k, block, {capture: true});
+      this.announce();
     };
     requestAnimationFrame(step);
   },
@@ -6049,6 +6072,8 @@ function sayFold(off) {
   $("sayTog").setAttribute("aria-label", off ? "Show what Mochi says" : "Hide what Mochi says");
 }
 try { sayFold(localStorage.getItem("lt-sayoff") === "1"); } catch (_) { sayFold(false); }
+// the arrow sits right after the box, wherever the box ends (the text changes all day)
+new ResizeObserver(() => $("sayWrap").style.setProperty("--sw", $("petSpeech").offsetWidth + "px")).observe($("petSpeech"));
 $("sayTog").addEventListener("click", () => { const off = !$("petcard").classList.contains("sayoff"); sayFold(off); try { localStorage.setItem("lt-sayoff", off ? "1" : "0"); } catch (_) {} });
 
 const welcome = {
