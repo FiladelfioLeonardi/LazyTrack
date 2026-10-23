@@ -829,7 +829,7 @@
   .tl.anim .block, .meter.anim i { animation: grow .7s cubic-bezier(.2, .7, .2, 1) backwards; transform-origin: left center; animation-delay: var(--d, 250ms); }
   /* buttons lift a little under the mouse (only with a mouse: on phones there's no hover) */
   @media (hover: hover) {
-    .btn, .tab, .logbtn, .chip, .barrow, .daynav { transition: transform .16s ease, box-shadow .16s ease, background-color .2s; }
+    .btn, .tab, .logbtn, .chip, .barrow, .daynav { transition: transform .08s, box-shadow .08s, background-color .2s; }
     .btn:hover:not(:disabled), .tab:hover:not([aria-current="page"]), .daynav:hover { transform: translate(-1px, -2px); box-shadow: 4px 5px 0 var(--line); }
     .logbtn:hover, .chip:hover { transform: translate(-1px, -2px); box-shadow: 5px 6px 0 var(--line); }
     .btn:hover:active:not(:disabled) { transform: translate(3px, 3px); box-shadow: 0 0 0 var(--line); }
@@ -1164,11 +1164,10 @@
   details.more p { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; }
   /* boxes instead of loose headings */
   .hcard > ul.plain { margin: 0 -16px -16px; }
-  /* switching tabs: the old page fades down, the new one fades up */
-  @keyframes tabOut { to { opacity: 0; transform: translateY(12px); } }
-  @keyframes tabIn { from { opacity: 0; transform: translateY(12px); } }
-  body.tabout .view { animation: tabOut .14s ease-in forwards; } body.tabhide .view { opacity: 0; }
-  body.tabin .view { animation: tabIn .26s ease-out; }
+  /* switching tabs: the new page fades up quickly */
+  @keyframes tabIn { from { opacity: 0; transform: translateY(6px); } }
+  body.tabhide .view { opacity: 0; }
+  body.tabin .view { animation: tabIn .12s ease-out; }
   /* every checkbox is a pixel on/off switch */
   input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 46px !important; height: 24px !important; margin: 3px 6px 3px 3px;
     background: var(--soft); border: 0 !important; box-shadow: var(--pxf); cursor: pointer; }
@@ -1828,7 +1827,7 @@ applyTheme();
     <section class="card pad" data-as="studio">
       <h2>🎬 Content studio</h2>
       <p class="sub">A play copy of Home for filming. Everything you tap or edit changes only this copy: nothing is saved, nothing goes to your account or friends, and your real Mochi is not touched. Reload the page or press Stop to go back.</p>
-      <div class="actions"><button type="button" class="btn primary" id="stuToggle">▶ Start demo mode</button><a class="btn" href="#tab=home">Open Home</a><a class="btn" href="#tab=monitor">Open Screen time</a></div>
+      <div class="actions"><button type="button" class="btn primary" id="stuToggle">▶ Start demo mode</button><a class="btn" href="#tab=home">Open Home</a><a class="btn" href="#tab=monitor">Open Screen time</a><button type="button" class="btn" id="stuBoom">💥 New-look explosion</button></div>
       <div id="stuBody" hidden>
         <div class="label" style="margin-top:18px">HP (Mochi's health)</div>
         <div class="actions" style="align-items:center"><input id="stuHP" type="number" min="0" max="100" step="1" style="width:90px">
@@ -5416,6 +5415,7 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("click", e => {
   if (e.target.id === "stuToggle") admin.toggleStudio();
+  if (e.target.id === "stuBoom") { go({tab: "home"}); setTimeout(() => newLook.explode(), 700); }   // replay it for filming; marks nothing
   if (!DEMO.on) return;
   const hp = e.target.closest("[data-stuhp]"); if (hp) { DEMO.hp(+hp.dataset.stuhp); admin.drawStudio(); }
   const lg = e.target.closest("[data-stulog]");
@@ -5711,19 +5711,13 @@ async function render() {
   const r = route(), tab = currentTab(), me = ++renderSeq;
   const view = r.view === "detail" && r.k ? "detail" : tab;
   const body = document.body, was = body.dataset.view;
-  // a new tab: the old page fades down, the new one stays hidden until it's drawn, then fades up once
-  // (no per-box entrance on top of it, which made the page look like it opened several times)
+  // a new tab: the old page goes at once (no fade-out wait, it made every click feel slow),
+  // the new one stays hidden until it's drawn, then fades up once (no per-box entrance on top)
   const switching = calm && was !== view && !body.classList.contains("welcoming");
-  if (switching) {
-    animNow = false;
-    body.classList.remove("tabin"); body.classList.add("tabout");
-    await new Promise(ok => setTimeout(ok, 140));
-    if (me !== renderSeq) return;   // another tab was clicked meanwhile: that render takes over
-    body.classList.add("tabhide"); body.classList.remove("tabout");
-  }
+  if (switching) { animNow = false; body.classList.remove("tabin"); body.classList.add("tabhide"); }
   const reveal = () => { if (!switching || me !== renderSeq) return;
     body.classList.remove("tabhide"); void body.offsetWidth; body.classList.add("tabin");
-    setTimeout(() => { if (me === renderSeq) body.classList.remove("tabin"); }, 300); };
+    setTimeout(() => { if (me === renderSeq) body.classList.remove("tabin"); }, 150); };
   body.dataset.view = view;
   document.querySelectorAll(".tab").forEach(t => { if (t.dataset.tab === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   const day = selectedDay();
@@ -5978,26 +5972,27 @@ const newLook = {
     if (calm) this.explode(); else this.announce();
   },
   mark() { try { localStorage.setItem(this.KEY, "1"); } catch (_) {} },
-  // the old look: lavender page, white rounded cards with a thick border and a hard shadow, where today's cards are
+  // the old look: a screenshot of the old Home (sample data, light or dark like the page), scaled to cover the window
   oldScreen(w, h) {
-    const c = document.createElement("canvas"); c.width = w; c.height = h;
-    const x = c.getContext("2d");
-    x.fillStyle = "#efeaff"; x.fillRect(0, 0, w, h);
-    for (const el of document.querySelectorAll(".view:not([hidden]) .card, .tabs, .top")) {
-      const r = el.getBoundingClientRect();
-      if (!r.width || !r.height || r.bottom < 0 || r.top > h) continue;
-      const rr = (px, py, pw, ph, rad) => { x.beginPath(); x.roundRect(px, py, pw, ph, rad); };
-      x.fillStyle = "#1d1b20"; rr(r.left + 4, r.top + 4, r.width, r.height, 18); x.fill();
-      x.fillStyle = el.matches(".tabs, .top") ? "#efeaff" : "#ffffff"; rr(r.left, r.top, r.width, r.height, 18); x.fill();
-      x.lineWidth = 3; x.strokeStyle = "#1d1b20"; x.stroke();
-      x.fillStyle = "#c9b8ff"; x.fillRect(r.left + 16, r.top + 16, Math.min(140, r.width / 3), 10);   // a heading bar
-    }
-    return c;
+    const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
+    return new Promise((ok, fail) => {
+      const img = new Image();
+      img.onerror = fail;
+      img.onload = () => {
+        const c = document.createElement("canvas"); c.width = w; c.height = h;
+        const k = Math.max(w / img.width, h / img.height);
+        c.getContext("2d").drawImage(img, (w - img.width * k) / 2, 0, img.width * k, img.height * k);
+        ok(c);
+      };
+      img.src = `/oldlook-${dark ? "dark" : "light"}.png`;
+    });
   },
   // 2.4 s of rumble that keeps getting worse (cracks spreading from the middle, flickers), a white flash, then the blast.
   // Nothing on the page can be clicked or typed into until the card shows.
-  explode() {
-    const w = innerWidth, h = innerHeight, T = 16, old = this.oldScreen(w, h), ox = old.getContext("2d");
+  async explode() {
+    const w = innerWidth, h = innerHeight, T = 16;
+    let old; try { old = await this.oldScreen(w, h); } catch (_) { return this.announce(); }
+    const ox = old.getContext("2d");
     const cv = document.createElement("canvas"); cv.className = "nlboom"; cv.width = w; cv.height = h;
     document.body.appendChild(cv);
     const block = e => { e.preventDefault(); e.stopPropagation(); };
