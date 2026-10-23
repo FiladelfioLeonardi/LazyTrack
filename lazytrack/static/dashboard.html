@@ -1044,6 +1044,12 @@
   .qplus:active { transform: translate(2px, 2px); }
   :root[data-theme="dark"] .qplus { background: var(--ink); color: var(--bg); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qplus { background: var(--ink); color: var(--bg); } }
+  /* setup: make your Mochi */
+  .lrows { display: grid; gap: 8px; margin: 18px auto 0; max-width: 340px; }
+  .lrow { display: grid; grid-template-columns: 70px 40px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+  .lrow .ll { font: 400 11px var(--pixel); color: var(--ink-2); text-align: left; }
+  .lrow .btn { height: 40px; padding: 0; justify-content: center; font-size: 20px; }
+  .lrow .ln { text-align: center; font-weight: 600; }
   /* the bag: each tile shows today's count, green when that quest is done */
   .logbtn { position: relative; }
   .logbtn[data-n]::after { content: attr(data-n); position: absolute; top: 5px; right: 7px; font: 400 10px var(--pixel); }
@@ -1168,6 +1174,17 @@ applyTheme();
       leave a "less of" one empty and Mochi learns it in your first week. Change them any time in Settings.</p>
     <div class="si" style="--i:3" id="sTargetsSetup"></div>
     <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn primary" data-next>Next <span aria-hidden="true">→</span></button></div>
+  </div></div>
+
+  <!-- last step for a new account: make your Mochi (or skip and get a random one) -->
+  <div class="panel" id="pLook" inert><div class="pbox">
+    <h1 class="ptitle si" style="--i:1">Make your <u>Mochi</u>.</h1>
+    <p class="psub si" style="--i:2">Pick a look, or skip and get a random one. You can change it any time by tapping Mochi on Home.</p>
+    <div class="wpet si" style="--i:3"><div class="pet" id="lPet" role="img" aria-label="Your Mochi"></div></div>
+    <div class="lrows si" style="--i:4" id="lRows"></div>
+    <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn" id="lRand" aria-label="Random look">🎲</button>
+      <button type="button" class="btn primary" data-next>Next <span aria-hidden="true">→</span></button></div>
+    <button type="button" class="aswitch si" style="--i:15" id="lSkip">Skip, surprise me</button>
   </div></div>
 
   <!-- done -->
@@ -5805,7 +5822,7 @@ drawThemePicker();   // needs FX, so it runs after the effects are defined
 // Each step slides in from the right. At the end the whole overlay slides away and the
 // app slides in, like before. The app loads behind it, so Home is ready when it arrives.
 let AUTH = {logged_in: true, has_account: false, user: null};
-const PANELS = ["pHello", "pAuth", "pS1", "pS2", "pS3", "pT", "pS4"];
+const PANELS = ["pHello", "pAuth", "pS1", "pS2", "pS3", "pT", "pLook", "pS4"];
 const flow = {
   cur: "pHello", mode: "new",
   show(id) {
@@ -6070,6 +6087,37 @@ const setup = {
     $("dGo").firstChild.textContent = this.mode === "edit" ? "Back to the app " : "Meet Mochi ";
     $("dPet").innerHTML = mochiCells(PET_LOOK, "proud", "legend");
   },
+  // "Make your Mochi": free pieces only (a new account has no Plus); ‹ › steps through each slot
+  LOOK_SLOTS: [["body", "BODY"], ["skin", "SKIN"], ["eyes", "EYES"], ["mouth", "MOUTH"], ["hat", "HAT"], ["outfit", "OUTFIT"]],
+  free(slot) { const set = MOCHI[SLOTS[slot]]; return Object.keys(set).filter(k => !set[k].p); },
+  lookStart() { this.look = {...LOOK_DEFAULT, ...PET_LOOK}; this.lookDraw(); },
+  lookDraw() {
+    $("lPet").innerHTML = mochiCells(this.look, "happy", "okay");
+    $("lRows").innerHTML = this.LOOK_SLOTS.map(([slot, label]) => {
+      const it = MOCHI[SLOTS[slot]][this.look[slot]] || {n: "None"};
+      return `<div class="lrow"><span class="ll">${label}</span><button type="button" class="btn" data-lk="${slot}" data-dir="-1" aria-label="Previous ${label.toLowerCase()}">‹</button>
+        <span class="ln">${esc(it.n)}</span><button type="button" class="btn" data-lk="${slot}" data-dir="1" aria-label="Next ${label.toLowerCase()}">›</button></div>`;
+    }).join("");
+  },
+  lookStep(slot, dir) {
+    const ks = this.free(slot), i = ks.indexOf(this.look[slot]);
+    this.look = {...this.look, [slot]: ks[(i + dir + ks.length) % ks.length]};
+    delete this.look[slot + "Color"];
+    this.lookDraw();
+  },
+  // the same odds as the wardrobe's dice: often no hat or outfit, rarely glasses or something in hand
+  lookRandom() {
+    const any = slot => { const ks = this.free(slot); return ks[Math.floor(Math.random() * ks.length)]; };
+    const maybe = slot => Math.random() < .45 ? "none" : any(slot);
+    this.look = {body: any("body"), skin: any("skin"), eyes: any("eyes"), mouth: Math.random() < .4 ? "smile" : any("mouth"), hat: maybe("hat"),
+                 glasses: Math.random() < .7 ? "none" : any("glasses"), neck: maybe("neck"), outfit: maybe("outfit"), held: Math.random() < .6 ? "none" : any("held"),
+                 place: this.look.place};
+    this.lookDraw();
+  },
+  async lookSave() {
+    PET_LOOK = {...this.look};
+    try { await post("/api/habits", {pet: PET_LOOK}); } catch (_) {}
+  },
   // the habits are saved before the targets step, so the server can suggest targets from your history
   async toTargets() {
     $("sTargetsSetup").innerHTML = `<p class="note">Looking at your last two weeks…</p>`;
@@ -6101,15 +6149,24 @@ $("welcome").addEventListener("click", e => {
   const add = e.target.closest("[data-addc]"); if (add) return setup.openCustom(add.dataset.addc === "1");
   const cadd = e.target.closest("[data-cadd]"); if (cadd) return setup.addCustom(cadd.dataset.cadd === "1");
   const emo = e.target.closest("[data-emo]"); if (emo) { emo.closest(".cform").querySelector(".ce").value = emo.dataset.emo; return; }
+  const lk = e.target.closest("[data-lk]"); if (lk) return setup.lookStep(lk.dataset.lk, +lk.dataset.dir);
+  if (e.target.closest("#lRand")) return setup.lookRandom();
+  if (e.target.closest("#lSkip")) { setup.lookRandom(); setup.lookSave(); setup.summary(); return flow.show("pS4"); }
   if (e.target.closest("[data-next]")) {
     const i = PANELS.indexOf(flow.cur);
     if (PANELS[i + 1] === "pT") return setup.toTargets();
+    if (PANELS[i + 1] === "pLook") {
+      if (setup.mode !== "edit") { setup.lookStart(); return flow.show("pLook"); }
+      setup.summary(); return flow.show("pS4");   // editing your picks later skips the look step
+    }
+    if (flow.cur === "pLook") setup.lookSave();
     if (PANELS[i + 1] === "pS4") setup.summary();
     return flow.show(PANELS[i + 1]);
   }
   if (e.target.closest("[data-back]")) {
     const i = PANELS.indexOf(flow.cur);
     if (flow.cur === "pS1") return setup.mode === "edit" ? flow.leave() : flow.show(AUTH.user && AUTH.has_account ? "pHello" : "pAuth");
+    if (flow.cur === "pS4" && setup.mode === "edit") return flow.show("pT");
     return flow.show(PANELS[i - 1]);
   }
 });
