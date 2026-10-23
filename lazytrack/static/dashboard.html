@@ -958,7 +958,12 @@
 
   /* ============================================================ pixel redesign: one layer over everything above */
   /* square corners and the pixel font everywhere; the egg keeps its shape */
-  :root { --r: 0px; --body: "Pixelify Sans", "Rubik", ui-monospace, monospace;
+  /* Pixelify Sans draws 2 almost like 8, 5 like S and G like B, so those come from Silkscreen; the rest stays Pixelify */
+  @font-face { font-family: "Mochi Digits"; font-weight: 100 549; font-display: swap; unicode-range: U+0030-0039, U+0042, U+0047;
+    src: url(https://fonts.gstatic.com/s/silkscreen/v6/m8JXjfVPf62XiF7kO-i9YLNla0GA1dM.woff2) format("woff2"); }
+  @font-face { font-family: "Mochi Digits"; font-weight: 550 900; font-display: swap; unicode-range: U+0030-0039, U+0042, U+0047;
+    src: url(https://fonts.gstatic.com/s/silkscreen/v6/m8JUjfVPf62XiF7kO-i9aAhAfmyi2PmeBvY.woff2) format("woff2"); }
+  :root { --r: 0px; --body: "Mochi Digits", "Pixelify Sans", "Rubik", ui-monospace, monospace;
     --pxf: 3px 0 0 var(--line), -3px 0 0 var(--line), 0 3px 0 var(--line), 0 -3px 0 var(--line);
     --pxs: 6px 6px 0 color-mix(in srgb, var(--line) 28%, transparent); --pxb: 4px 4px 0 color-mix(in srgb, var(--line) 35%, transparent); }
   *:not(.eggshell), *::before, *::after { border-radius: 0 !important; }
@@ -1792,7 +1797,8 @@ applyTheme();
         <p class="note">Under 3 days old = baby. Kill him: death screen on Home, then a new baby hatches.</p>
         <div class="label" style="margin-top:18px">SCREEN TIME (MINUTES TODAY)</div>
         <div id="stuScreen" class="actions"></div>
-        <div class="actions"><button type="button" class="btn primary" id="stuRamp">⏩ Fill in live (12 s)</button></div>
+        <div class="actions"><button type="button" class="btn primary" id="stuRamp">⏩ Fill in live (12 s)</button><button type="button" class="btn" id="stuReal">Use my real screen time</button></div>
+        <p class="note">The minutes you type are kept for the next time you start demo mode.</p>
         <p class="note">Press it, then open the Screen time page: it starts empty and fills up by itself.</p>
         <div class="label" style="margin-top:18px">HABITS TODAY</div>
         <div id="stuHabits" class="actions"></div>
@@ -2149,6 +2155,9 @@ const DEMO = {
   async start() {
     this.o = await (await rawApi("/api/overview")).json();
     this.on = true; this.f = 1; this.seq = 0;
+    // the screen time you typed last time comes back, so it doesn't jump to your live numbers on every start
+    const saved = this.saved();
+    if (saved) { this.o.today.categories = {...saved}; this.o.today.screen_phone = 0; this.total(); }
     document.body.classList.add("demo");
   },
   stop() {
@@ -2159,6 +2168,8 @@ const DEMO = {
     for (const k in t.categories) t.categories[k] *= f;
     t.screen_total *= f; t.screen_pc *= f; t.screen_phone *= f;
     (o.week.top_apps || []).forEach(a => { a.seconds *= f; });
+    const d = (o.daily || [])[o.daily.length - 1];   // Stats and Quests read today from the daily list: keep it the same as the copy
+    if (d && d.day === o.day) { d.categories = {...t.categories}; d.events = {...t.events}; d.screen_pc = t.screen_pc; d.screen_phone = t.screen_phone; }
     o.now = Date.now() / 1000;
     return o;
   },
@@ -2196,6 +2207,9 @@ const DEMO = {
     go({tab: "home"});
     setTimeout(() => { rip.preview = true; rip.show(d, L); }, 700);   // preview: closing it posts nothing
   },
+  saved() { try { return JSON.parse(localStorage.getItem("lt-studio-screen")); } catch (_) { return null; } },
+  save() { try { localStorage.setItem("lt-studio-screen", JSON.stringify(this.o.today.categories)); } catch (_) {} },
+  forget() { try { localStorage.removeItem("lt-studio-screen"); } catch (_) {} },
   total() { const t = this.o.today; t.screen_total = Object.values(t.categories).reduce((a, b) => a + b, 0); t.screen_pc = t.screen_total - t.screen_phone; },
   // screen time starts empty and fills up by itself, like a real day, over `secs` seconds
   ramp(secs = 12) {
@@ -5495,13 +5509,14 @@ document.addEventListener("click", e => {
   if (lg) { const k = lg.dataset.stulog; if (k[0] === "-") { const ev = DEMO.o.recent_events.find(x => x.kind === k.slice(1)); if (ev) DEMO.unlog(ev.id); } else DEMO.log(k); admin.drawStudio(); }
   if (e.target.id === "stuRamp") { go({tab: "monitor"}); DEMO.ramp(); }
   if (e.target.id === "stuKill") DEMO.kill();
+  if (e.target.id === "stuReal") { DEMO.forget(); DEMO.stop(); DEMO.start().then(() => { admin.drawStudio(); render(); }); }
 });
 document.addEventListener("change", e => {
   if (!DEMO.on) return;
   if (e.target.id === "stuHP") DEMO.hp(+e.target.value || 0);
   const lf = e.target.dataset.stulife;
   if (lf) { const v = Math.max(lf === "gen" ? 1 : 0, Math.round(+e.target.value || 0)); DEMO.o.life[lf] = v; if (lf === "age") DEMO.o.life.baby = v < 3; }
-  if (e.target.dataset.stucat) { DEMO.o.today.categories[e.target.dataset.stucat] = Math.max(0, +e.target.value || 0) * 60; DEMO.total(); }
+  if (e.target.dataset.stucat) { DEMO.o.today.categories[e.target.dataset.stucat] = Math.max(0, +e.target.value || 0) * 60; DEMO.total(); DEMO.save(); }
 });
 document.addEventListener("input", e => { if (e.target.id === "nBody") admin.drawNewsForm(); if (e.target.id === "uSearch") admin.users(); });
 document.addEventListener("change", e => {
