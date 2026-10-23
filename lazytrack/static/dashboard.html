@@ -656,6 +656,7 @@
   .pluson { display: inline-block; padding: 3px 10px; border: 2px solid var(--line); border-radius: 8px; background: var(--yellow); color: #1d1b20; font-weight: 800; }
   .writem .wrscene { position: relative; width: 46px; height: 46px; border: 2px solid var(--line); border-radius: 9px; background-color: #fff; background-size: cover; display: grid; place-items: center; }
   .writem .wrscene .pet { grid-template-columns: repeat(16, 2.5px); grid-auto-rows: 2.5px; }
+  .writem .wrscene { overflow: hidden; }
   .writem > span:last-child { min-width: 0; overflow-wrap: anywhere; }
   .writem[aria-pressed="true"] { background: var(--yellow); color: var(--on-fill); box-shadow: 2px 2px 0 var(--line); }
   .wrcolors { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 16px 0; } .wrcolors[hidden] { display: none; }
@@ -1232,7 +1233,8 @@
   #home .logmore { display: none; }
   #home #petcard { background: none !important; box-shadow: none !important; padding: 0 !important; gap: 0 !important; margin: 3px !important; }
   #home #petcard .pwin #petBox { box-shadow: var(--pxf), var(--pxs) !important; }
-  #home #petBox.scene { aspect-ratio: auto; height: 220px; }
+  #home #petBox.scene { aspect-ratio: auto; height: 220px; --px: 5px; }
+  .wrstage { --px: 8px; } .writem .wrscene { --px: 4px; }
   #home #petBox.scene > .pet { bottom: var(--feet, 40px); }
   #home #petBox.scene .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
   #home #petBox.scene .pet.baby0 { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
@@ -3211,9 +3213,10 @@ const liveScene = {
       feet(Math.round(N * .16 * bw / N));
       return;
     }
-    // like the sketch: one scene pixel is as big as one of Mochi's pixels in that box (5 px on Home), so the box's
-    // size sets how much of the place shows
-    const pet = box.querySelector(".pet"), px = (pet && parseFloat(getComputedStyle(pet).gridAutoRows)) || 5;
+    // like the sketch: one scene pixel is as big as a grown-up Mochi's pixel in that box (--px: 5 px on Home, 8 in the
+    // Looks preview), so the box's size sets how much of the place shows; at least 44 rows tall, so in a small tile the
+    // ground (8 rows up) stays low and Mochi fits
+    const px = Math.min(parseFloat(getComputedStyle(box).getPropertyValue("--px")) || 5, bh / 44);
     const W = Math.max(16, Math.ceil(bw / px)), H = Math.max(12, Math.ceil(bh / px));
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     feet(Math.round(8 * bw / W));
