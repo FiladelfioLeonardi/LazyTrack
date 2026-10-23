@@ -676,6 +676,16 @@
   .writems.settled .writem { animation: none; }
   .wrsec { grid-column: 1 / -1; font: 700 12px var(--pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); margin: 10px 0 0; }
   .wrsec:first-child { margin-top: 0; }
+  .wroutfits { padding: 14px 20px 4px; }
+  .wrslots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 8px; }
+  .wrslot { position: relative; min-width: 0; }
+  .wrwear { width: calc(100% - 6px); height: 72px; margin: 3px; display: grid; place-items: center; padding: 0; border: 0; cursor: pointer;
+    background: var(--soft); box-shadow: var(--pxf); color: var(--ink-3); font: 700 20px var(--pixel); }
+  .wrwear .pet { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
+  .wrwear:hover { color: var(--ink); }
+  .wrsmall { position: absolute; top: -4px; width: 20px; height: 20px; padding: 0; border: 0; cursor: pointer; background: var(--card); color: var(--ink);
+    box-shadow: var(--pxf); font: 700 11px var(--pixel); line-height: 20px; }
+  .wrsmall[data-outsave] { left: -4px; } .wrsmall[data-outdel] { right: -4px; }
   .writems .writem { animation: wrTile .3s cubic-bezier(.2, .8, .2, 1) both; animation-delay: calc(var(--n, 0) * 18ms); }
   @keyframes wrTile { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
   .wrstage .pet.wrpop { animation: wrPop .32s cubic-bezier(.3, 1.6, .5, 1); }
@@ -1256,6 +1266,7 @@
     #looks .wrstage { border-right: 0; aspect-ratio: 5 / 4; box-shadow: var(--pxf), var(--pxs); position: sticky; top: 12px; margin: 3px; }
     #looks .wrstage .pet { grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; }
     #looks .wrside { display: block; overflow: visible; background: none; }
+    #looks .wroutfits { padding: 0 3px 16px; }
     #looks .wrhead { padding: 0 0 12px; border: 0; } #looks .wrhead h2, #looks .wrhead p, #looks .wrhead .wrback { display: none; }
     #looks .wrchips { margin-top: 0; }
     #looks .wrlist { overflow: visible; padding: 0 3px; }
@@ -1443,6 +1454,7 @@ addEventListener("resize", fitPage);
       <div class="wrplate" id="wrPlate"></div>
     </div>
     <div class="wrside">
+      <div class="wroutfits" id="wrOutfits"></div>
       <div class="wrhead" id="wrHead"></div>
       <div class="wrlist" id="wrList"></div>
       <div>
@@ -2187,6 +2199,7 @@ function applyHabits(cfg) {
   SHOW_SCREEN = cfg.screen || SHOW_SCREEN;
   if ("share" in cfg) SHARE = cfg.share;
   if (cfg.pet) PET_LOOK = {...LOOK_DEFAULT, ...cfg.pet};
+  if (Array.isArray(cfg.outfits)) OUTFITS = cfg.outfits;
   MODULES = {...MODULES, ...(cfg.modules || {})};
   drawLogbar();
   if (O) O.health = health(O);
@@ -3223,7 +3236,8 @@ function setPlace(el, place, o) {
   el.style.backgroundImage = `url(${u})`;
   el.classList.add("scene");
 }
-let PET_LOOK = {...LOOK_DEFAULT};   // what Mochi wears, saved on the account (/api/habits "pet")
+let PET_LOOK = {...LOOK_DEFAULT};
+let OUTFITS = [null, null, null, null, null];   // Looks > My outfits: 5 saved looks (null = empty), on the account   // what Mochi wears, saved on the account (/api/habits "pet")
 // kept so older bits that ask for PET.smoky etc. still work: they now just mean a mood
 const PET = {happy: "happy", smoky: "smoky", proud: "proud", sleepy: "sleepy", meh: "meh", legend: "proud", sick: "happy"};
 
@@ -4308,7 +4322,7 @@ const wardrobe = {
       return `<button type="button" class="writem" style="--n:${Math.min(n, 20)}" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
         <span class="wrscene" style="background-image:url(${bg})" data-live="${this.tab === "place" ? esc(it.look.place || LOOK_DEFAULT.place) : ""}"><span class="pet">${mochiCells(it.look)}</span>${it.p ? `<span class="wrplus">${PLUS.active ? "⭐" : "🔒"}</span>` : ""}</span><span>${esc(it.n)}</span></button>`; }).join("")}</div>`;
     $("wrList").querySelectorAll("[data-live]:not([data-live=''])").forEach(el => liveScene.add(el, {place: el.dataset.live}));   // the Place tiles move
-    this.drawColors();
+    this.drawColors(); this.drawOutfits();
   },
   // the color row: body color, eyes and head only
   colorNow() {
@@ -4359,6 +4373,20 @@ const wardrobe = {
     this.draw(); this.pop();
   },
   undo() { if (!this.past.length) return; this.look = this.past.pop(); this.draw(); this.pop(); },
+  // My outfits: an empty slot saves what Mochi wears now; a full one puts it on (the place stays); ↓ saves over it, × empties it
+  drawOutfits() {
+    $("wrOutfits").innerHTML = `<div class="wrsec">MY OUTFITS</div><div class="wrslots">${OUTFITS.map((o, i) => o
+      ? `<span class="wrslot"><button type="button" class="wrwear" data-outfit="${i}" aria-label="Wear outfit ${i + 1}"><span class="pet">${mochiCells({...LOOK_DEFAULT, ...o})}</span></button>
+          <button type="button" class="wrsmall" data-outsave="${i}" title="Save what Mochi wears now here" aria-label="Save over outfit ${i + 1}">↓</button><button type="button" class="wrsmall" data-outdel="${i}" aria-label="Empty outfit ${i + 1}">×</button></span>`
+      : `<span class="wrslot"><button type="button" class="wrwear empty" data-outsave="${i}" title="Save what Mochi wears now" aria-label="Save outfit ${i + 1}">+</button></span>`).join("")}</div>`;
+  },
+  outfit(act, i) {
+    if (act === "wear") { this.past.push(this.look); this.look = {...LOOK_DEFAULT, ...OUTFITS[i], place: this.look.place}; this.draw(); this.pop(); return; }
+    OUTFITS = OUTFITS.map((o, j) => j !== i ? o : act === "save" ? {...this.look} : null);
+    this.drawOutfits();
+    post("/api/habits", {outfits: OUTFITS}).catch(() => {});
+    toast(act === "save" ? `Saved as outfit ${i + 1}` : `Outfit ${i + 1} emptied`, null);
+  },
   enter(k) { this.focus = WR_CATS.findIndex(c => c[0] === k); this.tab = k; this.draw("r"); $("wrList").scrollTop = 0; },
   back() { this.tab = null; this.draw("l"); const f = $("wrList").querySelector('[aria-current="true"]'); if (f) f.focus({preventScroll: false}); },
   random() {
@@ -4379,6 +4407,10 @@ const wardrobe = {
   },
 };
 $("wrCancel").addEventListener("click", () => wardrobe.close());
+$("wrOutfits").addEventListener("click", e => {
+  const w = e.target.closest("[data-outfit]"), sv = e.target.closest("[data-outsave]"), d = e.target.closest("[data-outdel]");
+  if (w) wardrobe.outfit("wear", +w.dataset.outfit); else if (sv) wardrobe.outfit("save", +sv.dataset.outsave); else if (d) wardrobe.outfit("del", +d.dataset.outdel);
+});
 $("wrSave").addEventListener("click", () => wardrobe.save());
 $("wrRandom").addEventListener("click", () => wardrobe.random());
 $("wrUndo").addEventListener("click", () => wardrobe.undo());

@@ -89,6 +89,7 @@ def get() -> dict:
         "modules": {**_default_modules(), **_load("modules", {})},
         "share": _load("share", None),   # None = the default: good stuff shared, bad habits private
         "pet": _load("pet", {}),         # what Mochi wears: {"body": "cat", "hat": "beanie", ...}
+        "outfits": _load("outfits", [None] * 5),   # 5 saved looks (Looks > My outfits), None = empty slot
         "catalog": CATALOG,
         "screen_catalog": SCREEN_STATS,
     }
@@ -154,8 +155,17 @@ def make_custom(d: dict, taken: set) -> dict:
     }
 
 
+def _clean_look(look: dict) -> dict:
+    """A look as sent by the page: only the known slots (short strings) and hex colours."""
+    slots = ("body", "skin", "eyes", "mouth", "hat", "glasses", "neck", "outfit", "held", "place")
+    colors = ("hatColor", "eyesColor", "glassesColor", "neckColor", "outfitColor", "heldColor")
+    out = {k: str(v)[:24] for k, v in look.items() if k in slots}
+    out.update({k: v.lower() for k, v in look.items() if k in colors and isinstance(v, str) and _HEX.fullmatch(v)})
+    return out
+
+
 def save(body: dict) -> dict:
-    """body: {"habits": [key or custom dict, ...], "screen": [...], "modules": {...}}.
+    """body: {"habits": [key or custom dict, ...], "screen": [...], "modules": {...}, "pet": {...}, "outfits": [5 looks or None]}.
     Built-ins are picked by key; custom ones are sent as dicts."""
     if "habits" in body:
         out, taken = [], set()
@@ -185,11 +195,10 @@ def save(body: dict) -> dict:
     if "screen" in body:
         db.kv_set("screen_stats", json.dumps([k for k in body["screen"] if k in SCREEN_KEYS]))
     if "pet" in body and isinstance(body["pet"], dict):
-        slots = ("body", "skin", "eyes", "mouth", "hat", "glasses", "neck", "outfit", "held", "place")
-        colors = ("hatColor", "eyesColor", "glassesColor", "neckColor", "outfitColor", "heldColor")
-        pet = {k: str(v)[:24] for k, v in body["pet"].items() if k in slots}
-        pet.update({k: v.lower() for k, v in body["pet"].items() if k in colors and isinstance(v, str) and _HEX.fullmatch(v)})
-        db.kv_set("pet", json.dumps(pet))
+        db.kv_set("pet", json.dumps(_clean_look(body["pet"])))
+    if "outfits" in body and isinstance(body["outfits"], list):
+        fits = [_clean_look(o) if isinstance(o, dict) and o else None for o in body["outfits"][:5]]
+        db.kv_set("outfits", json.dumps(fits + [None] * (5 - len(fits))))
     if "share" in body and isinstance(body["share"], list):
         db.kv_set("share", json.dumps([str(k)[:40] for k in body["share"]][:60]))
     if "modules" in body:
