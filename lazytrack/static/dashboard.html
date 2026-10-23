@@ -1111,24 +1111,47 @@
   @media (min-width: 821px) {
     .tabs { gap: 4px; margin: 18px 3px 6px; padding: 6px 10px; background: var(--card); box-shadow: var(--pxf), var(--pxs); }
     .tab { height: 40px; padding: 0 12px; font: 400 11px var(--pixel); }
+    .tab.tabset { margin-left: auto; }   /* Settings sits at the far right of the bar */
   }
   @media (max-width: 820px) { .tabs { background: var(--card); } .tab { font: 400 8px var(--pixel); gap: 6px; } }
-  /* Settings: one page of boxes like the sketch (tracking, habits, look, account, app), switches on the right */
+  /* Settings: one column of short boxes like the sketch; one line per setting with the control on the right */
   #setCats { display: none !important; }
-  #sForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; margin-top: 22px; }
-  @media (max-width: 820px) { #sForm { grid-template-columns: 1fr; gap: 16px; } }
-  #sForm > * { margin-top: 0 !important; min-width: 0; }
-  #sForm > [data-cat="tracking"] { order: 1; } #sForm > [data-mod], #sForm > .savebar { order: 2; } #sForm > [data-cat="habits"] { order: 3; }
-  #sForm > [data-cat="look"] { order: 4; } #sForm > [data-cat="account"] { order: 5; } #sForm > [data-cat="app"] { order: 6; } #sForm > .savebar { grid-column: 1 / -1; }
-  #settings .card > h2:first-child { font: 700 13px var(--pixel); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
-  #settings .toggle { justify-content: space-between; padding: 8px 0; border-top: 2px dotted color-mix(in srgb, var(--ink-3) 45%, transparent); font-weight: 600; }
-  #settings .toggle input { order: 2; margin-left: 12px; }
+  #sForm { display: flex; flex-direction: column; gap: 18px; max-width: 760px; margin: 22px auto 0; }
+  #sForm > * { margin-top: 0 !important; }
+  .srow { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; margin: 0; font-weight: 600; cursor: default;
+    border-top: 2px dotted color-mix(in srgb, var(--ink-3) 45%, transparent); }
+  .hcard h3 + .srow, .srow[hidden] + .srow:not(.admin-only) { border-top: 0; }
+  label.srow { cursor: pointer; }
+  .srow > span:first-child { flex: 1; min-width: 0; }
+  .srow small { display: block; margin-top: 2px; font-size: 12px; font-weight: 400; color: var(--ink-3); }
+  .srow input[type="number"] { width: 84px; flex: none; } .srow select, .srow input[type="text"], .srow input[type="password"], .srow input[type="date"] { width: 210px; max-width: 48%; flex: none; }
+  .srow .seg { flex: none; } .srbtns { display: flex; gap: 8px; flex: none; }
+  .srow.col { flex-direction: column; align-items: stretch; }
+  .savebar { position: sticky; bottom: 12px; z-index: 3; margin: 0; padding: 10px 12px; background: var(--card); box-shadow: var(--pxf), var(--pxs); }
+  @media (max-width: 820px) { .savebar { bottom: 96px; } .srow .seg label { padding: 6px 8px; font-size: 13px; } }
+  #sAccount > h2:first-child { font: 700 14px var(--pixel); text-transform: uppercase; }
+  /* Goals: one compact row per habit (name and "you usually" left, the number right, quick picks small underneath) */
+  #sTargets .thelp, #sTargets .tmean { display: none; }
+  #sTargets .tgroup { font: 400 11px var(--pixel); color: var(--ink-2); margin: 14px 0 2px; }
+  #sTargets .tlist { display: block; }
+  #sTargets .trow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 10px 0; margin: 0;
+    border: 0; border-top: 2px dotted color-mix(in srgb, var(--ink-3) 45%, transparent); background: none; box-shadow: none !important; }
+  #sTargets .tgroup + .tlist .trow:first-child { border-top: 0; }
+  #sTargets .te { grid-row: 1 / span 2; font-size: 20px; } #sTargets .tn { grid-column: 2; font-weight: 600; }
+  #sTargets .tusual { grid-column: 2; grid-row: 2; font-size: 12px; color: var(--ink-3); text-align: left; }
+  #sTargets .tline { grid-column: 3; grid-row: 1 / span 2; font-size: 13px; white-space: nowrap; margin: 0; }
+  #sTargets .tpicks { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  #sTargets .tpicks button { font: 400 10px var(--pixel); padding: 4px 6px; }
+  #sTargets .tmore { grid-column: 2 / -1; } #sTargets .tmore summary { font: 400 10px var(--pixel); color: var(--ink-3); padding-top: 4px; }
+  @media (max-width: 560px) { #sTargets .tline { grid-column: 2 / -1; grid-row: auto; margin-top: 6px; } }
+  details.more summary { cursor: pointer; padding: 10px 0 2px; font: 400 11px var(--pixel); color: var(--ink-2); }
+  details.more p { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; }
   /* boxes instead of loose headings */
   .hcard > ul.plain { margin: 0 -16px -16px; }
   /* switching tabs: the old page fades down, the new one fades up */
   @keyframes tabOut { to { opacity: 0; transform: translateY(12px); } }
   @keyframes tabIn { from { opacity: 0; transform: translateY(12px); } }
-  body.tabout .view { animation: tabOut .14s ease-in forwards; }
+  body.tabout .view { animation: tabOut .14s ease-in forwards; } body.tabhide .view { opacity: 0; }
   body.tabin .view { animation: tabIn .26s ease-out; }
   /* every checkbox is a pixel on/off switch */
   input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 46px !important; height: 24px !important; margin: 3px 6px 3px 3px;
@@ -1850,216 +1873,136 @@ applyTheme();
       <button type="button" data-sc="app">⚙️ App</button>
     </nav>
     <form id="sForm" autocomplete="off" novalidate>
-      <section class="card pad docsbtn" data-cat="app"><h2>How Mochi works</h2>
-        <p class="sub">Everything about Mochi, HP and targets, tracking, the camera, friends, your phone, updates and your data.</p>
-        <div class="actions"><a class="btn primary" href="#tab=docs">📖 Open the documentation</a><button type="button" class="btn" data-tour>🧭 Start the tutorial</button></div></section>
-      <section class="card pad" id="sAccount" data-cat="account"></section>
-      <section class="card pad" id="sPlus" data-cat="account" hidden>
-        <h2>⭐ Mochi Plus</h2>
-        <div id="plusBox"><p class="note">Loading…</p></div>
+      <!-- like the sketch: short boxes, one line per setting, the control on the right; the long how-to text is folded away -->
+      <section class="card pad hcard" data-cat="tracking">
+        <h3>TRACKING <small>stays on this computer</small></h3>
+        <label class="srow"><span>Count me as away after<small>Minutes with no mouse or keys. Videos and calls still count.</small></span>
+          <input id="idl" type="number" name="idle_minutes" min="1" max="60"></label>
+        <label class="srow"><span>Open this page when Mochi starts</span><input type="checkbox" name="open_dashboard_on_start"></label>
+        <label class="srow"><span>Keep running when I close the window<small>Off: closing quits Mochi and friends see you offline.</small></span><input type="checkbox" name="keep_running" data-autosave></label>
+        <label class="srow" id="sLogin" hidden><span>Start with my computer<small>Starts quietly in the background when you log in.</small></span><input type="checkbox" name="start_at_login" data-autosave></label>
       </section>
 
-      <section class="card pad" data-cat="habits">
-        <h2>Habits</h2>
-        <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.
-          Quicker: <a href="#tab=bad">Habits</a> and <a href="#tab=monitor">Monitoring</a> have ✏️ to edit their own lists.</p>
-        <div class="hlist" id="hList"></div>
-        <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
+      <section class="card pad hcard" id="sSmoke" data-mod="smoke" data-cat="tracking">
+        <h3>SMOKING DETECTOR <small>webcam</small></h3>
+        <label class="srow"><span>Use the webcam<small>Asks you when it thinks you're smoking.</small></span><input type="checkbox" name="smoke_enabled"></label>
+        <div class="srow"><span>How quickly it asks<small>Careful if it asks by mistake, Quick if it misses some.</small></span>
+          <div class="seg" role="radiogroup" aria-label="How quickly it asks">
+            <label><input type="radio" name="smoke_sensitivity" value="low"> Careful</label>
+            <label><input type="radio" name="smoke_sensitivity" value="normal"> Normal</label>
+            <label><input type="radio" name="smoke_sensitivity" value="high"> Quick</label>
+          </div></div>
+        <label class="srow"><span>Pause after a cigarette<small>Minutes, so one isn't counted twice.</small></span>
+          <input id="cool" type="number" name="smoke_cooldown_minutes" min="1" max="120"></label>
+        <label class="srow"><span>Fix colored or dim light<small>RGB lights, weak webcams.</small></span><input type="checkbox" name="smoke_light_fix"></label>
+        <label class="srow"><span>Keep the pictures it asks about<small>Teaches it your room. Stays on this computer.</small></span><input type="checkbox" name="save_training_photos"></label>
+        <details class="more"><summary>Privacy</summary>
+          <p class="privacy">🔒 Nothing is recorded: each moment is checked and forgotten right away, on this computer only. It turns off when you're away or the screen is locked, and you can pause it from Home. The camera light is on only while it's watching.</p></details>
+        <div class="camstat" id="camStat" style="margin-top:12px"></div>
       </section>
 
-      <section class="card pad" id="sPhone" hidden data-cat="account">
-        <h2>📱 Your phone</h2>
-        <p class="sub">Use Mochi on your phone too: Mochi, your stats, the log buttons, friends and chat, from anywhere.</p>
-        <div id="phBox"><p class="note">Loading…</p></div>
+      <section class="card pad hcard" data-cat="tracking">
+        <h3>WEEKLY SUMMARY <small>a notification with your week</small></h3>
+        <label class="srow"><span>Day</span><select id="wd" name="summary_weekday">
+          <option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option>
+          <option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
+        </select></label>
+        <label class="srow"><span>Time</span><select id="hr" name="summary_hour"></select></label>
       </section>
 
-      <section class="card pad" id="sTargets" data-cat="habits">
-        <h2>🎯 Your goals</h2>
-        <p class="sub">A daily limit for each bad habit and a goal for each good one. Not sure? Tap a suggestion: they come from what you usually do.
-          <a href="#tab=docs&sec=hp">How HP works</a></p>
-        <div id="tEdit"><p class="note">Loading…</p></div>
-        <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="tSave">Save goals</button><span class="note" id="tNote"></span></div>
+      <section class="card pad hcard" data-mod="school" data-cat="tracking">
+        <h3>42 <small>deadlines and logtime</small></h3>
+        <label class="srow"><span>Blackhole date<small>Filled in once 42 is connected.</small></span><input id="fbh" type="date" name="ft_manual_blackhole"></label>
+        <label class="srow"><span>Next milestone</span><input id="fmn" type="text" name="ft_milestone_name" placeholder="e.g. Milestone 4"></label>
+        <label class="srow"><span>Milestone deadline</span><input id="fmd" type="date" name="ft_milestone_date"></label>
+        <label class="srow"><span>Your login</span><input id="fl" type="text" name="ft_login" placeholder="e.g. fefo"></label>
+        <label class="srow"><span>App UID</span><input id="fu" type="text" name="ft_client_id" placeholder="u-s4t2ud-…"></label>
+        <label class="srow"><span>App secret</span><input id="fs" type="password" name="ft_client_secret" placeholder="s-s4t2ud-…"></label>
+        <details class="more"><summary>How to connect 42</summary>
+          <p>Create an app at <a href="https://profile.intra.42.fr/oauth/applications/new" target="_blank" rel="noopener">profile.intra.42.fr</a>
+          (redirect URI: http://localhost, scope: public) and paste its UID and secret above.</p></details>
       </section>
 
-      <section class="card pad" data-cat="app">
-        <h2>Updates</h2>
-        <p class="sub">Mochi updates itself: it checks for new versions a minute after starting and then every hour, and installs them by itself (with a backup first).</p>
-        <p class="note" id="uStatus"></p>
-        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="uCheck">Check for updates</button>
-          <button type="button" class="btn primary" id="uInstall" hidden>Update now</button></div>
-        <div class="form admin-only" style="margin-top:14px">
-          <label class="toggle"><input type="checkbox" name="test_versions" data-autosave> Test versions</label>
-          <p class="hint">On: you get every change as soon as it's made, before everyone else (it may be unfinished now and then).
-            Off: you get the versions marked ready for everyone.</p>
-        </div>
+      <section class="card pad hcard" data-mod="github" data-cat="tracking">
+        <h3>GITHUB <small>commits and streak</small></h3>
+        <label class="srow"><span>Username</span><input id="ghu" type="text" name="github_username" placeholder="e.g. fefo42"></label>
+        <label class="srow"><span>Token<small>Optional, for private repos.</small></span><input id="ght" type="password" name="github_token" placeholder="github_pat_…"></label>
+        <details class="more"><summary>How to get a token</summary>
+          <p>Create one at <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a>
+          (the default read-only access is enough), and turn on “Include private contributions on my profile” in your GitHub profile.</p></details>
       </section>
 
-      <section class="card pad" data-cat="look">
-        <h2>Look</h2>
-        <p class="sub">Changes right away on this device, no saving needed.</p>
-        <div class="form">
-          <div class="field"><label>Color theme</label>
-            <div class="themes" id="themes" role="radiogroup" aria-label="Color theme"></div></div>
-          <div class="field"><label>Background effect</label>
-            <p class="hint">Every effect still follows Mochi: brighter and busier when you're doing great, fewer and greyer when not.</p>
-            <div class="fxs" id="fxs" role="radiogroup" aria-label="Background effect"></div></div>
-          <div class="field"><label>Animations</label>
-            <p class="hint">Mochi moving, the background effects and the places. "Like my computer" turns them off when the computer is set to reduce motion.</p>
-            <div class="seg" role="radiogroup">
-              <label><input type="radio" name="ui_motion" value="on"> On</label>
-              <label><input type="radio" name="ui_motion" value="system"> Like my computer</label>
-              <label><input type="radio" name="ui_motion" value="off"> Off</label>
-            </div></div>
-          <div class="field"><label>Sounds</label>
-            <p class="hint">A little chiptune when a friend sends you a message or a friend request.</p>
-            <div class="seg" role="radiogroup">
-              <label><input type="radio" name="ui_sound" value="on"> On</label>
-              <label><input type="radio" name="ui_sound" value="off"> Off</label>
-            </div>
-            <div class="actions" style="margin-top:8px"><button type="button" class="btn" data-sfx="msg">▶ Message</button><button type="button" class="btn" data-sfx="req">▶ Friend request</button></div></div>
-          <div class="field"><label>Light or dark</label>
-            <div class="seg" role="radiogroup">
-              <label><input type="radio" name="ui_mode" value="auto"> Auto</label>
-              <label><input type="radio" name="ui_mode" value="light"> Light</label>
-              <label><input type="radio" name="ui_mode" value="dark"> Dark</label>
-            </div></div>
-        </div>
-      </section>
-
-      <section class="card pad" id="sSmoke" data-mod="smoke" data-cat="tracking">
-        <h2>Smoking detector</h2>
-        <p class="sub">Watches through the webcam and asks you when it thinks you're smoking.</p>
-        <p class="privacy">🔒 <b>Private by design.</b> Nothing is recorded: each moment is checked and forgotten right away, on this computer only.
-          It turns off when you're away or the screen is locked, and you can pause it from Home. The camera light is on only while it's watching.</p>
-        <div class="form">
-          <label class="toggle"><input type="checkbox" name="smoke_enabled"> Use the webcam detector</label>
-          <div class="field">
-            <label>How quickly should it ask?</label>
-            <p class="hint">Asks too often by mistake? Choose “Careful”. Misses cigarettes? Choose “Quick”.</p>
-            <div class="seg" role="radiogroup">
-              <label><input type="radio" name="smoke_sensitivity" value="low"> Careful</label>
-              <label><input type="radio" name="smoke_sensitivity" value="normal"> Normal</label>
-              <label><input type="radio" name="smoke_sensitivity" value="high"> Quick</label>
-            </div>
-          </div>
-          <div class="field">
-            <label for="cool">Wait after each cigarette (minutes)</label>
-            <p class="hint">The camera switches off for this long, so one cigarette isn't counted twice.</p>
-            <input id="cool" type="number" name="smoke_cooldown_minutes" min="1" max="120" style="max-width:140px">
-          </div>
-          <label class="toggle"><input type="checkbox" name="smoke_light_fix"> Fix colored or dim light (RGB lights, weak webcams)</label>
-          <label class="toggle"><input type="checkbox" name="save_training_photos"> Keep the small picture it asked about, to teach it your room (stays on this computer; off unless you turn it on)</label>
-        </div>
-        <div class="camstat" id="camStat" style="margin-top:16px"></div>
-      </section>
-
-      <section class="card pad" data-mod="school" data-cat="tracking">
-        <h2>42 deadlines</h2>
-        <p class="sub">Shown as countdowns in the Monitoring tab and on Home.</p>
-        <div class="form">
-          <div class="field"><label for="fbh">Blackhole date</label>
-            <p class="hint">Filled in automatically once 42 is connected. Set it here if it isn't, or to correct it.</p>
-            <input id="fbh" type="date" name="ft_manual_blackhole" style="max-width:220px"></div>
-          <div class="inline">
-            <div class="field"><label for="fmn">Next milestone</label><input id="fmn" type="text" name="ft_milestone_name" placeholder="e.g. Milestone 4"></div>
-            <div class="field"><label for="fmd">Milestone deadline</label><input id="fmd" type="date" name="ft_milestone_date"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="card pad" data-mod="school" data-cat="tracking">
-        <h2>42 intra</h2>
-        <p class="sub">For logtime, projects and the blackhole date. Create an app at
-          <a href="https://profile.intra.42.fr/oauth/applications/new" target="_blank" rel="noopener">profile.intra.42.fr</a>
-          (redirect URI: http://localhost, scope: public) and paste its UID and secret here.</p>
-        <div class="form">
-          <div class="field"><label for="fl">Your login</label><input id="fl" type="text" name="ft_login" placeholder="e.g. fefo"></div>
-          <div class="field"><label for="fu">UID</label><input id="fu" type="text" name="ft_client_id" placeholder="u-s4t2ud-…"></div>
-          <div class="field"><label for="fs">Secret</label><input id="fs" type="password" name="ft_client_secret" placeholder="s-s4t2ud-…"></div>
-        </div>
-      </section>
-
-      <section class="card pad" data-mod="github" data-cat="tracking">
-        <h2>GitHub</h2>
-        <p class="sub">For contributions, streaks and repos. The username alone shows public activity.
-          Add a token to count your private repos too: create one at
-          <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">github.com/settings/personal-access-tokens</a>
-          (the default read-only access is enough) and turn on “Include private contributions on my profile” in your GitHub profile settings.</p>
-        <div class="form">
-          <div class="field"><label for="ghu">GitHub username</label><input id="ghu" type="text" name="github_username" placeholder="e.g. fefo42"></div>
-          <div class="field"><label for="ght">Token (optional)</label><input id="ght" type="password" name="github_token" placeholder="github_pat_…"></div>
-        </div>
-      </section>
-
-      <section class="card pad" data-cat="tracking">
-        <h2>Weekly summary</h2>
-        <p class="sub">A notification with your week, once a week.</p>
-        <div class="inline">
-          <div class="field"><label for="wd">Day</label>
-            <select id="wd" name="summary_weekday">
-              <option value="0">Monday</option><option value="1">Tuesday</option><option value="2">Wednesday</option>
-              <option value="3">Thursday</option><option value="4">Friday</option><option value="5">Saturday</option><option value="6">Sunday</option>
-            </select></div>
-          <div class="field"><label for="hr">Time</label><select id="hr" name="summary_hour"></select></div>
-        </div>
-      </section>
-
-      <section class="card pad" data-cat="tracking">
-        <h2>General</h2>
-        <div class="form">
-          <div class="field"><label for="idl">Count me as away after (minutes)</label>
-            <p class="hint">With no key press, click, scroll or mouse move for this long, screen time stops counting, and those minutes are taken off again. While a video or a call is playing you still count as here.</p>
-            <input id="idl" type="number" name="idle_minutes" min="1" max="60" style="max-width:140px"></div>
-          <label class="toggle"><input type="checkbox" name="open_dashboard_on_start"> Open this page when Mochi starts</label>
-        </div>
-      </section>
-
-      <section class="card pad" data-cat="app" id="sBackups">
-        <h2>💾 Backups</h2>
-        <p class="sub">Every day, and before every update, Mochi saves a copy of all your data (logs, stats, Mochi, settings) in the
-          <b>LazyTrack Backups</b> folder in your home folder. The last 14 are kept. Uninstalling Mochi never touches that folder.</p>
-        <div id="bkList"><p class="note">Loading…</p></div>
-        <div class="actions" style="margin-top:12px"><button type="button" class="btn" id="bkNow">Back up now</button><span class="note" id="bkNote"></span></div>
-      </section>
-
-      <section class="card pad inapp" data-cat="app" hidden>
-        <h2>iPhone app</h2>
-        <div class="form">
-          <p class="hint">The phone-only parts: keeping your egg online over Bluetooth, logging the gym by itself, Apple Health (sleep and steps), and the food scanner.</p>
-          <div class="cambtns"><a class="btn primary" href="lazytrack-app://setup">📱 Phone settings</a><a class="btn" href="lazytrack-app://food">🍔 Food scanner</a></div>
-        </div>
-      </section>
-
-      <section class="card pad" data-cat="app" id="sUninstall" hidden>
-        <h2>Uninstall Mochi</h2>
-        <div class="form">
-          <p class="hint">Removes Mochi from this computer. It asks first, and asks whether to keep your data (so a reinstall picks up where you left off). No admin rights needed.</p>
-          <div><button type="button" class="btn" id="uninstallBtn">Uninstall Mochi…</button></div>
-        </div>
-      </section>
-
-      <section class="card pad" data-cat="app" id="sLogin" hidden>
-        <h2>Start with your computer</h2>
-        <div class="form">
-          <label class="toggle"><input type="checkbox" name="start_at_login" data-autosave> Start Mochi when I turn on my computer</label>
-          <p class="hint">On: Mochi starts quietly in the background when you log in (no window pops up), so your day is tracked from the start and friends see you online.
-            Off: it only runs when you open it.</p>
-        </div>
-      </section>
-
-      <section class="card pad" data-cat="app">
-        <h2>When you close the window</h2>
-        <div class="form">
-          <label class="toggle"><input type="checkbox" name="keep_running" data-autosave> Keep Mochi running in the background</label>
-          <p class="hint">On: closing the window keeps tracking your screen time (and the camera, if it's on), and friends see you online.
-            Off: closing the window quits Mochi completely, and friends see you offline. Opening the app starts it again.</p>
-        </div>
-      </section>
-
-      <div class="actions savebar" data-cat="tracking" style="margin-top:22px">
+      <div class="actions savebar" data-cat="tracking">
         <button type="submit" class="btn primary">Save and restart</button>
         <span class="note" id="sNote"></span>
       </div>
+
+      <section class="card pad hcard" data-cat="habits">
+        <h3>HABITS <small>what Mochi keeps an eye on</small></h3>
+        <div class="hlist" id="hList"></div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
+      </section>
+
+      <section class="card pad hcard" id="sTargets" data-cat="habits">
+        <h3>GOALS <small><a href="#tab=docs&sec=hp">how HP works</a></small></h3>
+        <div id="tEdit"><p class="note">Loading…</p></div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="tSave">Save goals</button><span class="note" id="tNote"></span></div>
+      </section>
+
+      <section class="card pad hcard" data-cat="look">
+        <h3>LOOK <small>changes right away</small></h3>
+        <div class="srow"><span>Light or dark</span><div class="seg" role="radiogroup" aria-label="Light or dark">
+          <label><input type="radio" name="ui_mode" value="auto"> Auto</label>
+          <label><input type="radio" name="ui_mode" value="light"> Light</label>
+          <label><input type="radio" name="ui_mode" value="dark"> Dark</label>
+        </div></div>
+        <div class="srow"><span>Animations</span><div class="seg" role="radiogroup" aria-label="Animations">
+          <label><input type="radio" name="ui_motion" value="on"> On</label>
+          <label><input type="radio" name="ui_motion" value="system"> Like my computer</label>
+          <label><input type="radio" name="ui_motion" value="off"> Off</label>
+        </div></div>
+        <div class="srow"><span>Sounds<small>When a friend messages you.</small></span><div class="seg" role="radiogroup" aria-label="Sounds">
+          <label><input type="radio" name="ui_sound" value="on"> On</label>
+          <label><input type="radio" name="ui_sound" value="off"> Off</label>
+        </div></div>
+        <div class="srow col"><span>Color theme</span><div class="themes" id="themes" role="radiogroup" aria-label="Color theme"></div></div>
+        <div class="srow col"><span>Background effect<small>Brighter when you're doing great.</small></span><div class="fxs" id="fxs" role="radiogroup" aria-label="Background effect"></div></div>
+        <details class="more"><summary>Hear the sounds</summary>
+          <div class="actions"><button type="button" class="btn" data-sfx="msg">▶ Message</button><button type="button" class="btn" data-sfx="req">▶ Friend request</button></div></details>
+      </section>
+
+      <section class="card pad" id="sAccount" data-cat="account"></section>
+      <section class="card pad hcard" id="sPlus" data-cat="account" hidden>
+        <h3>⭐ MOCHI PLUS</h3>
+        <div id="plusBox"><p class="note">Loading…</p></div>
+      </section>
+      <section class="card pad hcard" id="sPhone" hidden data-cat="account">
+        <h3>📱 YOUR PHONE <small>Mochi from anywhere</small></h3>
+        <div id="phBox"><p class="note">Loading…</p></div>
+      </section>
+      <section class="card pad hcard inapp" data-cat="app" hidden>
+        <h3>IPHONE APP</h3>
+        <div class="cambtns"><a class="btn primary" href="lazytrack-app://setup">📱 Phone settings</a><a class="btn" href="lazytrack-app://food">🍔 Food scanner</a></div>
+      </section>
+
+      <section class="card pad hcard" data-cat="app">
+        <h3>APP</h3>
+        <div class="srow"><span>Updates<small id="uStatus">Installs by itself, with a backup first.</small></span>
+          <span class="srbtns"><button type="button" class="btn" id="uCheck">Check now</button><button type="button" class="btn primary" id="uInstall" hidden>Update now</button></span></div>
+        <label class="srow admin-only"><span>Test versions<small>Get every change first; may be unfinished.</small></span><input type="checkbox" name="test_versions" data-autosave></label>
+        <div class="srow"><span>Help<small>How Mochi, HP and tracking work.</small></span>
+          <span class="srbtns"><a class="btn" href="#tab=docs">📖 Guide</a><button type="button" class="btn" data-tour>🧭 Tutorial</button></span></div>
+        <div class="srow" id="sUninstall" hidden><span>Uninstall Mochi<small>Asks first, and whether to keep your data.</small></span>
+          <button type="button" class="btn" id="uninstallBtn">Uninstall…</button></div>
+      </section>
+
+      <section class="card pad hcard" data-cat="app" id="sBackups">
+        <h3>💾 BACKUPS <small>daily, last 14 kept</small></h3>
+        <div class="srow"><span>Back up now<small>In the LazyTrack Backups folder in your home folder.</small></span>
+          <span class="srbtns"><button type="button" class="btn" id="bkNow">Back up</button></span></div>
+        <span class="note" id="bkNote"></span>
+        <details class="more"><summary>Your backups</summary><div id="bkList"><p class="note">Loading…</p></div></details>
+      </section>
     </form>
   </main>
 </div>
@@ -3518,14 +3461,22 @@ const homeFriends = {
       if (!best || score > best.score) best = {p, shared, score};
     }
     cmp.hidden = !best;
-    if (!best) return;
-    const name = esc(best.p.display_name || best.p.username), fmtV = (k, v) => unitOf(k) === "seconds" ? hm(v) : String(v);
-    cmp.innerHTML = `<h3>YOU VS ${name.toUpperCase()} <small>${Math.round(best.score * 100)}% alike today</small></h3>` + best.shared.slice(0, 5).map(x => {
-      const a = mine(x.k), b = x.v || 0, m = Math.max(a, b, 1);
-      return `<div class="cmprow"><span title="You ${fmtV(x.k, a)}, ${name} ${fmtV(x.k, b)}">${esc(INFO[x.k].n)}</span><span class="cmpbars"><i style="width:${(a / m * 100).toFixed(0)}%;background:var(--blue)"></i><i style="width:${(b / m * 100).toFixed(0)}%;background:var(--pink)"></i></span></div>`;
-    }).join("") + `<p class="note">Blue is you, pink is ${name}. Only what you both share counts.</p>`;
+    if (best) cmp.innerHTML = vsHTML(best.p);
   },
 };
+
+/** "You vs a friend": every stat you both share, you in blue, them in pink. "" when they share nothing. */
+function vsHTML(p) {
+  const c = p.card, shared = ((c && c.stats) || []).filter(x => INFO[x.k]);
+  if (!shared.length) return "";
+  const mine = k => Math.round(O.val(O.today, k) || 0), name = esc(p.display_name || p.username), fmtV = (k, v) => unitOf(k) === "seconds" ? hm(v) : String(v);
+  const score = shared.reduce((n, x) => { const a = mine(x.k), b = x.v || 0, m = Math.max(a, b); return n + (m ? 1 - Math.abs(a - b) / m : 1); }, 0) / shared.length;
+  const old = c.day && c.day !== todayISO();
+  return `<h3>YOU VS ${name.toUpperCase()} <small>${Math.round(score * 100)}% alike</small></h3>` + shared.slice(0, 6).map(x => {
+    const a = mine(x.k), b = x.v || 0, m = Math.max(a, b, 1);
+    return `<div class="cmprow"><span title="You ${fmtV(x.k, a)}, ${name} ${fmtV(x.k, b)}">${esc(INFO[x.k].n)}</span><span class="cmpbars"><i style="width:${(a / m * 100).toFixed(0)}%;background:var(--blue)"></i><i style="width:${(b / m * 100).toFixed(0)}%;background:var(--pink)"></i></span></div>`;
+  }).join("") + `<p class="note">Blue is you today, pink is ${name}${old ? ` on ${esc(dayName(c.day))} (their last update)` : ""}. Only what you both share counts.</p>`;
+}
 
 // ---------------------------------------------------------------- HABITS
 function renderHabits(mode = "bad") {
@@ -4735,6 +4686,7 @@ async function renderFriends() {
       <div class="card chatcard"><h3>CHAT · ${esc((p.display_name || p.username).toUpperCase())} <small>${friendOn(p) ? "online" : "offline"}</small></h3>
         <div class="chatlog" id="chatLog"><p class="chatempty">No messages yet. Say hi to ${esc(p.display_name)}!</p></div>
         <form class="chatin" id="chatForm"><input id="chatText" maxlength="1000" placeholder="Message ${esc(p.display_name)}" autocomplete="off"><button class="btn primary" type="submit">Send</button></form></div>
+      ${vsHTML(p) ? `<section class="card pad hcard">${vsHTML(p)}</section>` : ""}
       <div id="fProfileCard">${fcardHTML({...p, unread: 0}, {me: true})}</div>
       <div class="pokes"><button type="button" class="btn primary" data-poke="poke" data-to="${esc(p.uid)}">👉 Poke</button><button type="button" class="btn" data-poke="love" data-to="${esc(p.uid)}">💖 Send love</button><button type="button" class="btn" data-poke="wave" data-to="${esc(p.uid)}">👋 Wave</button></div>
       <p class="note" style="margin:0">Their Mochi reacts in their app, and their egg buzzes.</p>
@@ -4930,9 +4882,10 @@ const targets = {
         <span class="te" aria-hidden="true">${esc(p.e || "")}</span><span class="tn">${esc(p.n)}</span>
         <span class="tusual">${usual != null ? `you usually: ${!p.bad && r.per === "week" && !min ? `${Math.round(sg.avg * 70) / 10} a week` : `${usual}${min ? "" : " a day"}`}` : "no history yet"}</span>
         <div class="tline">${line}</div>
-        <div class="tpicks">${uniq.map(([n, v]) => `<button type="button" data-tpick="${v}" aria-pressed="${String(val ?? "") === String(v)}">${esc(n)}${p.bad && v !== "" && n !== "None" ? ` (${min ? hm(v * 60) : v})` : ""}</button>`).join("")}</div>
         <p class="tmean"></p>
-        <details class="tmore"><summary>More options</summary><div class="tc">${size}${auto}${on}</div></details></div>`;
+        <details class="tmore"><summary>Suggestions and options</summary>
+          <div class="tpicks">${uniq.map(([n, v]) => `<button type="button" data-tpick="${v}" aria-pressed="${String(val ?? "") === String(v)}">${esc(n)}${p.bad && v !== "" && n !== "None" ? ` (${min ? hm(v * 60) : v})` : ""}</button>`).join("")}</div>
+          <div class="tc">${size}${auto}${on}</div></details></div>`;
     };
     const rs = l.rules || {}, keys = Object.keys(rs);
     const bad = keys.filter(k => (parts[k] || {}).bad), good = keys.filter(k => parts[k] && !parts[k].bad);
@@ -5795,19 +5748,26 @@ function entrance(view) {
 }
 
 // ---------------------------------------------------------------- render
+let renderSeq = 0;
 async function render() {
   animNow = animNext; animNext = false;
-  const r = route(), tab = currentTab();
+  const r = route(), tab = currentTab(), me = ++renderSeq;
   const view = r.view === "detail" && r.k ? "detail" : tab;
-  const was = document.body.dataset.view;
-  if (calm && was !== view && !document.body.classList.contains("welcoming")) {
-    document.body.classList.add("tabout");
+  const body = document.body, was = body.dataset.view;
+  // a new tab: the old page fades down, the new one stays hidden until it's drawn, then fades up once
+  // (no per-box entrance on top of it, which made the page look like it opened several times)
+  const switching = calm && was !== view && !body.classList.contains("welcoming");
+  if (switching) {
+    animNow = false;
+    body.classList.remove("tabin"); body.classList.add("tabout");
     await new Promise(ok => setTimeout(ok, 140));
-    document.body.classList.remove("tabout");
-    document.body.classList.remove("tabin"); void document.body.offsetWidth; document.body.classList.add("tabin");
-    setTimeout(() => document.body.classList.remove("tabin"), 300);
+    if (me !== renderSeq) return;   // another tab was clicked meanwhile: that render takes over
+    body.classList.add("tabhide"); body.classList.remove("tabout");
   }
-  document.body.dataset.view = view;
+  const reveal = () => { if (!switching || me !== renderSeq) return;
+    body.classList.remove("tabhide"); void body.offsetWidth; body.classList.add("tabin");
+    setTimeout(() => { if (me === renderSeq) body.classList.remove("tabin"); }, 300); };
+  body.dataset.view = view;
   document.querySelectorAll(".tab").forEach(t => { if (t.dataset.tab === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   const day = selectedDay();
   $("dayLabel").textContent = dayName(day);
@@ -5833,7 +5793,7 @@ async function render() {
     if (String(e.message) === "401") return;   // not logged in yet: the login screen handles it
     console.error(e);
     $("offline").style.display = "block";
-  }
+  } finally { reveal(); }
 }
 // ---------------------------------------------------------------- background effects
 // A canvas behind everything (never on top of the cards). Pixels snap to a 4px grid,
