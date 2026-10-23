@@ -1144,6 +1144,11 @@
   #sTargets .tpicks button { font: 400 10px var(--pixel); padding: 4px 6px; }
   #sTargets .tmore { grid-column: 2 / -1; } #sTargets .tmore summary { font: 400 10px var(--pixel); color: var(--ink-3); padding-top: 4px; }
   @media (max-width: 560px) { #sTargets .tline { grid-column: 2 / -1; grid-row: auto; margin-top: 6px; } }
+  /* a pixel slider: square thumb on a framed track */
+  input[type="range"] { appearance: none; -webkit-appearance: none; width: 200px; max-width: 48%; height: 12px; margin: 6px; flex: none; background: var(--soft); box-shadow: var(--pxf); cursor: pointer; }
+  input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 22px; background: var(--lilac); box-shadow: 0 0 0 3px var(--line); }
+  input[type="range"]::-moz-range-thumb { width: 18px; height: 22px; border: 0; border-radius: 0; background: var(--lilac); box-shadow: 0 0 0 3px var(--line); }
+  input[type="range"]:focus-visible { outline: 3px solid var(--blue); outline-offset: 6px; }
   details.more summary { cursor: pointer; padding: 10px 0 2px; font: 400 11px var(--pixel); color: var(--ink-2); }
   details.more p { font-size: 13px; color: var(--ink-2); margin: 8px 0 0; }
   /* boxes instead of loose headings */
@@ -1967,6 +1972,7 @@ applyTheme();
         </div></div>
         <div class="srow col"><span>Color theme</span><div class="themes" id="themes" role="radiogroup" aria-label="Color theme"></div></div>
         <div class="srow col"><span>Background effect<small>Brighter when you're doing great.</small></span><div class="fxs" id="fxs" role="radiogroup" aria-label="Background effect"></div></div>
+        <label class="srow"><span>Effect speed<small id="fxSpeedTxt">Normal</small></span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.25" aria-describedby="fxSpeedTxt"></label>
         <details class="more"><summary>Hear the sounds</summary>
           <div class="actions"><button type="button" class="btn" data-sfx="msg">▶ Message</button><button type="button" class="btn" data-sfx="req">▶ Friend request</button></div></details>
       </section>
@@ -5631,6 +5637,7 @@ function saveTheme(change) {
   drawThemePicker();
   if (change.fx) aura.set(aura.tier || "okay", change.fx); else aura.refresh();   // new colors on the new background
 }
+const speedName = v => v === 1 ? "Normal" : v < 1 ? `Slower (${v}×)` : `Faster (${v}×)`;
 function drawThemePicker() {
   const p = themePrefs(), cur = THEMES[p.palette] ? p.palette : "lavender";
   const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
@@ -5645,10 +5652,13 @@ function drawThemePicker() {
   document.querySelectorAll('[name="ui_mode"]').forEach(el => { el.checked = el.value === (p.mode || "auto"); });
   document.querySelectorAll('[name="ui_motion"]').forEach(el => { el.checked = el.value === (p.motion || "on"); });
   document.querySelectorAll('[name="ui_sound"]').forEach(el => { el.checked = el.value === (p.sound || "on"); });
+  $("fxSpeed").value = p.fxSpeed || 1; $("fxSpeedTxt").textContent = speedName(+p.fxSpeed || 1);
   const fx = FX[p.fx] ? p.fx : "mood";
   $("fxs").innerHTML = Object.entries(FX).map(([k, f]) => `<button type="button" class="fxb" role="radio" aria-checked="${k === fx}" data-fx="${k}">
       <span class="fxn">${esc(f.name)}</span><span class="fxd">${esc(f.desc)}</span></button>`).join("");
 }
+$("fxSpeed").addEventListener("input", e => { const v = +e.target.value; aura.speed = v; $("fxSpeedTxt").textContent = speedName(v); });
+$("fxSpeed").addEventListener("change", e => { const p = {...themePrefs(), fxSpeed: +e.target.value}; try { localStorage.setItem("lt-theme", JSON.stringify(p)); } catch (_) {} });
 $("fxs").addEventListener("click", e => { const b = e.target.closest(".fxb"); if (b) saveTheme({fx: b.dataset.fx}); });
 $("themes").addEventListener("click", e => { const b = e.target.closest(".th"); if (b) saveTheme({palette: b.dataset.palette}); });
 document.querySelectorAll('[name="ui_mode"]').forEach(el => el.addEventListener("change", () => saveTheme({mode: el.value})));
@@ -5866,7 +5876,7 @@ const FX = {
 FX.mood.n = 0;
 
 const aura = {
-  tier: null, style: null, ps: [], cv: null, ctx: null, raf: 0, last: 0,
+  tier: null, style: null, ps: [], cv: null, ctx: null, raf: 0, last: 0, speed: +themePrefs().fxSpeed || 1, clock: 0,
   set(tier, style = this.style || themePrefs().fx || "mood") {
     if (tier === this.tier && style === this.style) return;
     this.tier = tier; this.style = FX[style] ? style : "mood";
@@ -5915,7 +5925,8 @@ const aura = {
     this.raf = requestAnimationFrame(tt => this.loop(tt));
   },
   draw(dt) {
-    const c = this.ctx, now = performance.now() / 1000, still = !calm;
+    dt *= this.speed; this.clock += dt;   // Settings > Look > Effect speed: everything moves, falls and twinkles faster or slower
+    const c = this.ctx, now = this.clock, still = !calm;
     c.clearRect(0, 0, this.w, this.h);
     if (this.style === "none") return;
     if (this.style !== "mood") {
