@@ -242,6 +242,7 @@
     44% { translate: 3px 2px; } 55% { translate: -3px 1px; } 66% { translate: 2px -2px; } 77% { translate: -1px 2px; } 88% { translate: 1px -1px; } }
   .pet { display: grid; grid-template-columns: repeat(16, 7px); grid-auto-rows: 7px; }
   .pet i { display: block; }
+  .petpx { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
   .pet.bob { animation: bob 3.2s ease-in-out infinite; }
   /* Mochi's place: a pixel scene behind it (Mochi a bit smaller, standing on the ground) */
   .scene { background-size: 100% 100% !important; background-repeat: no-repeat !important; image-rendering: pixelated; }   /* beats the boxes' background shorthands */
@@ -2724,7 +2725,34 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   }
   // breathing out: everything above the belly sinks one pixel, the feet stay on the ground
   if (fx.breath) { for (let y = 10; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
-  return g.flat().map(c => `<i${c ? ` style="background:${c}"` : ""}></i>`).join("");
+  return petImg(g);
+}
+// Mochi as one pixelated picture spanning the cell grid: 256 separate cells showed thin seams on scaled screens
+// (Windows at 125/150%, zoomed pages), like squares on him.
+const _petImgs = new Map(), _pxColors = new Map();
+// canvas can't read color-mix(): let the page work the color out, then hand the canvas plain rgba
+function pxColor(c) {
+  if (/^(#|rgb)/.test(c)) return c;
+  if (_pxColors.has(c)) return _pxColors.get(c);
+  const el = document.createElement("i"); el.style.color = c; document.body.appendChild(el);
+  let v = getComputedStyle(el).color; el.remove();
+  const m = v.match(/^color\(srgb ([\d.e-]+) ([\d.e-]+) ([\d.e-]+)(?: \/ ([\d.]+))?\)/);
+  if (m) v = `rgba(${Math.round(m[1] * 255)},${Math.round(m[2] * 255)},${Math.round(m[3] * 255)},${m[4] || 1})`;
+  _pxColors.set(c, v);
+  return v;
+}
+function petImg(g) {
+  const key = g.map(r => r.join(",")).join("|");
+  let url = _petImgs.get(key);
+  if (!url) {
+    const cv = document.createElement("canvas"); cv.width = g[0].length; cv.height = g.length;
+    const x = cv.getContext("2d");
+    g.forEach((row, y) => row.forEach((c, i) => { if (c) { x.fillStyle = pxColor(c); x.fillRect(i, y, 1, 1); } }));
+    url = cv.toDataURL();
+    if (_petImgs.size > 300) _petImgs.clear();
+    _petImgs.set(key, url);
+  }
+  return `<img class="petpx" src="${url}" alt="" style="grid-column:1/-1;grid-row:1/span ${g.length}">`;
 }
 
 // ---------------------------------------------------------------- Mochi's place: a pixel scene behind it
