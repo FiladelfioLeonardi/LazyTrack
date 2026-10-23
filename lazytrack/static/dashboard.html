@@ -3434,8 +3434,9 @@ const homeFriends = {
       const c = p.card, fp = (c && c.pet) || {}, stale = c && c.day && c.day !== todayISO(), tier = c ? c.tier : "okay";
       const bg = placeURL(fp.place || LOOK_DEFAULT.place, {tier: stale ? "okay" : tier, soft: softColor(fp)});
       const doing = presence(p).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-      return `<button type="button" class="hfr" data-friend="${esc(p.uid)}"><span class="fpet" style="background-image:url(${bg})"><span class="pet">${mochiCells(fp, "happy", stale ? "okay" : tier)}</span><i class="fdot ${isOn(p) ? "on" : ""}"></i></span>
-        <span class="fn"><b>${esc(p.display_name || p.username)}</b><span>${esc(doing)}</span></span>${c && !stale ? `<span class="fhp">HP ${c.hp}</span>` : ""}</button>`;
+      return `<div class="prow"><button type="button" class="hfr" data-friend="${esc(p.uid)}"><span class="fpet" style="background-image:url(${bg})"><span class="pet">${mochiCells(fp, "happy", stale ? "okay" : tier)}</span><i class="fdot ${isOn(p) ? "on" : ""}"></i></span>
+        <span class="fn"><b>${esc(p.display_name || p.username)}</b><span>${esc(doing)}</span></span>${c && !stale ? `<span class="fhp">HP ${c.hp}</span>` : ""}</button>
+        <button type="button" class="btn" data-poke="poke" data-to="${esc(p.uid)}">POKE</button></div>`;
     }).join("") + (F.length > list.length ? `<a class="note" href="#tab=friends">All ${F.length} friends</a>` : "");
     this.compare(F);
   },
