@@ -1972,7 +1972,7 @@ applyTheme();
         </div></div>
         <div class="srow col"><span>Color theme</span><div class="themes" id="themes" role="radiogroup" aria-label="Color theme"></div></div>
         <div class="srow col"><span>Background effect<small>Brighter when you're doing great.</small></span><div class="fxs" id="fxs" role="radiogroup" aria-label="Background effect"></div></div>
-        <label class="srow"><span>Effect speed<small id="fxSpeedTxt">Normal</small></span><input type="range" id="fxSpeed" min="0.25" max="3" step="0.25" aria-describedby="fxSpeedTxt"></label>
+        <label class="srow"><span>Effect speed<small id="fxSpeedTxt">Normal</small></span><input type="range" id="fxSpeed" min="0.5" max="6" step="0.25" aria-describedby="fxSpeedTxt"></label>
         <details class="more"><summary>Hear the sounds</summary>
           <div class="actions"><button type="button" class="btn" data-sfx="msg">▶ Message</button><button type="button" class="btn" data-sfx="req">▶ Friend request</button></div></details>
       </section>
@@ -5637,7 +5637,7 @@ function saveTheme(change) {
   drawThemePicker();
   if (change.fx) aura.set(aura.tier || "okay", change.fx); else aura.refresh();   // new colors on the new background
 }
-const speedName = v => v === 1 ? "Normal" : v < 1 ? `Slower (${v}×)` : `Faster (${v}×)`;
+const speedName = v => v === 1 ? "Normal" : v <= .5 ? "Slowest" : v < 1 ? "Slower" : v >= 6 ? "Fastest" : v >= 3.5 ? "Very fast" : "Faster";
 function drawThemePicker() {
   const p = themePrefs(), cur = THEMES[p.palette] ? p.palette : "lavender";
   const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
@@ -5876,7 +5876,7 @@ const FX = {
 FX.mood.n = 0;
 
 const aura = {
-  tier: null, style: null, ps: [], cv: null, ctx: null, raf: 0, last: 0, speed: +themePrefs().fxSpeed || 1, clock: 0,
+  tier: null, style: null, ps: [], cv: null, ctx: null, raf: 0, last: 0, speed: Math.min(6, Math.max(.5, +themePrefs().fxSpeed || 1)), clock: 0,
   set(tier, style = this.style || themePrefs().fx || "mood") {
     if (tier === this.tier && style === this.style) return;
     this.tier = tier; this.style = FX[style] ? style : "mood";
@@ -5924,8 +5924,15 @@ const aura = {
     if (t - this.last > 33) { this.draw(Math.min((t - this.last) / 1000, .1)); this.last = t; }
     this.raf = requestAnimationFrame(tt => this.loop(tt));
   },
+  // the slider (0.5 to 6, 1 = normal) as each effect's own range: pixel rain is already quick, the starfield barely moves,
+  // so the same notch can't mean the same factor. Slowest and fastest per effect; in between it scales evenly (log).
+  RANGE: {rain: [.5, 6], stars: [.6, 30], snow: [.6, 10], fireflies: [.6, 12], bubbles: [.6, 10], petals: [.6, 10], code: [.6, 8], mood: [.6, 12]},
+  mult() {
+    const s = this.speed, [lo, hi] = this.RANGE[this.style] || [.5, 6];
+    return s === 1 ? 1 : s > 1 ? hi ** (Math.log(s) / Math.log(6)) : lo ** (Math.log(s) / Math.log(.5));
+  },
   draw(dt) {
-    dt *= this.speed; this.clock += dt;   // Settings > Look > Effect speed: everything moves, falls and twinkles faster or slower
+    dt *= this.mult(); this.clock += dt;   // Settings > Look > Effect speed: everything moves, falls and twinkles faster or slower
     const c = this.ctx, now = this.clock, still = !calm;
     c.clearRect(0, 0, this.w, this.h);
     if (this.style === "none") return;
