@@ -1054,6 +1054,37 @@
   .logbtn { position: relative; }
   .logbtn[data-n]::after { content: attr(data-n); position: absolute; top: 5px; right: 7px; font: 400 10px var(--pixel); }
   .logbtn.done { background: var(--green) !important; }
+  /* Settings moved into the gear in Mochi's window; the tab stays for the code that looks it up */
+  .tab.tabset { display: none !important; }
+  /* Quests tab: all quests and all curses with the last 7 days, like the sketch */
+  .qgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 22px 0 18px; align-items: start; }
+  @media (max-width: 820px) { .qgrid { grid-template-columns: 1fr; } }
+  #habits .old { display: none !important; }
+  .qwk { display: flex; gap: 2px; } .qwk i { width: 10px; height: 10px; display: block; background: var(--soft); }
+  .qwk i.good { background: var(--green); } .qwk i.bad { background: var(--red); }
+  /* Stats tab: four tiles and Mochi's HP as block columns */
+  .stiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin-top: 22px; }
+  @media (max-width: 820px) { .stiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; } .stile b { font-size: 17px; } }
+  .stile { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .stile .stl { font: 400 11px var(--pixel); color: var(--ink-2); } .stile b { font: 700 24px var(--pixel); }
+  .stile .note { margin: 0; } .stile .good { color: var(--good); } .stile .bad { color: var(--bad); }
+  .hp30 { display: flex; align-items: flex-end; gap: 3px; height: 100px; }
+  .hp30 div { flex: 1; display: flex; flex-direction: column-reverse; gap: 2px; min-width: 0; } .hp30 i { display: block; height: 8px; }
+  /* Looks (the wardrobe) and the small pop-ups: notched frames instead of borders */
+  .qcard, .wrcard { border: 0 !important; box-shadow: var(--pxf), var(--pxs) !important; }
+  .wrplate, .wrrow, .writem { border: 0 !important; box-shadow: var(--pxf) !important; margin: 3px; }
+  .wrhead h2 { font: 700 20px/1.2 var(--pixel); }
+  /* Party: chat bubbles and the message box get notched frames too */
+  .msg, .chatin input { border: 0 !important; box-shadow: var(--pxf); margin: 3px; }
+  /* every checkbox is a pixel on/off switch */
+  input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 46px !important; height: 24px !important; margin: 3px 6px 3px 3px;
+    background: var(--soft); border: 0 !important; box-shadow: var(--pxf); cursor: pointer; }
+  input[type="checkbox"]::after { content: ""; position: absolute; top: 4px; left: 4px; width: 16px; height: 16px; border: 0; background: var(--line); transition: left .1s steps(2); }
+  input[type="checkbox"]:checked { background: var(--green); } input[type="checkbox"]:checked::after { left: 26px; }
+  input[type="checkbox"]:disabled { opacity: .45; cursor: default; }
+  input[type="checkbox"]:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+  :root[data-theme="dark"] input[type="checkbox"]::after { background: var(--ink); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) input[type="checkbox"]::after { background: var(--ink); } }
 </style>
 <script>
 // Color themes. Each one overrides a few tokens, separately for light and dark.
@@ -1282,10 +1313,11 @@ applyTheme();
 
   <nav class="tabs" aria-label="Sections">
     <a class="tab" data-tab="home" href="#tab=home"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h1v1h-1zM4 0h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z"/></svg>Home</a>
-    <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg><span class="hidesm">Habits</span><span class="showsm">Habits</span></a>
-    <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M6 0h1v1h-1zM7 0h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg><span class="hidesm">Monitoring</span><span class="showsm">Monitor</span></a>
-    <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 8 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 0h1v1h-1zM2 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1z"/></svg>Friends<span class="tbadge" id="fBadge" hidden></span></a>
-    <a class="tab" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1z"/></svg>Settings</a>
+    <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg>Quests</a>
+    <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M6 0h1v1h-1zM7 0h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg>Stats</a>
+    <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 8 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 0h1v1h-1zM2 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1z"/></svg>Party<span class="tbadge" id="fBadge" hidden></span></a>
+    <button type="button" class="tab" id="looksTab"><svg viewBox="0 0 7 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1z"/></svg>Looks</button>
+    <a class="tab tabset" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1z"/></svg>Settings</a>
   </nav>
   <div class="offline" id="offline">Can't reach Mochi. Is its window still open?</div>
 
@@ -1343,10 +1375,11 @@ applyTheme();
 
   <!-- ================================================== HABITS -->
   <main id="habits" class="view">
-    <h2 class="sec" style="margin-top:22px">Today</h2>
-    <p class="sub" id="habitsSub">Compared with yesterday at this time. Tap one for its timeline.</p>
+    <div class="qgrid"><section class="card pad hcard" id="qAll"></section><section class="card pad hcard" id="qCurses"></section></div>
+    <h2 class="sec old" style="margin-top:22px">Today</h2>
+    <p class="sub old" id="habitsSub">Compared with yesterday at this time. Tap one for its timeline.</p>
     <div class="tabedit" id="hTabEdit"></div><div class="tabedit" id="hTabEditG"></div>
-    <div class="grid2">
+    <div class="grid2 old">
       <div class="card rows" id="hBad"></div>
       <div class="stack goodside">
         <div class="card rows" id="hGood"></div>
@@ -1359,18 +1392,19 @@ applyTheme();
     <div class="card"><ul class="plain" id="recent"></ul></div>
     <div style="margin-top:12px"><button class="btn" id="moreRecent">Show more</button></div>
 
-    <h2 class="sec" id="cHabitsHead">Last two weeks</h2>
-    <p class="sub">Tap a bar to open that day.</p>
-    <div class="card pad"><div class="chartbox"><canvas id="cHabits"></canvas></div></div>
+    <h2 class="sec old" id="cHabitsHead">Last two weeks</h2>
+    <p class="sub old">Tap a bar to open that day.</p>
+    <div class="card pad old"><div class="chartbox"><canvas id="cHabits"></canvas></div></div>
 
-    <h2 class="sec">This week</h2>
-    <p class="sub">So far, compared with last week up to the same point.</p>
-    <div class="card rows" id="hWeek"></div>
+    <h2 class="sec old">This week</h2>
+    <p class="sub old">So far, compared with last week up to the same point.</p>
+    <div class="card rows old" id="hWeek"></div>
   </main>
 
   <!-- ================================================== SCREEN -->
   <main id="screen" class="view">
-    <h2 class="sec" style="margin-top:22px">Screen time today</h2>
+    <div class="stiles" id="sTiles"></div>
+    <h2 class="sec">Screen time today</h2>
     <p class="sub">Tracked by itself, nothing to log. Compared with yesterday at this time. Tap one to see when you used it.</p>
     <div class="tabedit" id="mTabEdit"></div>
     <div class="grid2">
@@ -1381,6 +1415,10 @@ applyTheme();
     <h2 class="sec">Last two weeks</h2>
     <p class="sub">Exact time per day. The line is your average; tap a day to see what it went to.</p>
     <div class="card pad" id="sDays"></div>
+
+    <h2 class="sec">Mochi's HP</h2>
+    <p class="sub">The last 30 days, one column a day.</p>
+    <div class="card pad"><div class="hp30" id="sHp"></div></div>
 
     <h2 class="sec">This week</h2>
     <p class="sub">So far, compared with last week up to the same point.</p>
@@ -3313,10 +3351,30 @@ function renderHome() {
  * Home, left: the habits you can log as quests (good ones, against your goal) and curses (bad ones, against
  * your target), with a + to log; the bag tiles get the same count and turn green when a quest is done.
  */
+/** How one day went for a quest or curse: "good", "bad" or "" (no limit yet, or a quest not done). A weekly quest counts any log that day. */
+function dayMark(p, d) {
+  const v = O.val(d, p.k);
+  if (!p.bad) return v >= (p.per === "week" ? 1 : p.goal || 1) ? "good" : "";
+  return p.target == null ? "" : v > p.target ? "bad" : "good";
+}
+const loggedParts = () => (((O.life || {}).today || {}).parts || []).filter(p => HABITS.some(h => h.k === p.k));
+
 function homeQuests(tracked, isToday) {
+  const q = questRows(tracked, isToday, false);
+  $("homeQuests").innerHTML = `<h3>DAILY QUESTS <small>${q.nDone}/${q.good.length} done</small></h3>${q.good.join("") || `<p class="note">No good habits picked yet. Add some in Settings.</p>`}`;
+  $("homeCurses").innerHTML = `<h3>CURSES <small>stay under</small></h3>${q.bad.join("") || `<p class="note">No bad habits picked.</p>`}`;
+  document.querySelectorAll("#logbar .logbtn").forEach(b => { const st = q.state[b.dataset.log];
+    b.dataset.n = st ? st[0] : String(O.val(O.today, b.dataset.log) || 0); b.classList.toggle("done", !!(st && st[1])); });
+}
+
+/** Quest and curse rows. week: the last 7 days as squares and the goal or limit underneath (the Quests tab); otherwise today's blocks (Home). */
+function questRows(tracked, isToday, week7) {
   const t = O.today, val = O.val, fmt = (p, v) => p.unit === "min" ? hm(v * 60) : String(Math.round(v * 10) / 10);
   const blocks = (n, of, col) => { const k = Math.min(10, Math.max(1, Math.ceil(of))), on = Math.min(k, Math.round(n / (of || 1) * k));
     return `<span class="qblk" aria-hidden="true">${Array.from({length: k}, (_, i) => `<i${i < on ? ` style="background:var(${col})"` : ""}></i>`).join("")}</span>`; };
+  const days = O.daily.slice(-7), labels = labels14().slice(-7);
+  const squares = p => `<span class="qwk">${days.map((d, i) => { const m = dayMark(p, d);
+    return `<i class="${m}" title="${esc(labels[i])}: ${fmt(p, val(d, p.k))}"></i>`; }).join("")}</span>`;
   const loggable = new Set(HABITS.map(h => h.k)), state = {}, good = [], bad = [];
   let nDone = 0;
   const row = (p, sub, blk, right, done) => `<div class="qrow${done ? " done" : ""}"><span class="qe" aria-hidden="true">${p.e}</span>
@@ -3328,22 +3386,19 @@ function homeQuests(tracked, isToday) {
       const week = p.per === "week", goal = p.goal || 1, done = week ? (isToday ? p.week : v) : v, ok = done >= goal;
       if (ok) nDone++;
       state[p.k] = [ok ? "✓" : `${fmt(p, done)}/${fmt(p, goal)}`, ok];
-      good.push(row(p, ok ? "Quest clear!" : `${fmt(p, goal - done)} to go${week ? " this week" : " today"}`, blocks(done, goal, "--green"),
-        ok ? `<b class="qclear">CLEAR!</b>` : `${fmt(p, done)}/${fmt(p, goal)}`, ok));
+      good.push(row(p, week7 ? `Goal ${fmt(p, goal)} a ${week ? "week" : "day"}` : ok ? "Quest clear!" : `${fmt(p, goal - done)} to go${week ? " this week" : " today"}`,
+        week7 ? squares(p) : blocks(done, goal, "--green"), ok ? `<b class="qclear">CLEAR!</b>` : `${fmt(p, done)}/${fmt(p, goal)}`, ok));
     } else if (p.target == null) {
       state[p.k] = [fmt(p, v), false];
-      bad.push(row(p, "Learning your normal (counts after a week)", blocks(0, 1, "--red"), fmt(p, v), false));
+      bad.push(row(p, week7 ? "Learning your normal" : "Learning your normal (counts after a week)", week7 ? squares(p) : blocks(0, 1, "--red"), fmt(p, v), false));
     } else {
       const over = v > p.target;
       state[p.k] = [`${fmt(p, v)}/${fmt(p, p.target)}`, false];
-      bad.push(row(p, over ? `Over your limit of ${fmt(p, p.target)}` : p.target === 0 ? "Limit: none" : `${fmt(p, Math.max(0, p.target - v))} left before your limit`,
-        blocks(v, p.target || 1, "--red"), `<span${over ? ` class="qover"` : ""}>${fmt(p, v)}/${fmt(p, p.target)}</span>`, false));
+      bad.push(row(p, week7 ? (p.target === 0 ? "Limit: none" : `Limit ${fmt(p, p.target)} a day`) : over ? `Over your limit of ${fmt(p, p.target)}` : p.target === 0 ? "Limit: none" : `${fmt(p, Math.max(0, p.target - v))} left before your limit`,
+        week7 ? squares(p) : blocks(v, p.target || 1, "--red"), `<span${over ? ` class="qover"` : ""}>${fmt(p, v)}/${fmt(p, p.target)}</span>`, false));
     }
   }
-  $("homeQuests").innerHTML = `<h3>DAILY QUESTS <small>${nDone}/${good.length} done</small></h3>${good.join("") || `<p class="note">No good habits picked yet. Add some in Settings.</p>`}`;
-  $("homeCurses").innerHTML = `<h3>CURSES <small>stay under</small></h3>${bad.join("") || `<p class="note">No bad habits picked.</p>`}`;
-  document.querySelectorAll("#logbar .logbtn").forEach(b => { const st = state[b.dataset.log];
-    b.dataset.n = st ? st[0] : String(val(t, b.dataset.log) || 0); b.classList.toggle("done", !!(st && st[1])); });
+  return {good, bad, nDone, state};
 }
 
 /** Home, right: today's screen time in one number and one bar, split by what you picked to show. */
@@ -3418,6 +3473,9 @@ function renderHabits(mode = "bad") {
   if (all) { tabEdit.draw("bad"); tabEdit.draw("good"); } else { $("hTabEditG").innerHTML = ""; tabEdit.draw(mode); }
   const t = O.today, ref = O.ref, val = O.val, against = O.against, isToday = O.is_today;
   const bad = mode === "bad", mine = h => all || !!h.bad === bad;
+  const q = questRows(loggedParts(), isToday, true);
+  $("qAll").innerHTML = `<h3>ALL QUESTS <small>last 7 days</small></h3>${q.good.join("") || `<p class="note">No good habits picked yet. Add one with Edit good habits.</p>`}`;
+  $("qCurses").innerHTML = `<h3>ALL CURSES <small>last 7 days</small></h3>${q.bad.join("") || `<p class="note">No bad habits picked. Add one with Edit bad habits.</p>`}`;
   $("habits").dataset.mode = mode; $("habits").classList.toggle("only", !all);
   $("habitsSub").textContent = (all ? "Bad habits take HP from Mochi, good ones give it back. " : bad ? "These take HP from Mochi. Less is better. " : "These give Mochi HP. More is better. ")
     + (isToday ? "Compared with yesterday at this time; tap one for its timeline." : "Compared with the day before; tap one for its timeline.");
@@ -3550,6 +3608,7 @@ function renderScreen() {
       <div class="appbar" style="width:${(100 * a.seconds / max).toFixed(1)}%"></div></li>`).join("") || `<li class="empty">Nothing tracked yet.</li>`;
   const cats = ["coding", "youtube", "social", "streaming", "gaming", "browsing", "other"].filter(c => O.daily.some(d => d.categories[c]));
   screenDays(cats);
+  statTiles(cats);
   const w = O.week, lw = O.last_week;
   $("sWeek").innerHTML = ["screen_pc", "screen_phone", "screen", "youtube", "social", "coding"].map(k => {
     const a = O.val(w, k), b = O.val(lw, k);
@@ -3561,6 +3620,28 @@ function renderScreen() {
  * Last two weeks of screen time as one bar per day with the exact time, a line at the average of the days
  * with any screen time (over it red, under it green), and the picked day split by category underneath.
  */
+/** Stats: four tiles for the last 7 days, then Mochi's HP for the last 30 days as columns of blocks. */
+function statTiles(cats) {
+  const tot = d => cats.reduce((a, c) => a + (d.categories[c] || 0), 0), avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0;
+  const wk = O.daily.slice(-7), prev = O.daily.slice(-14, -7);
+  const scr = avg(wk.map(tot).filter(v => v > 0)), scrPrev = avg(prev.map(tot).filter(v => v > 0)), pct = scrPrev ? Math.round((1 - scr / scrPrev) * 100) : 0;
+  const ps = loggedParts(), quests = ps.filter(p => !p.bad), curses = ps.filter(p => p.bad && p.target != null);
+  const hits = p => wk.filter(d => dayMark(p, d) === "good").length, overs = p => wk.filter(d => dayMark(p, d) === "bad").length;
+  const best = [...quests].sort((a, b) => hits(b) - hits(a))[0], worst = [...curses].sort((a, b) => overs(b) - overs(a))[0];
+  const done = quests.length ? Math.round(quests.reduce((n, p) => n + hits(p), 0) / (quests.length * wk.length) * 100) : null;
+  const curseDays = wk.filter(d => curses.some(p => dayMark(p, d) === "bad")).length;
+  const log = ((O.life || {}).log || []), hp7 = log.slice(-7), top = hp7.reduce((b, e) => !b || e.hp > b.hp ? e : b, null);
+  const day = iso => new Date(iso + "T12:00:00").toLocaleDateString([], {weekday: "long"});
+  const tile = (label, big, note, cls = "") => `<div class="card stile"><span class="stl">${label}</span><b>${big}</b><span class="note ${cls}">${note}</span></div>`;
+  $("sTiles").innerHTML = tile("SCREEN / DAY", hm(scr), !scrPrev || !scr ? "Average of the last 7 days" : pct >= 0 ? `${pct}% less than the week before` : `${-pct}% more than the week before`, scrPrev && scr ? pct >= 0 ? "good" : "bad" : "")
+    + tile("QUESTS DONE", done == null ? "–" : `${done}%`, best && hits(best) ? `${esc(best.n)} is your best` : "Last 7 days")
+    + tile("CURSE DAYS", String(curseDays), worst && overs(worst) ? `${esc(worst.n)} most` : curses.length ? "No day over a limit" : "No limits yet", curseDays ? "bad" : "")
+    + tile("AVG HP", hp7.length ? String(Math.round(avg(hp7.map(e => e.hp)))) : "–", top ? `Best: ${day(top.day)}` : "Last 7 days");
+  $("sHp").innerHTML = log.length && "<div></div>".repeat(30 - Math.min(30, log.length)) + log.slice(-30).map(e => { const col = e.hp >= 70 ? "--green" : e.hp >= 45 ? "--orange" : "--red";
+    return `<div title="${esc(dayName(e.day))}: HP ${Math.round(e.hp)}">${`<i style="background:var(${col})"></i>`.repeat(Math.round(e.hp / 10))}</div>`; }).join("")
+    || `<p class="note">Mochi's first day. Come back tomorrow.</p>`;   // empty slots first, so a new Mochi's few days sit on the right
+}
+
 let screenDay = null;   // index into days14(); null = today
 function screenDays(cats) {
   const days = days14(), labels = labels14(), tot = O.daily.map(d => cats.reduce((a, c) => a + (d.categories[c] || 0), 0));
@@ -3990,6 +4071,7 @@ const wardrobe = {
   },
 };
 $("petBox").addEventListener("click", () => wardrobe.open());
+$("looksTab").addEventListener("click", () => wardrobe.open());
 $("wrCancel").addEventListener("click", () => wardrobe.close());
 $("wrSave").addEventListener("click", () => wardrobe.save());
 $("wrRandom").addEventListener("click", () => wardrobe.random());
