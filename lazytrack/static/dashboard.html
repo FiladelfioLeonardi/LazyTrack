@@ -632,6 +632,7 @@
   .wrstage .wrtools { position: absolute; top: 14px; left: 14px; right: 14px; display: flex; gap: 8px; flex-wrap: wrap; }
   .wrstage .wrtools .btn { height: 38px; padding: 0 12px; font-size: 14px; }
   .wrplate { position: absolute; left: 14px; bottom: 14px; padding: 6px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--card); box-shadow: 3px 3px 0 var(--line); }
+  .wrplate { display: none !important; }   /* Looks shows only Mochi, no name or stats */
   .wrplate b { display: block; font: 800 17px var(--body); } .wrplate span { font: 400 11px var(--pixel); color: var(--ink-3); }
   .wrside { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; min-height: 0; }
   .wrhead { padding: 18px 20px 10px; border-bottom: 3px solid var(--line); }
@@ -1250,6 +1251,7 @@
     .view { padding-left: 24px; padding-right: 24px; }
     .top { position: absolute; top: 9px; right: 170px; z-index: 9; margin: 0; padding: 0; gap: 8px; }
     .top .brand { display: none; }
+    .top.tight .hidesm { display: none; }   /* not enough room next to the tabs: Admin, Tutorial and Egg show only their icons */
     .top .tourbtn, .top .daynav { height: 32px; background: none !important; box-shadow: none !important; font: 400 11px var(--pixel); color: var(--ink-2); text-transform: uppercase; }
     .top .daynav .lbl { font: 400 11px var(--pixel); min-width: 70px; }
     .top .tourbtn:hover, .top .daynav button:hover { color: var(--ink); }
@@ -1516,7 +1518,7 @@ addEventListener("resize", fitPage);
   <header class="top">
     <a class="brand" href="#"><span class="mini" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 10 10" shape-rendering="crispEdges"><path fill="#1d1b20" d="M2 2h6v1H2zM1 3h1v5H1zM8 3h1v5H8zM3 4h1v1H3zM6 4h1v1H6zM2 8h2v1H2zM6 8h2v1H6zM4 6h2v1H4z"/></svg></span>MOCHI</a>
     <a class="tourbtn admin-only" id="adminBtn" href="#tab=admin" title="Admin: ideas, users, announcements, test lab" aria-label="Admin">🛠<span class="hidesm">&nbsp;Admin</span></a>
-    <button type="button" class="tourbtn" id="tourBtn" title="A quick tutorial of Mochi">🧭 Tutorial</button>
+    <button type="button" class="tourbtn" id="tourBtn" title="A quick tutorial of Mochi" aria-label="Tutorial">🧭<span class="hidesm">&nbsp;Tutorial</span></button>
     <button type="button" class="tourbtn eggbtn" id="eggBtn" hidden aria-haspopup="dialog" aria-expanded="false" title="Your Mochi Egg"><svg viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h2v1H3zM2 1h1v1H2zM5 1h1v1H5zM1 2h1v2H1zM6 2h1v2H6zM0 4h1v2H0zM7 4h1v2H7zM1 6h1v1H1zM6 6h1v1H6zM2 7h4v1H2z"/></svg><span class="hidesm">Egg</span><span class="eggdot" id="eggDot"></span></button>
     <a class="tourbtn inapp" href="lazytrack-app://setup" hidden title="Phone settings: gym, Apple Health, food scanner" aria-label="Phone settings">📱</a>
     <div class="daynav" role="group" aria-label="Choose day">
@@ -4594,7 +4596,9 @@ const eggPanel = {
   },
   paint() {
     const btn = $("eggBtn"), e = this.egg(), n = this.native;
+    const was = btn.hidden;
     btn.hidden = !(CLOUD.connected || e || (n && (n.known || n.linked)));   // always there once you're connected to friends
+    if (was !== btn.hidden) stripFit();
     const live = this.live();
     $("eggDot").className = "eggdot" + (live === "on" ? " on ping" : live === "late" ? " late" : "");
     btn.title = !e ? "Your Mochi Egg" : live === "on" ? "Your egg is online" : `Your egg checked in ${this.ago(this.st.age)}`;
@@ -5515,7 +5519,7 @@ const admin = {
     let v = false, why = "not_connected";
     if (CLOUD.connected) try { const r = await api(`/api/cloud/admin${fresh ? "?fresh=1" : ""}`); if (r.ok) { const j = await r.json(); v = !!j.admin; why = j.why || ""; } }
       catch (_) { v = this.is; why = "offline"; }
-    this.is = v; this.why = why; document.body.classList.toggle("is-admin", v);
+    this.is = v; this.why = why; document.body.classList.toggle("is-admin", v); stripFit();
     return v;
   },
   async show(sec) {
@@ -6021,6 +6025,16 @@ function entrance(view) {
 
 // ---------------------------------------------------------------- render
 let renderSeq = 0;
+/** The buttons in the tab strip (Admin, Tutorial, Egg, day) go icon-only when they would run into the tabs. */
+function stripFit() {
+  const top = document.querySelector(".top"), tabs = [...document.querySelectorAll(".tab:not(.tabset)")];
+  if (!top || !tabs.length) return;
+  top.classList.remove("tight");
+  if (getComputedStyle(top).position !== "absolute") return;   // phone layout: the header has its own row
+  const end = Math.max(...tabs.map(t => t.getBoundingClientRect().right));
+  if (top.getBoundingClientRect().left < end + 16) top.classList.add("tight");
+}
+addEventListener("resize", stripFit);
 async function render() {
   animNow = animNext; animNext = false;
   const r = route(), tab = currentTab(), me = ++renderSeq;
@@ -6059,7 +6073,7 @@ async function render() {
     if (String(e.message) === "401") return;   // not logged in yet: the login screen handles it
     console.error(e);
     $("offline").style.display = "block";
-  } finally { reveal(); }
+  } finally { reveal(); stripFit(); }
 }
 // ---------------------------------------------------------------- background effects
 // A canvas behind everything (never on top of the cards). Pixels snap to a 4px grid,
