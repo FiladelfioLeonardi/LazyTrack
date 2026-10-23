@@ -322,11 +322,6 @@
   .ripcard { text-align: center; } .ripcard .tomb { display: grid; grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; margin: 4px auto 10px; width: max-content; }
   .ripcard .tomb i { display: block; } .ripcard .stats { font: 400 13px var(--pixel); opacity: .8; margin: 6px 0 14px; }
   /* targets */
-  .phsteps { margin: 0 0 12px; padding-left: 22px; line-height: 1.6; } .phsteps li { margin: 4px 0; }
-  .phqr { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
-  .phqr .qr { width: 200px; height: 200px; padding: 8px; background: #fff; border: 3px solid var(--line); border-radius: 14px; }
-  .phqr .qr svg { width: 100%; height: 100%; display: block; }
-  .phqr code { word-break: break-all; font-size: 12px; }
   .tlist { display: grid; gap: 8px; }
   .trow { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: center; padding: 10px 12px; border: 3px solid var(--line); border-radius: 12px; background: var(--soft); }
   .trow .te { font-size: 22px; grid-row: span 2; } .trow .tn { font-weight: 800; } .trow .tn small { display: block; font: 400 11px var(--pixel); color: var(--ink-3); margin-top: 2px; }
@@ -761,7 +756,7 @@
   .showsm { display: none; } @media (max-width: 560px) { .hidesm { display: none; } .showsm { display: inline; } }
   .admin-only { text-decoration: none; } body.is-admin .admin-only { display: inline-flex; align-items: center; }
   body:not(.is-admin) .admin-only { display: none !important; }   /* wins over every other display rule (a.tourbtn showed it to everyone) */
-  body.is-admin .form.admin-only { display: grid; }
+  body.is-admin .form.admin-only { display: grid; } body.is-admin section.admin-only { display: block; } body.is-admin .srow.admin-only { display: flex; }
   #demoBar { position: fixed; top: 0; left: 0; right: 0; z-index: 99; text-align: center; font: 400 12px var(--pixel); padding: 4px; background: #ffd23f; color: #000; }
   #demoBar a { color: #000; margin-left: 10px; } body.demo #demoBar { display: block; }
   #admin > .card { margin-top: 16px; } #admin [data-as].offcat { display: none; }
@@ -1460,7 +1455,12 @@ applyTheme();
     <div class="qgrid"><section class="card pad hcard" id="qAll"></section><section class="card pad hcard" id="qCurses"></section></div>
     <h2 class="sec old" style="margin-top:22px">Today</h2>
     <p class="sub old" id="habitsSub">Compared with yesterday at this time. Tap one for its timeline.</p>
-    <div class="tabedit" id="hTabEdit"></div><div class="tabedit" id="hTabEditG"></div>
+    <div class="tabedit" id="hTabEdit"></div><div class="tabedit" id="hTabEditG"></div><div class="tabedit"><button type="button" class="btn" id="goalsBtn" aria-expanded="false">🎯 Edit goals</button></div>
+      <section class="card pad hcard" id="sTargets" hidden>
+        <h3>GOALS <small><a href="#tab=docs&sec=hp">how HP works</a></small></h3>
+        <div id="tEdit"><p class="note">Loading…</p></div>
+        <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="tSave">Save goals</button><span class="note" id="tNote"></span></div>
+      </section>
     <div class="grid2 old">
       <div class="card rows" id="hBad"></div>
       <div class="stack goodside">
@@ -1942,18 +1942,6 @@ applyTheme();
         <span class="note" id="sNote"></span>
       </div>
 
-      <section class="card pad hcard" data-cat="habits">
-        <h3>HABITS <small>what Mochi keeps an eye on</small></h3>
-        <div class="hlist" id="hList"></div>
-        <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
-      </section>
-
-      <section class="card pad hcard" id="sTargets" data-cat="habits">
-        <h3>GOALS <small><a href="#tab=docs&sec=hp">how HP works</a></small></h3>
-        <div id="tEdit"><p class="note">Loading…</p></div>
-        <div class="actions" style="margin-top:12px"><button type="button" class="btn primary" id="tSave">Save goals</button><span class="note" id="tNote"></span></div>
-      </section>
-
       <section class="card pad hcard" data-cat="look">
         <h3>LOOK <small>changes right away</small></h3>
         <div class="srow"><span>Light or dark</span><div class="seg" role="radiogroup" aria-label="Light or dark">
@@ -1982,10 +1970,6 @@ applyTheme();
         <h3>⭐ MOCHI PLUS</h3>
         <div id="plusBox"><p class="note">Loading…</p></div>
       </section>
-      <section class="card pad hcard" id="sPhone" hidden data-cat="account">
-        <h3>📱 YOUR PHONE <small>Mochi from anywhere</small></h3>
-        <div id="phBox"><p class="note">Loading…</p></div>
-      </section>
       <section class="card pad hcard inapp" data-cat="app" hidden>
         <h3>IPHONE APP</h3>
         <div class="cambtns"><a class="btn primary" href="lazytrack-app://setup">📱 Phone settings</a><a class="btn" href="lazytrack-app://food">🍔 Food scanner</a></div>
@@ -2002,7 +1986,7 @@ applyTheme();
           <button type="button" class="btn" id="uninstallBtn">Uninstall…</button></div>
       </section>
 
-      <section class="card pad hcard" data-cat="app" id="sBackups">
+      <section class="card pad hcard admin-only" data-cat="app" id="sBackups">
         <h3>💾 BACKUPS <small>daily, last 14 kept</small></h3>
         <div class="srow"><span>Back up now<small>In the LazyTrack Backups folder in your home folder.</small></span>
           <span class="srbtns"><button type="button" class="btn" id="bkNow">Back up</button></span></div>
@@ -5013,56 +4997,6 @@ function settingsFor() {
   document.querySelectorAll("#settings [data-mod]").forEach(s => { s.hidden = !on[s.dataset.mod]; });
 }
 
-// ---------------------------------------------------------------- your phone (Settings): Tailscale + a QR code
-const phoneSetup = {
-  async load() {
-    $("sPhone").hidden = !AUTH.local;   // only on the computer itself
-    if (!AUTH.local) return;
-    let s;
-    try { s = await (await api("/api/phone")).json(); } catch (_) { $("phBox").innerHTML = `<p class="note">Couldn't check right now.</p>`; return; }
-    const ts = `<a href="https://tailscale.com/download" target="_blank" rel="noopener">Tailscale</a>`;
-    if (!s.tailscale || !s.ip) {
-      $("phBox").innerHTML = `<ol class="phsteps">
-          <li>Install ${ts} on <b>this computer</b> and log in (it's free: a private connection between your own devices).</li>
-          <li>Install <b>Tailscale</b> on your <b>phone</b> (App Store / Play Store) and log in with the <b>same account</b>. Switch it on.</li>
-          <li>Come back here and press the button.</li></ol>
-        <p class="note">${s.tailscale ? "Tailscale is installed here but not logged in or switched on yet." : "Tailscale isn't on this computer yet."}</p>
-        <div class="actions"><button type="button" class="btn primary" data-phone="check">I did it, check again</button></div>`;
-      return;
-    }
-    if (!s.live) {
-      $("phBox").innerHTML = `<p>Tailscale is on ✅ (this computer is <code>${esc(s.ip)}</code>). Now let Mochi talk to your phone.
-          It stays private: only your own devices on Tailscale can reach it, and only with a secret code from the QR.</p>
-        ${s.windows ? `<p class="note">If Windows asks whether to allow Python on networks, click <b>Allow</b>.</p>` : ""}
-        <div class="actions"><button type="button" class="btn primary" data-phone="enable">Connect my phone</button></div>`;
-      return;
-    }
-    const browser = `<p class="note" style="margin-top:12px">${s.app_qr ? "No iPhone app (Android, or a friend's phone)? " : ""}Open <code>${esc(s.url)}</code> in the phone's browser
-        (Tailscale on), then Share → <b>Add to Home Screen</b>.${s.app_qr && s.qr ? ` <button type="button" class="linkbtn" data-phone="webqr">Show a QR for that</button>` : ""}</p>
-      <div class="phqr" id="phWebQr" ${s.app_qr ? "hidden" : ""}>${s.qr ? `<div class="qr" aria-label="QR code for the phone's browser">${s.qr}</div>` : ""}</div>
-      <p class="note" style="margin-top:10px">Keep this computer on with Mochi running: the phone shows what this computer tracks.</p>`;
-    $("phBox").innerHTML = (s.app_qr ? `<div class="phqr"><div class="qr" aria-label="QR code for the iPhone app">${s.app_qr}</div>
-        <ol class="phsteps"><li>Make sure <b>Tailscale is on</b> on your phone.</li>
-          <li>Scan this with the iPhone <b>camera</b> and tap the link: it opens the <b>Mochi app</b> and connects it to this computer.</li>
-          <li>The app shows Mochi, plus the phone-only parts: your egg over Bluetooth, the gym, Apple Health.</li></ol></div>` : "") + browser;
-  },
-};
-document.addEventListener("click", async e => {
-  const b = e.target.closest("[data-phone]"); if (!b) return;
-  if (b.dataset.phone === "check") return phoneSetup.load();
-  if (b.dataset.phone === "webqr") { const q = $("phWebQr"); q.hidden = !q.hidden; b.textContent = q.hidden ? "Show a QR for that" : "Hide it"; return; }
-  b.disabled = true; b.textContent = "Connecting…";
-  try {
-    const r = await (await post("/api/phone/enable", {})).json();
-    if (r.restarting) {   // Mochi restarts once to start listening for the phone
-      $("phBox").innerHTML = `<p class="note">Restarting Mochi so your phone can reach it…</p>`;
-      await new Promise(res => setTimeout(res, 2500));
-      for (let i = 0; i < 40; i++) { try { if ((await fetch("/api/ping")).ok) break; } catch (_) {} await new Promise(res => setTimeout(res, 750)); }
-    }
-  } catch (_) {}
-  phoneSetup.load();
-});
-
 // ---------------------------------------------------------------- when Mochi dies
 const TOMB = ["................", ".....oooooo.....", "....osssssso....", "...osssssssso...", "...osssSSssso...", "...osSSSSSSso...", "...osssSSssso...", "...osssSSssso...", "...osssSSssso...", "...osssSSssso...", "...osssssssso...", "...osssssssso...", ".EEooooooooooEE.", "EEEEEEEEEEEEEEEE", "................", "................"];
 const rip = {
@@ -5605,22 +5539,15 @@ function drawAccount() {
        <p class="note" id="aNote" style="margin-top:10px"></p>
        <p class="note" style="margin-top:6px;font-size:13px">Run Mochi for other people? <a href="#tab=admin">Open the admin page</a></p>`
     : `<p class="note">${AUTH.paired ? "This phone is paired with your computer, so it doesn't need to log in." : "Not logged in."}</p>`);
-  $("hList").innerHTML = HABITS.map(h => `<div class="hitem"><span class="he" aria-hidden="true">${esc(h.e)}</span>
-      <span class="hn">${esc(h.n)}<br><span class="tag">${h.bad ? "LESS OF" : "MORE OF"} · ${h.hp > 0 ? "+" : ""}${h.hp} HP</span></span>
-      <button type="button" data-hrm="${esc(h.k)}" aria-label="Remove ${esc(h.n)}" title="Remove">✕</button></div>`).join("")
-    || `<p class="note">No habits yet. Add some.</p>`;
 }
 document.addEventListener("click", async e => {
-  const rm = e.target.closest("[data-hrm]");
-  if (rm) {
-    const k = rm.dataset.hrm, h = HABITS.find(x => x.k === k);
-    const keep = HABITS.filter(x => x.k !== k).map(x => x.custom ? {k: x.k, n: x.n, e: x.e, bad: x.bad, one: x.one, s: x.s, fill: x.fill,
-      size: Math.abs(x.hp) >= 10 ? "big" : Math.abs(x.hp) <= 3 ? "small" : "medium"} : x.k);
-    const r = await post("/api/habits", {habits: keep});
-    if (r.ok) { applyHabits(await r.json()); drawAccount(); toast(`Removed ${h ? h.n : k}. Its history is kept.`, null); }
+  if (e.target.closest("#aSetup")) { setup.begin("edit"); return; }
+  if (e.target.closest("#goalsBtn")) {   // Quests: the goals editor opens under the edit buttons
+    const box = $("sTargets"), open = box.hidden;
+    box.hidden = !open; $("goalsBtn").setAttribute("aria-expanded", open);
+    if (open) { targets.load(); box.scrollIntoView({block: "nearest"}); }
     return;
   }
-  if (e.target.closest("#hEdit") || e.target.closest("#aSetup")) { setup.begin("edit"); return; }
   if (e.target.closest("#aOut")) { await post("/api/auth/logout", {}); location.hash = ""; location.reload(); return; }
   const del = e.target.closest("#aDel");
   if (del) {
@@ -5789,7 +5716,7 @@ async function render() {
   try {
     if (view === "detail") await loadDetail(r.k);
     else if (view === "admin") await admin.show(r.as);
-    else if (view === "settings") { settingsCat(r.sc); settingsFor(); backups.load(); drawAccount(); drawUpdates(); drawCam(); targets.load(); phoneSetup.load(); plusCard.load(); await loadSettings(); }
+    else if (view === "settings") { settingsCat(r.sc); settingsFor(); backups.load(); drawAccount(); drawUpdates(); drawCam(); plusCard.load(); await loadSettings(); }
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
