@@ -986,7 +986,9 @@
     background-size: 100% auto !important; background-position: center bottom !important; }
   /* the scenes are square with the ground 16% from the bottom; on a 4:3 window that is 21.33% of the height */
   #petBox.scene > .pet { bottom: 21.33%; }
-  #petBox.scene.smooth > .pet { bottom: 16.67%; }   /* the sketch's places: ground 8 px up a 48 px window */
+  #petBox.scene.smooth > .pet { bottom: 16.67%; }
+  .scene.live > .pet { bottom: var(--feet, 16%); }
+  .wrstage.live .pet { margin-bottom: 0; }   /* the sketch's places: ground 8 px up a 48 px window */
   .petscene { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; }
   #petBox.scene .pet { grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; }
   #petBox.scene .pet.baby0 { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
@@ -3157,25 +3159,37 @@ function deviceScene(look, tier) {
 /** Mochi's own window: the place is drawn live on a canvas every frame. The phone sketch's places at 64x48, so
  * they move as smoothly as there; the others as their pictures, a new frame 1.7 times a second. */
 const liveScene = {
-  o: null, raf: 0,
+  o: null, raf: 0, extra: new Map(),   // extra: other boxes with a live place (Looks: the big preview and the place tiles)
   set(o) {
     const box = $("petBox");
     this.o = o; box.classList.add("scene"); box.style.backgroundImage = "none";
     box.classList.toggle("smooth", SMOOTH_PLACES.has(o.place));
-    if (!this.raf) this.raf = requestAnimationFrame(t => this.loop(t));
+    this.kick();
+  },
+  add(el, o) {
+    el.classList.add("scene", "live"); el.style.backgroundImage = "none";
+    this.extra.set(el, {tier: "okay", ...o});
+    this.kick();
+  },
+  kick() { if (!this.raf) this.raf = requestAnimationFrame(t => this.loop(t)); },
+  canvas(box) {
+    let cv = box.querySelector(":scope > canvas.petscene");
+    if (!cv) { cv = document.createElement("canvas"); cv.className = "petscene"; cv.setAttribute("aria-hidden", "true"); box.prepend(cv); }
+    return cv;
   },
   loop(now) {
     this.raf = 0;
-    const box = $("petBox");
-    let cv = $("petScene");
-    if (!cv) { cv = document.createElement("canvas"); cv.id = "petScene"; cv.className = "petscene"; cv.setAttribute("aria-hidden", "true"); box.prepend(cv); }
-    if (!document.hidden && box.offsetParent) this.draw(cv, now / 1000);
-    if (calm) this.raf = requestAnimationFrame(t => this.loop(t));   // reduced motion: one still frame
+    if (!document.hidden) {
+      const box = $("petBox"), t = now / 1000;
+      if (this.o && box.offsetParent) this.draw(this.canvas(box), t, this.o);
+      for (const [el, o] of this.extra) { if (!el.isConnected) this.extra.delete(el); else if (el.offsetParent) this.draw(this.canvas(el), t, o); }
+    }
+    if (calm) this.kick();   // reduced motion: one still frame
   },
-  draw(cv, t) {
-    const {place, high, tier, soft} = this.o, x = cv.getContext("2d");
+  draw(cv, t, o) {
+    const {place, high, tier, soft} = o, x = cv.getContext("2d");
     const box = cv.parentNode, bw = box.clientWidth || 320, bh = box.clientHeight || 240;
-    const feet = px => { if (this.feet !== px) { this.feet = px; box.style.setProperty("--feet", px + "px"); } };
+    const feet = px => { if (box._feet !== px) { box._feet = px; box.style.setProperty("--feet", px + "px"); } };
     if (!SMOOTH_PLACES.has(place)) {
       const src = _sceneCv.get(placeURL(place, {frame: Math.floor(t * 1.7), high, tier, soft}));
       if (!src) return;
@@ -3185,12 +3199,14 @@ const liveScene = {
       feet(Math.round(N * .16 * bw / N));
       return;
     }
-    // like the sketch: one scene pixel is 5 screen pixels, so the window's size sets how much of the place shows
-    const W = Math.max(16, Math.ceil(bw / 5)), H = Math.max(16, Math.ceil(bh / 5));
+    // like the sketch: one scene pixel is as big as one of Mochi's pixels in that box (5 px on Home), so the box's
+    // size sets how much of the place shows
+    const pet = box.querySelector(".pet"), px = (pet && parseFloat(getComputedStyle(pet).gridAutoRows)) || 5;
+    const W = Math.max(16, Math.ceil(bw / px)), H = Math.max(12, Math.ceil(bh / px));
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
     feet(Math.round(8 * bw / W));
     drawPlace(x, W, H, t, place, dayPart());
-    x.fillStyle = "rgba(0,0,0,.25)"; x.fillRect(Math.round(W / 2) - 6, H - 7, 12, 1);   // Mochi's shadow
+    if (box.id === "petBox" || box.id === "wrStage") { x.fillStyle = "rgba(0,0,0,.25)"; x.fillRect(Math.round(W / 2) - 6, H - 7, 12, 1); }   // Mochi's shadow
     if (high) { x.globalAlpha = .08 + .05 * high; x.fillStyle = "#d8e8c8"; x.fillRect(0, 0, W, H); }
     if (tier === "sick") { x.globalAlpha = .22; x.fillStyle = "#9aa38a"; x.fillRect(0, 0, W, H); }
     x.globalAlpha = 1;
@@ -4233,7 +4249,7 @@ const wardrobe = {
   },
   drawStage() {
     $("wrPet").innerHTML = mochiCells(this.look);
-    setPlace($("wrStage"), this.look.place, {soft: softColor(this.look)});
+    liveScene.add($("wrStage"), {place: MOCHI.places[this.look.place] ? this.look.place : LOOK_DEFAULT.place, soft: softColor(this.look)});
     const L = (O && O.life) || {};
     $("wrPlate").innerHTML = `<b>${esc(AUTH.user ? AUTH.user.display_name + "'s Mochi" : "Mochi")}</b><span>MOCHI #${L.gen || 1} · ${L.age ? `${L.age} DAYS OLD` : "BORN TODAY"}</span>`;
     $("wrUndo").disabled = !this.past.length;
@@ -4290,7 +4306,8 @@ const wardrobe = {
     const fresh = !!dir;   // the tiles drop in only when the page opens, not on every pick
     $("wrList").innerHTML = `<div class="writems ${fresh ? "" : "settled"}">${items.map((it, n) => { if (it.sec) return `<div class="wrsec">${esc(it.sec)}</div>`; const bg = placeURL(it.look.place || LOOK_DEFAULT.place, {soft: softColor(it.look)});
       return `<button type="button" class="writem" style="--n:${Math.min(n, 20)}" aria-pressed="${it.on}" data-wrpick="${esc(it.k)}">
-        <span class="wrscene" style="background-image:url(${bg})"><span class="pet">${mochiCells(it.look)}</span>${it.p ? `<span class="wrplus">${PLUS.active ? "⭐" : "🔒"}</span>` : ""}</span><span>${esc(it.n)}</span></button>`; }).join("")}</div>`;
+        <span class="wrscene" style="background-image:url(${bg})" data-live="${this.tab === "place" ? esc(it.look.place || LOOK_DEFAULT.place) : ""}"><span class="pet">${mochiCells(it.look)}</span>${it.p ? `<span class="wrplus">${PLUS.active ? "⭐" : "🔒"}</span>` : ""}</span><span>${esc(it.n)}</span></button>`; }).join("")}</div>`;
+    $("wrList").querySelectorAll("[data-live]:not([data-live=''])").forEach(el => liveScene.add(el, {place: el.dataset.live}));   // the Place tiles move
     this.drawColors();
   },
   // the color row: body color, eyes and head only
