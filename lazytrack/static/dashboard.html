@@ -451,6 +451,39 @@
   .barrow .hint { font-size: 14px; color: var(--ink-2); }
 
   .chips { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  /* Home: Mochi in the middle, today's numbers left, friends right (wide screens); one column otherwise */
+  .homegrid { display: grid; gap: 0 22px; }
+  .homegrid .hcol { min-width: 0; }
+  .hcard h3 { font: 700 14px var(--pixel); margin: 0 0 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+  .hcard h3 small { font: 500 12px var(--body); color: var(--ink-3); }
+  .hcard .big { font: 800 32px var(--body); line-height: 1.05; }
+  .hcard .note { margin: 2px 0 0; }
+  .segbar { display: flex; height: 16px; border: 3px solid var(--line); border-radius: 8px; overflow: hidden; margin: 10px 0 8px; background: var(--soft); }
+  .segbar i { display: block; height: 100%; }
+  .seglegend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 13px; }
+  .seglegend span { display: flex; align-items: center; gap: 6px; } .seglegend b { margin-left: auto; font-weight: 700; }
+  .seglegend .sw { width: 10px; height: 10px; border: 2px solid var(--line); flex: none; }
+  .hfr { display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 6px; border: 0; border-bottom: 2px dashed var(--soft); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; border-radius: 10px; }
+  .hfr:last-of-type { border-bottom: 0; } .hfr:hover { background: var(--soft); }
+  .hfr .fpet { flex: none; width: 44px; height: 44px; border: 3px solid #1d1b20; border-radius: 12px; display: grid; place-items: center; background-size: cover; image-rendering: pixelated; position: relative; }
+  .hfr .fpet .pet { grid-template-columns: repeat(16, 2px); grid-auto-rows: 2px; }
+  .hfr .fdot { position: absolute; right: -4px; bottom: -4px; width: 12px; height: 12px; border: 2px solid var(--line); border-radius: 50%; background: #9a94a6; }
+  .hfr .fdot.on { background: #3fbf6f; }
+  .hfr .fn { flex: 1; min-width: 0; } .hfr .fn b { display: block; } .hfr .fn span { font-size: 12px; color: var(--ink-2); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hfr .fhp { font: 400 11px var(--pixel); }
+  #habits[data-mode="all"] .tabedit:has(> button:only-child) { display: inline-block; margin-right: 10px; }
+  .cmprow { display: grid; grid-template-columns: 92px 1fr; gap: 8px; align-items: center; margin: 7px 0; font-size: 13px; }
+  .cmpbars { display: flex; flex-direction: column; gap: 3px; } .cmpbars i { display: block; height: 8px; border: 2px solid var(--line); border-radius: 5px; min-width: 6px; }
+  @media (min-width: 1240px) {
+    body[data-view="home"] .wrap { max-width: 1380px; }
+    .homegrid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.55fr) minmax(0, 1fr); align-items: start; }
+    .homegrid .hleft { order: 1; padding-top: 18px; } .homegrid .hmid { order: 2; } .homegrid .hright { order: 3; padding-top: 18px; }
+    .homegrid .hleft > #homeScreen[hidden] + .sec { margin-top: 0; }
+    .homegrid .hcard + .hcard, .homegrid .hcard + .sec { margin-top: 20px; }
+    .homegrid .statsheet { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .homegrid .pettop { flex-wrap: wrap; }
+  }
+  @media (max-width: 1239px) { .homegrid .hcard { margin-top: 22px; } }
   @media (max-width: 620px) { .chips { grid-template-columns: 1fr 1fr; } .chips > :last-child { grid-column: 1 / -1; } }
   .chip { display: grid; gap: 2px; padding: 12px 14px; text-decoration: none; color: var(--on-fill); background: var(--lvl, var(--card)); border: 3px solid var(--line); border-radius: 16px; box-shadow: 4px 4px 0 var(--line); }
   .chip .k { font-family: var(--pixel); font-size: 12px; }
@@ -1139,8 +1172,7 @@ applyTheme();
 
   <nav class="tabs" aria-label="Sections">
     <a class="tab" data-tab="home" href="#tab=home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9H3z"/><path d="M9 20v-6h6v6"/></svg>Home</a>
-    <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-4.6-8-10.2C4 6.9 6 5 8.4 5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2C18 5 20 6.9 20 9.8 20 15.4 12 20 12 20z"/><path d="M12 7l-1.5 4 3 2-1.5 4"/></svg><span class="hidesm">Bad habits</span><span class="showsm">Bad</span></a>
-    <a class="tab" data-tab="good" href="#tab=good"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-4.6-8-10.2C4 6.9 6 5 8.4 5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2C18 5 20 6.9 20 9.8 20 15.4 12 20 12 20z"/><path d="M12 9v6M9 12h6"/></svg><span class="hidesm">Good habits</span><span class="showsm">Good</span></a>
+    <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-8-4.6-8-10.2C4 6.9 6 5 8.4 5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2C18 5 20 6.9 20 9.8 20 15.4 12 20 12 20z"/><path d="M12 7l-1.5 4 3 2-1.5 4"/></svg><span class="hidesm">Habits</span><span class="showsm">Habits</span></a>
     <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4M7 12l3-3 2 2 4-4"/></svg><span class="hidesm">Monitoring</span><span class="showsm">Monitor</span></a>
     <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.6-3.8 3.2-6 6.5-6s5.9 2.2 6.5 6"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14c2.7.2 4.6 2.2 5 5.5"/></svg>Friends<span class="tbadge" id="fBadge" hidden></span></a>
     <a class="tab" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>Settings</a>
@@ -1150,6 +1182,8 @@ applyTheme();
   <!-- ================================================== HOME: the pet + the essentials -->
   <main id="home" class="view">
     <div id="newsBox"></div>
+    <div class="homegrid">
+      <div class="hcol hmid">
     <h2 class="sec quickh">Quick log</h2>
     <p class="sub">Tap when it happens. Mochi counts it right away.</p>
     <div class="logbar" id="logbar" aria-label="Log something"></div>
@@ -1166,7 +1200,6 @@ applyTheme();
       </div>
       <div class="hp" id="hp"></div>
     </section>
-
     <div class="camwarn" id="camWarn" hidden></div>
     <div class="camask" id="camAsk" hidden>
       <h3>📷 Want Mochi to notice when you smoke?</h3>
@@ -1178,9 +1211,19 @@ applyTheme();
       </ul>
       <div class="cambtns"><button type="button" class="btn primary" data-camask="on">Turn the camera on</button><button type="button" class="btn" data-camask="no">No thanks, I'll tap</button></div>
     </div>
+      </div>
+      <div class="hcol hleft">
+        <section class="card pad hcard" id="homeScreen" hidden></section>
     <h2 class="sec">How you're doing</h2>
     <p class="sub">Tap a bar for the details.</p>
     <div class="card pad"><div class="bars" id="statbars"></div></div>
+
+      </div>
+      <div class="hcol hright">
+        <section class="card pad hcard" id="homeFriends"></section>
+        <section class="card pad hcard" id="homeCmp" hidden></section>
+      </div>
+    </div>
 
     <h2 class="sec">Coming up</h2>
     <div class="chips" id="chips"></div>
@@ -1190,7 +1233,7 @@ applyTheme();
   <main id="habits" class="view">
     <h2 class="sec" style="margin-top:22px">Today</h2>
     <p class="sub" id="habitsSub">Compared with yesterday at this time. Tap one for its timeline.</p>
-    <div class="tabedit" id="hTabEdit"></div>
+    <div class="tabedit" id="hTabEdit"></div><div class="tabedit" id="hTabEditG"></div>
     <div class="grid2">
       <div class="card rows" id="hBad"></div>
       <div class="stack goodside">
@@ -1618,7 +1661,7 @@ applyTheme();
       <section class="card pad" data-cat="habits">
         <h2>Habits</h2>
         <p class="sub">What Mochi keeps an eye on. Removing one hides it; its history stays, so adding it back brings everything back.
-          Quicker: <a href="#tab=bad">Bad habits</a>, <a href="#tab=good">Good habits</a> and <a href="#tab=monitor">Monitoring</a> each have ✏️ to edit their own list.</p>
+          Quicker: <a href="#tab=bad">Habits</a> and <a href="#tab=monitor">Monitoring</a> have ✏️ to edit their own lists.</p>
         <div class="hlist" id="hList"></div>
         <div class="actions" style="margin-top:14px"><button type="button" class="btn primary" id="hEdit">Add or change habits</button></div>
       </section>
@@ -3132,6 +3175,9 @@ function renderHome() {
     (smokes.length ? bar(smokes[0].k, "🫁 LUNGS", `${Math.round(lungs * 100)}%`, lungs, "--pink", puffs ? `${plural(puffs, smokes.length > 1 ? "smoke" : smokes[0].one)} today, each one takes a bit` : "Full health today") : "")
     + bars.join("") || `<p class="note">Nothing tracked yet. Pick some habits in Settings.</p>`;
 
+  homeScreen();
+  homeFriends.draw().catch(e => console.error(e));
+
   // coming up: the two deadlines and the commit streak
   const ft = O.ft, gh = O.github || {};
   const chip = (title, days) => {
@@ -3146,13 +3192,80 @@ function renderHome() {
       : `<a class="chip plain" href="#tab=settings&sc=tracking"><span class="k">GITHUB</span><span class="s">Connect it to see your streak</span></a>`);
 }
 
+/** Home, left: today's screen time in one number and one bar, split by what you picked to show. */
+function homeScreen() {
+  const t = O.today, ref = O.ref, val = O.val, box = $("homeScreen");
+  const ks = SHOW_SCREEN.filter(k => INFO[k] && unitOf(k) === "seconds" && !["sleep"].includes(k));
+  const parts = ks.map(k => [k, val(t, k), val(ref, k)]).filter(p => p[1] > 0).sort((a, b) => b[1] - a[1]);
+  const total = parts.reduce((n, p) => n + p[1], 0), before = ks.reduce((n, k) => n + val(ref, k), 0);
+  box.hidden = !ks.length;
+  if (!ks.length) return;
+  const diff = total - before, cmp = !before && !total ? "" : Math.abs(diff) < 300 ? `about the same as ${O.against}` : `${hm(Math.abs(diff))} ${diff < 0 ? "less" : "more"} than ${O.against}`;
+  const col = k => css((INFO[k] || {}).fill || "--blue") || "var(--blue)";
+  box.innerHTML = `<h3>SCREEN TIME <small>${O.is_today ? "today" : esc(dayName(O.day))}</small></h3>
+    <div class="big">${total ? hm(total) : "0m"}</div><p class="note">${esc(cmp)}</p>
+    <div class="segbar">${parts.map(([k, v]) => `<i style="width:${(v / total * 100).toFixed(1)}%;background:${col(k)}" title="${esc(INFO[k].n)}"></i>`).join("")}</div>
+    <div class="seglegend">${parts.slice(0, 6).map(([k, v]) => `<span><i class="sw" style="background:${col(k)}"></i>${esc(INFO[k].n)}<b>${hm(v)}</b></span>`).join("")}</div>`;
+}
+
+/** Home, right: friends at a glance (online first) and "you vs the friend most like you this week". */
+const homeFriends = {
+  at: 0, data: null,
+  async draw() {
+    const box = $("homeFriends"), cmp = $("homeCmp");
+    if (!CLOUD.connected) { await refreshCloud().catch(() => {}); }
+    if (!CLOUD.connected) {
+      cmp.hidden = true;
+      box.innerHTML = `<h3>FRIENDS</h3><p class="note" style="margin:0 0 10px">See your friends' Mochi here, poke them and compare your weeks.</p><a class="btn" href="#tab=friends">Add friends</a>`;
+      return;
+    }
+    if (!this.data || Date.now() - this.at > 60000) {
+      const r = await api("/api/cloud/friends").catch(() => null);
+      if (r && r.ok) { this.data = await r.json(); this.at = Date.now(); }
+    }
+    const F = (this.data && this.data.friends) || [];
+    if (!F.length) { cmp.hidden = true; box.innerHTML = `<h3>FRIENDS</h3><p class="note" style="margin:0 0 10px">No friends yet. Add one with their username.</p><a class="btn" href="#tab=friends">Add friends</a>`; return; }
+    const isOn = p => { const c = p.card || {}; return !!p.updated_at && !c.offline && (p.online ?? (Date.now() - new Date(p.updated_at) < 300000)); };
+    const list = [...F].sort((a, b) => isOn(b) - isOn(a)).slice(0, 6), on = F.filter(isOn).length;
+    box.innerHTML = `<h3>FRIENDS <small>${on} of ${F.length} online</small></h3>` + list.map(p => {
+      const c = p.card, fp = (c && c.pet) || {}, stale = c && c.day && c.day !== todayISO(), tier = c ? c.tier : "okay";
+      const bg = placeURL(fp.place || LOOK_DEFAULT.place, {tier: stale ? "okay" : tier, soft: softColor(fp)});
+      const doing = presence(p).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+      return `<button type="button" class="hfr" data-friend="${esc(p.uid)}"><span class="fpet" style="background-image:url(${bg})"><span class="pet">${mochiCells(fp, "happy", stale ? "okay" : tier)}</span><i class="fdot ${isOn(p) ? "on" : ""}"></i></span>
+        <span class="fn"><b>${esc(p.display_name || p.username)}</b><span>${esc(doing)}</span></span>${c && !stale ? `<span class="fhp">HP ${c.hp}</span>` : ""}</button>`;
+    }).join("") + (F.length > list.length ? `<a class="note" href="#tab=friends">All ${F.length} friends</a>` : "");
+    this.compare(F);
+  },
+  /** How alike two days are: for every stat you both share, 1 - the gap between you over the bigger number. */
+  compare(F) {
+    const cmp = $("homeCmp"), t = O.today, mine = k => Math.round(O.val(t, k) || 0);
+    let best = null;
+    for (const p of F) {
+      const c = p.card; if (!c || (c.day && c.day !== todayISO())) continue;
+      const shared = (c.stats || []).filter(x => INFO[x.k]);
+      if (shared.length < 2) continue;
+      const score = shared.reduce((n, x) => { const a = mine(x.k), b = x.v || 0, m = Math.max(a, b); return n + (m ? 1 - Math.abs(a - b) / m : 1); }, 0) / shared.length;
+      if (!best || score > best.score) best = {p, shared, score};
+    }
+    cmp.hidden = !best;
+    if (!best) return;
+    const name = esc(best.p.display_name || best.p.username), fmtV = (k, v) => unitOf(k) === "seconds" ? hm(v) : String(v);
+    cmp.innerHTML = `<h3>YOU VS ${name.toUpperCase()} <small>${Math.round(best.score * 100)}% alike today</small></h3>` + best.shared.slice(0, 5).map(x => {
+      const a = mine(x.k), b = x.v || 0, m = Math.max(a, b, 1);
+      return `<div class="cmprow"><span title="You ${fmtV(x.k, a)}, ${name} ${fmtV(x.k, b)}">${esc(INFO[x.k].n)}</span><span class="cmpbars"><i style="width:${(a / m * 100).toFixed(0)}%;background:var(--blue)"></i><i style="width:${(b / m * 100).toFixed(0)}%;background:var(--pink)"></i></span></div>`;
+    }).join("") + `<p class="note">Blue is you, pink is ${name}. Only what you both share counts.</p>`;
+  },
+};
+
 // ---------------------------------------------------------------- HABITS
 function renderHabits(mode = "bad") {
-  tabEdit.draw(mode);
+  const all = mode === "all";
+  $("habits").dataset.mode = mode;   // tabEdit picks its box from this
+  if (all) { tabEdit.draw("bad"); tabEdit.draw("good"); } else { $("hTabEditG").innerHTML = ""; tabEdit.draw(mode); }
   const t = O.today, ref = O.ref, val = O.val, against = O.against, isToday = O.is_today;
-  const bad = mode === "bad", mine = h => !!h.bad === bad;
-  $("habits").dataset.mode = mode; $("habits").classList.add("only");
-  $("habitsSub").textContent = (bad ? "These take HP from Mochi. Less is better. " : "These give Mochi HP. More is better. ")
+  const bad = mode === "bad", mine = h => all || !!h.bad === bad;
+  $("habits").dataset.mode = mode; $("habits").classList.toggle("only", !all);
+  $("habitsSub").textContent = (all ? "Bad habits take HP from Mochi, good ones give it back. " : bad ? "These take HP from Mochi. Less is better. " : "These give Mochi HP. More is better. ")
     + (isToday ? "Compared with yesterday at this time; tap one for its timeline." : "Compared with the day before; tap one for its timeline.");
   const show = () => true;   // you picked them, so they all show
   $("hBad").innerHTML = `<div class="label">BAD HABITS</div>` + HABITS.filter(h => h.bad && show(h))
@@ -3164,13 +3277,13 @@ function renderHabits(mode = "bad") {
     + rowHTML("sleep", sl ? hm(sl) : "–", sl ? compare("sleep", sl, val(O.yesterday, "sleep"), isToday ? "the night before" : "the day before") : {text: "Comes from the iPhone app", cls: ""}, isToday ? "Sleep last night" : "Sleep")
     + rowHTML("steps", st ? fmt("count", st) : "–", st ? compare("steps", st, val(ref, "steps"), against) : {text: "Comes from the iPhone app", cls: ""});
 
-  const rec = O.recent_events.filter(e => INFO[e.kind] && !!INFO[e.kind].bad === bad);
+  const rec = O.recent_events.filter(e => INFO[e.kind] && (all || !!INFO[e.kind].bad === bad));
   $("moreRecent").style.display = rec.length > 5 && !showAllRecent ? "" : "none";
   $("recent").innerHTML = rec.slice(0, showAllRecent ? 15 : 5).map(e => `<li>
       <span>${INFO[e.kind].e} <b>${esc(INFO[e.kind].one)}</b> <span class="meta">${new Date(e.ts * 1000).toLocaleString([], {weekday: "short", hour: "2-digit", minute: "2-digit"})}, ${esc(SOURCE[e.source] || e.source)}</span></span>
       <button class="del" data-del="${e.id}">Remove</button></li>`).join("")
     || `<li class="empty">Nothing logged yet. Use the buttons on Home.</li>`;
-  $("cHabitsHead").textContent = bad ? "Bad habits, last two weeks" : "Good habits, last two weeks";
+  $("cHabitsHead").textContent = all ? "Habits, last two weeks" : bad ? "Bad habits, last two weeks" : "Good habits, last two weeks";
 
   const charted = HABITS.filter(mine).slice(0, 3), cols = ["--today", "--prev", "--avg"];
   chart("cHabits", "bar", {labels: labels14(), datasets: charted.map((h, i) =>
@@ -3178,7 +3291,7 @@ function renderHabits(mode = "bad") {
 
   const w = O.week, lw = O.last_week;
   const rows = HABITS.filter(h => mine(h) && (w.events[h.k] || lw.events[h.k])).map(h => rowHTML(h.k, w.events[h.k] || 0, compare(h.k, w.events[h.k] || 0, lw.events[h.k] || 0, "last week")));
-  if (!bad && w.sleep_nights) rows.push(rowHTML("sleep", hm(w.sleep_avg), compare("sleep", w.sleep_avg, lw.sleep_avg, "last week"), "Sleep per night"));
+  if ((all || !bad) && w.sleep_nights) rows.push(rowHTML("sleep", hm(w.sleep_avg), compare("sleep", w.sleep_avg, lw.sleep_avg, "last week"), "Sleep per night"));
   $("hWeek").innerHTML = rows.join("") || `<p class="empty">Nothing logged this week yet.</p>`;
 }
 
@@ -3190,9 +3303,9 @@ const habitOut = x => x.custom ? {k: x.k, n: x.n, e: x.e, bad: x.bad, one: x.one
 const tabEdit = {
   open: {},
   draw(mode) {
-    const box = $(mode === "monitor" ? "mTabEdit" : "hTabEdit");
+    const box = $(mode === "monitor" ? "mTabEdit" : mode === "good" && $("habits").dataset.mode === "all" ? "hTabEditG" : "hTabEdit");
     if (!this.open[mode]) {
-      box.innerHTML = `<button type="button" class="btn" data-tedit="${mode}">✏️ ${mode === "monitor" ? "Choose what's shown" : "Edit list"}</button>`;
+      box.innerHTML = `<button type="button" class="btn" data-tedit="${mode}">✏️ ${mode === "monitor" ? "Choose what's shown" : $("habits").dataset.mode === "all" ? `Edit ${mode} habits` : "Edit list"}</button>`;
       return;
     }
     if (mode === "monitor") {
@@ -5362,7 +5475,7 @@ async function render() {
     else if (view === "docs") docs.show(r.sec);
     else {
       await loadOverview();
-      ({home: renderHome, bad: () => renderHabits("bad"), good: () => renderHabits("good"),
+      ({home: renderHome, bad: () => renderHabits("all"), good: () => renderHabits("all"),
         monitor: () => { tabEdit.draw("monitor"); renderScreen(); renderSchool(); }, friends: renderFriends})[view]();
       if (view === "home") { camWarn(); news.draw(); }
     }
