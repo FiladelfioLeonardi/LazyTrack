@@ -1020,6 +1020,34 @@
   .sdhead { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
   .sdhead b { font: 400 13px var(--pixel); }
   @media (max-width: 560px) { .sday { grid-template-columns: 70px minmax(0, 1fr) 58px; gap: 6px; } }
+  /* Home like the phone sketch: quests and curses left, Mochi's window and the bag in the middle, friends and screen time right */
+  #home .hleft > .sec, #home .hleft > .sub, #home .hleft > .card:has(#statbars), #homeCmp, #home .sec:has(+ #chips), #home #chips { display: none !important; }
+  #petcard .petside { display: none; }
+  #hp .hprow, #hp .lifeline, #hp .quests { display: none; }
+  #hp:not(:has(.critical, .newtargets)) { display: none; }
+  @media (max-width: 1239px) { #home .hleft, #home .hright { display: none; } }
+  @media (min-width: 1240px) { .homegrid .hleft, .homegrid .hright { padding-top: 0; } #home .hmid > #petcard { margin-top: 0; } }
+  /* what Mochi says: a speech bubble inside his window (headline only) */
+  #petcard { position: relative; }
+  #petcard .speech { position: absolute; top: 28px; left: 28px; max-width: calc(100% - 150px); z-index: 3; margin: 0; padding: 8px 10px; }
+  #petcard .speech .who, #petcard .speech .mood { display: none; }
+  #petcard .speech h1 { font: 600 15px/1.25 var(--body); margin: 0; }
+  #petBox .dress { left: auto; right: 58px; top: 10px; }
+  /* quests and curses */
+  .qrow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto auto 34px; align-items: center; gap: 8px; padding: 8px 0; border-top: 2px dotted color-mix(in srgb, var(--ink-3) 45%, transparent); }
+  .hcard h3 + .qrow { border-top: 0; }
+  .qe { font-size: 20px; text-align: center; }
+  .qn { font-weight: 600; min-width: 0; } .qn small { display: block; font-size: 12px; font-weight: 400; color: var(--ink-3); }
+  .qblk { display: flex; gap: 2px; } .qblk i { width: 6px; height: 12px; background: var(--soft); display: block; }
+  .qv { font: 400 11px var(--pixel); text-align: right; min-width: 38px; } .qclear { font: 400 11px var(--pixel); color: var(--good); } .qover { color: var(--bad); }
+  .qplus { width: 34px; height: 34px; border: 0; background: var(--line); color: var(--card); font: 700 16px var(--pixel); cursor: pointer; display: grid; place-items: center; }
+  .qplus:active { transform: translate(2px, 2px); }
+  :root[data-theme="dark"] .qplus { background: var(--ink); color: var(--bg); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qplus { background: var(--ink); color: var(--bg); } }
+  /* the bag: each tile shows today's count, green when that quest is done */
+  .logbtn { position: relative; }
+  .logbtn[data-n]::after { content: attr(data-n); position: absolute; top: 5px; right: 7px; font: 400 10px var(--pixel); }
+  .logbtn.done { background: var(--green) !important; }
 </style>
 <script>
 // Color themes. Each one overrides a few tokens, separately for light and dark.
@@ -1278,7 +1306,8 @@ applyTheme();
     </div>
       </div>
       <div class="hcol hleft">
-        <section class="card pad hcard" id="homeScreen" hidden></section>
+        <section class="card pad hcard" id="homeQuests"></section>
+        <section class="card pad hcard" id="homeCurses"></section>
     <h2 class="sec">How you're doing</h2>
     <p class="sub">Tap a bar for the details.</p>
     <div class="card pad"><div class="bars" id="statbars"></div></div>
@@ -1286,6 +1315,7 @@ applyTheme();
       </div>
       <div class="hcol hright">
         <section class="card pad hcard" id="homeFriends"></section>
+        <section class="card pad hcard" id="homeScreen" hidden></section>
         <section class="card pad hcard" id="homeCmp" hidden></section>
       </div>
     </div>
@@ -3243,6 +3273,7 @@ function renderHome() {
   $("statbars").innerHTML =
     (smokes.length ? bar(smokes[0].k, "🫁 LUNGS", `${Math.round(lungs * 100)}%`, lungs, "--pink", puffs ? `${plural(puffs, smokes.length > 1 ? "smoke" : smokes[0].one)} today, each one takes a bit` : "Full health today") : "")
     + bars.join("") || `<p class="note">Nothing tracked yet. Pick some habits in Settings.</p>`;
+  homeQuests(tracked, isToday);
 
   homeScreen();
   homeFriends.draw().catch(e => console.error(e));
@@ -3261,7 +3292,44 @@ function renderHome() {
       : `<a class="chip plain" href="#tab=settings&sc=tracking"><span class="k">GITHUB</span><span class="s">Connect it to see your streak</span></a>`);
 }
 
-/** Home, left: today's screen time in one number and one bar, split by what you picked to show. */
+/**
+ * Home, left: the habits you can log as quests (good ones, against your goal) and curses (bad ones, against
+ * your target), with a + to log; the bag tiles get the same count and turn green when a quest is done.
+ */
+function homeQuests(tracked, isToday) {
+  const t = O.today, val = O.val, fmt = (p, v) => p.unit === "min" ? hm(v * 60) : String(Math.round(v * 10) / 10);
+  const blocks = (n, of, col) => { const k = Math.min(10, Math.max(1, Math.ceil(of))), on = Math.min(k, Math.round(n / (of || 1) * k));
+    return `<span class="qblk" aria-hidden="true">${Array.from({length: k}, (_, i) => `<i${i < on ? ` style="background:var(${col})"` : ""}></i>`).join("")}</span>`; };
+  const loggable = new Set(HABITS.map(h => h.k)), state = {}, good = [], bad = [];
+  let nDone = 0;
+  const row = (p, sub, blk, right, done) => `<div class="qrow${done ? " done" : ""}"><span class="qe" aria-hidden="true">${p.e}</span>
+      <span class="qn">${esc(p.n)}<small>${esc(sub)}</small></span>${blk}<span class="qv">${right}</span>
+      <button type="button" class="qplus" data-log="${p.k}" aria-label="Log ${esc((INFO[p.k] || p).one || p.n)}">+</button></div>`;
+  for (const p of tracked.filter(p => loggable.has(p.k))) {
+    const v = val(t, p.k);
+    if (!p.bad) {
+      const week = p.per === "week", goal = p.goal || 1, done = week ? (isToday ? p.week : v) : v, ok = done >= goal;
+      if (ok) nDone++;
+      state[p.k] = [ok ? "✓" : `${fmt(p, done)}/${fmt(p, goal)}`, ok];
+      good.push(row(p, ok ? "Quest clear!" : `${fmt(p, goal - done)} to go${week ? " this week" : " today"}`, blocks(done, goal, "--green"),
+        ok ? `<b class="qclear">CLEAR!</b>` : `${fmt(p, done)}/${fmt(p, goal)}`, ok));
+    } else if (p.target == null) {
+      state[p.k] = [fmt(p, v), false];
+      bad.push(row(p, "Learning your normal (counts after a week)", blocks(0, 1, "--red"), fmt(p, v), false));
+    } else {
+      const over = v > p.target;
+      state[p.k] = [`${fmt(p, v)}/${fmt(p, p.target)}`, false];
+      bad.push(row(p, over ? `Over your limit of ${fmt(p, p.target)}` : p.target === 0 ? "Limit: none" : `${fmt(p, Math.max(0, p.target - v))} left before your limit`,
+        blocks(v, p.target || 1, "--red"), `<span${over ? ` class="qover"` : ""}>${fmt(p, v)}/${fmt(p, p.target)}</span>`, false));
+    }
+  }
+  $("homeQuests").innerHTML = `<h3>DAILY QUESTS <small>${nDone}/${good.length} done</small></h3>${good.join("") || `<p class="note">No good habits picked yet. Add some in Settings.</p>`}`;
+  $("homeCurses").innerHTML = `<h3>CURSES <small>stay under</small></h3>${bad.join("") || `<p class="note">No bad habits picked.</p>`}`;
+  document.querySelectorAll("#logbar .logbtn").forEach(b => { const st = state[b.dataset.log];
+    b.dataset.n = st ? st[0] : String(val(t, b.dataset.log) || 0); b.classList.toggle("done", !!(st && st[1])); });
+}
+
+/** Home, right: today's screen time in one number and one bar, split by what you picked to show. */
 function homeScreen() {
   const t = O.today, ref = O.ref, val = O.val, box = $("homeScreen");
   const ks = SHOW_SCREEN.filter(k => INFO[k] && unitOf(k) === "seconds" && !["sleep"].includes(k));
