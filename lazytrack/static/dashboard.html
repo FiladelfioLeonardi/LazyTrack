@@ -1054,12 +1054,16 @@
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qplus { background: var(--ink); color: var(--bg); } }
   /* setup: make your Mochi */
   /* a fixed width, so the arrows never move when a name is longer or shorter */
+  /* the arrows line up with Mochi's white box above (188 px, frame included): left arrow at its left edge, right
+     arrow at its right edge, the name in a fixed space between, the label outside on the left (an empty column
+     on the right keeps the arrows centred under the box) */
   .lrows { display: grid; gap: 8px; margin: 18px auto 0; justify-content: center; }
-  .lrow { display: grid; grid-template-columns: 64px 44px 190px 44px; align-items: center; gap: 22px; }
-  @media (max-width: 460px) { .lrow { grid-template-columns: 52px 40px 130px 40px; gap: 10px; } }
+  .lrow { display: grid; grid-template-columns: 64px 44px 100px 44px 64px; align-items: center; gap: 0; }
+  .lrow .btn { width: 44px; }
+  @media (max-width: 560px) { .lrow { grid-template-columns: 52px 40px 70px 40px 52px; } .lrow .btn { width: 40px; } }
   .lrow .ll { font: 400 11px var(--pixel); color: var(--ink-2); text-align: left; }
   .lrow .btn { height: 40px; padding: 0; justify-content: center; font-size: 20px; }
-  .lrow .ln { text-align: center; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lrow .ln { text-align: center; font-weight: 600; font-size: 13px; line-height: 1.15; padding: 0 6px; overflow-wrap: anywhere; }
   /* the bag: each tile shows today's count, green when that quest is done */
   .logbtn { position: relative; }
   .logbtn[data-n]::after { content: attr(data-n); position: absolute; top: 5px; right: 7px; font: 400 10px var(--pixel); }
