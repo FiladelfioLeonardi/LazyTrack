@@ -1301,6 +1301,29 @@ function applyTheme(p = themePrefs()) {
   root.classList.toggle("still", motion === "off" || (motion === "system" && matchMedia("(prefers-reduced-motion: reduce)").matches));
 }
 applyTheme();
+// A small desktop window shows the whole page smaller (like zooming out) instead of dropping columns or switching to
+// the phone layout: every width media query is answered for a FIT_W-wide page and the page is zoomed to fit.
+// Phones (the iPhone app, touch screens) keep the normal responsive layout.
+const fitPage = (() => {
+  const FIT_W = 1100, rules = [];
+  for (const sh of document.styleSheets) {
+    let rs; try { rs = sh.cssRules; } catch (_) { continue; }
+    for (const r of rs) if (r instanceof CSSMediaRule && /width/.test(r.media.mediaText)) rules.push([r, r.media.mediaText]);
+  }
+  const holds = (q, w) => q.split(/\s+and\s+/).every(c => {
+    const m = c.match(/\((min|max)-width:\s*(\d+)px\)/);
+    return m ? (m[1] === "min" ? w >= +m[2] : w <= +m[2]) : matchMedia(c).matches;
+  });
+  return () => {
+    const phone = /LazyTrackApp\//.test(navigator.userAgent) || matchMedia("(hover: none) and (pointer: coarse)").matches;
+    const small = !phone && innerWidth < FIT_W;
+    const z = Math.max(.6, innerWidth / FIT_W), w = innerWidth / z;   // never smaller than 60%: below that the layout narrows instead
+    document.documentElement.style.zoom = small ? String(z) : "";
+    for (const [r, q] of rules) { const want = small ? (holds(q, w) ? "all" : "not all") : q; if (r.media.mediaText !== want) r.media.mediaText = want; }
+  };
+})();
+fitPage();
+addEventListener("resize", fitPage);
 </script>
 </head>
 <body data-view="home" class="welcoming">
