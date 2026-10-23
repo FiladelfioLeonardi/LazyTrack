@@ -985,6 +985,8 @@
     background-size: 100% auto !important; background-position: center bottom !important; }
   /* the scenes are square with the ground 16% from the bottom; on a 4:3 window that is 21.33% of the height */
   #petBox.scene > .pet { bottom: 21.33%; }
+  #petBox.scene.smooth > .pet { bottom: 16.67%; }   /* the sketch's places: ground 8 px up a 48 px window */
+  .petscene { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; z-index: 0; }
   #petBox.scene .pet { grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; }
   #petBox.scene .pet.baby0 { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
   #petBox.scene .pet.baby1 { grid-template-columns: repeat(16, 6px); grid-auto-rows: 6px; }
@@ -1028,9 +1030,9 @@
   /* what Mochi says: the box, then an arrow at its end that slides it away (and back); remembered on this device */
   .saywrap { position: absolute; top: 24px; left: 24px; right: 24px; z-index: 3; padding: 4px; overflow: hidden; pointer-events: none; }   /* clips the box as it slides out */
   #petcard .speech { position: relative; display: inline-block; vertical-align: top; max-width: calc(100% - 52px); margin: 0; padding: 8px 10px; pointer-events: auto;
-    transition: transform .4s steps(8), opacity .4s steps(8); }
+    transition: transform .35s cubic-bezier(.2, .8, .2, 1), opacity .3s ease; }
   .saytog { position: absolute; top: 7px; left: calc(var(--sw, 0px) + 4px); width: 36px; height: 36px; margin: 0 0 0 9px; border: 0; background: var(--card); color: var(--ink);
-    box-shadow: var(--pxf); font: 700 14px var(--pixel); cursor: pointer; display: grid; place-items: center; pointer-events: auto; transition: left .4s steps(8); }
+    box-shadow: var(--pxf); font: 700 14px var(--pixel); cursor: pointer; display: grid; place-items: center; pointer-events: auto; transition: left .35s cubic-bezier(.2, .8, .2, 1); }
   .saytog:hover { background: var(--yellow); color: var(--on-fill); }
   #petcard.sayoff .speech { transform: translateX(calc(-100% - 40px)); opacity: 0; pointer-events: none; }
   #petcard.sayoff .saytog { left: -5px; }
@@ -1059,6 +1061,18 @@
   .logbtn { position: relative; }
   .logbtn[data-n]::after { content: attr(data-n); position: absolute; top: 5px; right: 7px; font: 400 10px var(--pixel); }
   .logbtn.done { background: var(--green) !important; }
+  /* closer to the phone sketch: white pixel frames in dark mode, the bag as one box of tinted tiles under Mochi,
+     the tab bar as a strip with a line under it */
+  :root { --gbg: #e3f8e8; --rbg: #ffebee; }
+  :root[data-theme="dark"] { --line: #f3eefc; --gbg: #1f3a2a; --rbg: #3d1f26; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --line: #f3eefc; --gbg: #1f3a2a; --rbg: #3d1f26; } }
+  #home #logbar { background: var(--card); box-shadow: var(--pxf), var(--pxs); padding: 12px; margin: 3px 3px 0; gap: 10px; }
+  #logbar::before { font: 700 12px var(--pixel); color: var(--ink); }
+  #home .logbtn { height: 84px; margin: 2px; color: var(--ink); background: var(--gbg) !important; font: 400 9px var(--pixel); text-transform: uppercase;
+    box-shadow: 2px 0 0 var(--line), -2px 0 0 var(--line), 0 2px 0 var(--line), 0 -2px 0 var(--line) !important; }
+  #home .logbtn.r { background: var(--rbg) !important; }
+  #home .logbtn.done { background: var(--green) !important; color: #1d1b20; }
+  @media (min-width: 821px) { .tabs { background: none !important; box-shadow: 0 4px 0 var(--line) !important; margin: 14px 0 22px !important; padding: 4px 6px 10px !important; } }
   /* Quests tab: all quests and all curses with the last 7 days, like the sketch */
   .qgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 22px 0 18px; align-items: start; }
   @media (max-width: 820px) { .qgrid { grid-template-columns: 1fr; } }
@@ -1148,7 +1162,7 @@
   .nlboom { position: fixed; inset: 0; z-index: 60; cursor: wait; image-rendering: pixelated; }   /* catches every click while it plays */
   .nlmodal { z-index: 61; }
   .nlcard { width: min(520px, 100%); padding: 28px 26px 24px; background: var(--card); color: var(--ink); box-shadow: var(--pxf), var(--pxs); text-align: center;
-    animation: nlIn .45s steps(6) both; }
+    animation: nlIn .45s cubic-bezier(.3, 1.4, .5, 1) both; }
   .nlcard h2 { margin: 6px 0 10px; font: 700 26px/1.15 var(--pixel); }
   .nlcard p { margin: 0 0 12px; } .nlcard ul { text-align: left; margin: 0 0 18px; padding-left: 20px; line-height: 1.5; font-size: 15px; }
   .nlstars { font: 400 18px var(--pixel); color: var(--yellow); letter-spacing: .3em; animation: blink 1s steps(1) infinite; }
@@ -1171,7 +1185,7 @@
   /* every checkbox is a pixel on/off switch */
   input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 46px !important; height: 24px !important; margin: 3px 6px 3px 3px;
     background: var(--soft); border: 0 !important; box-shadow: var(--pxf); cursor: pointer; }
-  input[type="checkbox"]::after { content: ""; position: absolute; top: 4px; left: 4px; width: 16px; height: 16px; border: 0; background: var(--line); transition: left .1s steps(2); }
+  input[type="checkbox"]::after { content: ""; position: absolute; top: 4px; left: 4px; width: 16px; height: 16px; border: 0; background: var(--line); transition: left .12s ease; }
   input[type="checkbox"]:checked { background: var(--green); } input[type="checkbox"]:checked::after { left: 26px; }
   input[type="checkbox"]:disabled { opacity: .45; cursor: default; }
   input[type="checkbox"]:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
@@ -2245,7 +2259,7 @@ async function removeEvent(id) {
 let showAllLogs = false, showAllRecent = false;
 function drawLogbar() {
   $("logbar").innerHTML = HABITS.map(h =>
-    `<button class="logbtn" style="background:var(${h.fill})" data-log="${h.k}" ${!h.main && !showAllLogs ? "hidden" : ""}><span class="e" aria-hidden="true">${h.e}</span>${esc(h.one[0].toUpperCase() + h.one.slice(1))}</button>`).join("");
+    `<button class="logbtn ${h.bad ? "r" : "g"}" style="background:var(${h.fill})" data-log="${h.k}" ${!h.main && !showAllLogs ? "hidden" : ""}><span class="e" aria-hidden="true">${h.e}</span>${esc(h.one[0].toUpperCase() + h.one.slice(1))}</button>`).join("");
   $("moreLogs").textContent = showAllLogs ? "Fewer" : "More things to log";
 }
 drawLogbar();
@@ -2436,7 +2450,8 @@ const MOCHI = {
   places: {   // the scene behind Mochi (drawn by placeURL)
     stadium: {n: "Stadium show"}, rage: {n: "Rage show"}, moon: {n: "Moon base"}, rooftop: {n: "Neon rooftop"},
     volcano: {n: "Volcano"}, ocean: {n: "Under the sea"}, heaven: {n: "Cloud kingdom"}, arcade: {n: "Arcade"},
-    sky: {n: "Sky"}, room: {n: "Bedroom"}, park: {n: "Park"}, beach: {n: "Beach"}, soft: {n: "Soft"}, none: {n: "Plain"},
+    sky: {n: "Sky"}, room: {n: "Bedroom"}, park: {n: "Park"}, beach: {n: "Beach"}, snow: {n: "Snow"}, city: {n: "Night city"},
+    aurora: {n: "Aurora"}, space: {n: "Space"}, soft: {n: "Soft"}, none: {n: "Plain"},
   },
   looks: {
     classic: {n: "Classic", look: {}},
@@ -2722,6 +2737,41 @@ const dayPart = (h = new Date().getHours()) => h >= 5 && h < 8 ? "dawn" : h >= 8
 const SCENES56 = ["stadium", "rage", "moon", "rooftop", "volcano", "ocean", "heaven", "arcade"];
 const _scenes = new Map(), _sceneCv = new Map();   // the scene pictures (and their canvases, for the device)
 
+/** The places from the phone sketch (phone-quest.html), drawn at any size from a smooth clock t in seconds,
+ * so Mochi's window can redraw them every frame. W x Ht pixels, the ground 8 px from the bottom. */
+const SMOOTH_PLACES = new Set(["park", "beach", "snow", "room", "city", "aurora", "space"]);
+function drawPlace(x,W,Ht,t,pl,part){var gy=Ht-8,bh=Math.ceil((gy-4)/4),pt=pl==='city'?'night':part,a;
+ function R(a,b,w,h,col){x.fillStyle=col;x.fillRect(Math.round(a),Math.round(b),w,h)}
+ function sky(cols){cols.forEach(function(col,i){R(0,i*bh,W,bh+1,col)})}
+ function sun(){var sx=W>60?W-20:W-8;if(pt==='night'){[[8,6],[30,12],[50,4],[70,9],[100,15],[20,18],[84,3]].forEach(function(p,i){if((Math.floor(t*2)+i)%5)R(p[0]%W,p[1]%gy,1,1,'#fff')});R(sx,3,6,6,'#f4efc8');R(sx+2,2,5,5,SKY.night[0])}
+  else{R(sx,3,7,7,pt==='day'?'#ffe45e':'#ffb36b');R(sx-1,4,9,5,pt==='day'?'#ffe45e':'#ffb36b');var cx=((t*2)%(W+30))-20;R(cx,7,14,3,'#fff');R(cx+3,5,7,3,'#fff')}}
+ if(pl==='aurora'){sky(['#0b1026','#101a3a','#14234a','#1a2d58']);for(a=0;a<14;a++)if((Math.floor(t*2)+a)%5)R((a*29)%W,(a*13)%(gy-6),1,1,'#fff');
+  for(a=0;a<W;a++){var ay=5+Math.round(Math.sin(a*.15+t*1.5)*2+Math.sin(a*.05+t)*2);R(a,ay,1,3,'#5fd47a');R(a,ay+3,1,2,'#3fae69');var by=ay+7+Math.round(Math.sin(a*.1-t)*2);R(a,by,1,2,'#b9a7ff')}
+  for(a=0;a<W;a++){var y=gy-6+Math.round(Math.sin(a*.09)*2);R(a,y,1,gy-y,'#d0deee')}R(0,gy,W,Ht-gy,'#ffffff');R(0,gy,W,1,'#dfe9f3');return}
+ if(pl==='space'){R(0,0,W,gy,'#0a0814');for(a=0;a<22;a++){var sx=((a*53-t*(6+(a%3)*6))%W+W)%W;R(sx,(a*29)%(gy-2),a%3?1:2,1,'#fff')}
+  var cx=W-14,cy=10;for(var dy=-6;dy<=6;dy++){var hw=Math.round(Math.sqrt(36-dy*dy));R(cx-hw,cy+dy,hw*2,1,dy<0?'#ff9a7a':'#e3735a')}R(cx-11,cy,22,1,'#ffd28a');
+  R(0,gy,W,Ht-gy,'#8a8f9c');R(0,gy,W,1,'#c4bfce');[[.2,3],[.55,2],[.8,4]].forEach(function(c){R(W*c[0],gy+3,c[1],1,'#6b7080')});return}
+ if(pl==='room'){R(0,0,W,Ht,'#b9a7ff');for(a=0;a<W;a+=6)R(a,0,1,gy,'#a996f0');
+  var ww=Math.min(16,Math.floor(W/3));R(3,3,ww+2,12,'#5b4a8a');SKY[part].forEach(function(c,i){R(4,4+i*2.5,ww,3,c)});R(4+(ww>>1),4,1,10,'#5b4a8a');
+  R(W-12,5,8,10,'#ffe45e');R(W-11,6,6,8,'#ff8fb1');R(W-9,8,2,2,'#fff');
+  R(0,gy,W,Ht-gy,'#c99a6e');for(a=0;a<W;a+=8)R(a,gy+1,1,Ht-gy,'#a8794f');R(0,gy,W,1,'#8a5a36');R(W/2-11,gy+2,22,3,'#ff8fb1');return}
+ if(pl==='city'){sky(SKY.night);sun();
+  for(var b=0,bx=0;bx<W;b++){var bw=6+(b*7)%5,bt=10+(b*13)%14;R(bx,gy-bt,bw,bt,b%2?'#2b2640':'#352e4f');
+   for(var wy=gy-bt+2;wy<gy-2;wy+=3)for(var wx=bx+1;wx<bx+bw-1;wx+=2)if((wx*3+wy*5+b)%4)R(wx,wy,1,1,(wx+wy+Math.floor(t/2))%9?'#ffd84a':'#4a4360');bx+=bw+1}
+  R(0,gy,W,Ht-gy,'#3a3350');for(a=0;a<W;a+=6)R(a,gy+4,3,1,'#ffd84a');return}
+ if(pl==='snow'){sky(pt==='night'?SKY.night:['#bcd7f0','#cfe2f5','#e1edf9','#eef5fc']);sun();
+  for(a=0;a<W;a++){var y=gy-9+Math.round(Math.sin(a*.09)*3);R(a,y,1,gy-y,'#e3ecf7');var y2=gy-5+Math.round(Math.sin(a*.06+2)*2);R(a,y2,1,gy-y2,'#d0deee')}
+  var px=Math.round(W*.16);for(var k=0;k<9;k++)R(px-(k>>1),gy-12+k,1+(k>>1)*2,1,'#2f7a4f');R(px,gy-3,1,3,'#8a5a36');
+  R(0,gy,W,Ht-gy,'#ffffff');R(0,gy,W,1,'#dfe9f3');
+  for(var f=0;f<14;f++)R((f*37+Math.round(Math.sin(t+f)*2))%W,(t*8+f*11)%gy,1,1,'#fff');return}
+ if(pl==='beach'){sky(SKY[pt]);sun();R(0,gy-7,W,7,'#4fb6ff');for(a=0;a<W;a+=8)R((a+Math.floor(t*4))%W,gy-6,3,1,'#c2e3ff');R(0,gy-2,W,2,'#7ad3ff');
+  R(0,gy,W,Ht-gy,'#f4d58d');R(0,gy,W,1,'#fbe6b0');var p=Math.round(W*.12);for(var k=0;k<13;k++)R(p+(k>>2),gy-k,2,1,'#a8693e');
+  R(p+3,gy-14,8,2,'#3fae69');R(p-4,gy-14,7,2,'#3fae69');R(p-2,gy-16,9,2,'#5fd47a');R(W*.7,gy+3,2,1,'#ff8fb1');return}
+ sky(SKY[pt]);sun();
+ for(a=0;a<W;a++){var y=gy-9+Math.round(Math.sin(a*.09)*3);R(a,y,1,gy-y,'#7fcf8a');var y2=gy-5+Math.round(Math.sin(a*.06+2)*2);R(a,y2,1,gy-y2,'#5fb871')}
+ R(0,gy,W,Ht-gy,'#9be8a9');R(0,gy,W,1,'#c8f5cf');R(0,Ht-3,W,2,'#e2c48e');
+ [[W*.66,'#ff6b6b'],[W*.66+3,'#ffe45e'],[W*.66+6,'#ff8fb1']].forEach(function(p){R(p[0],gy+1,1,2,'#3d9d62');R(p[0]-1,gy-1,2,2,p[1])})}
+
 /** The calmer places on a 42x42 canvas: sky, bedroom, park, beach, soft, plain. */
 function scene42(place, part, f, soft) {
   const N = 42, cv = document.createElement("canvas"); cv.width = cv.height = N;
@@ -2901,10 +2951,12 @@ function scene56(name, f) {
 /** The scene as an image URL, with Mochi's shadow and its state (haze when high, sparkles when legendary, grey when sick). */
 function placeURL(place, o = {}) {
   if (!MOCHI.places[place]) place = LOOK_DEFAULT.place;
-  const part = o.part || dayPart(), f = (o.frame || 0) % 24, high = o.high || 0, tier = o.tier || "okay", soft = o.soft || "#b9a7ff";
+  const part = o.part || dayPart(), f = o.frame || 0, high = o.high || 0, tier = o.tier || "okay", soft = o.soft || "#b9a7ff";
   const key = [place, part, f, high, tier, soft].join("|");
   if (_scenes.has(key)) return _scenes.get(key);
-  const cv = SCENES56.includes(place) ? scene56(place, f) : scene42(place, part, f, soft);
+  let cv;
+  if (SMOOTH_PLACES.has(place)) { cv = document.createElement("canvas"); cv.width = cv.height = 42; drawPlace(cv.getContext("2d"), 42, 42, f / 1.7, place, part); }
+  else cv = SCENES56.includes(place) ? scene56(place, f) : scene42(place, part, f, soft);
   const x = cv.getContext("2d"), N = cv.width, night = part === "night";
   const R = (a, b, w, h, c) => { x.fillStyle = c; x.fillRect(a, b, w, h); };
   const P = (a, b, c) => R(a, b, 1, 1, c);
@@ -2944,6 +2996,46 @@ function deviceScene(look, tier) {
   }
   return {w: N, p: pal, d};
 }
+/** Mochi's own window: the place is drawn live on a canvas every frame. The phone sketch's places at 64x48, so
+ * they move as smoothly as there; the others as their pictures, a new frame 1.7 times a second. */
+const liveScene = {
+  o: null, raf: 0,
+  set(o) {
+    const box = $("petBox");
+    this.o = o; box.classList.add("scene"); box.style.backgroundImage = "none";
+    box.classList.toggle("smooth", SMOOTH_PLACES.has(o.place));
+    if (!this.raf) this.raf = requestAnimationFrame(t => this.loop(t));
+  },
+  loop(now) {
+    this.raf = 0;
+    const box = $("petBox");
+    let cv = $("petScene");
+    if (!cv) { cv = document.createElement("canvas"); cv.id = "petScene"; cv.className = "petscene"; cv.setAttribute("aria-hidden", "true"); box.prepend(cv); }
+    if (!document.hidden && box.offsetParent) this.draw(cv, now / 1000);
+    if (calm) this.raf = requestAnimationFrame(t => this.loop(t));   // reduced motion: one still frame
+  },
+  draw(cv, t) {
+    const {place, high, tier, soft} = this.o, x = cv.getContext("2d");
+    if (!SMOOTH_PLACES.has(place)) {
+      const src = _sceneCv.get(placeURL(place, {frame: Math.floor(t * 1.7), high, tier, soft}));
+      if (!src) return;
+      const N = src.width, H = Math.round(N * .75);   // the window is 4:3: keep the bottom of the square scene
+      if (cv.width !== N || cv.height !== H) { cv.width = N; cv.height = H; }
+      x.clearRect(0, 0, N, H); x.drawImage(src, 0, H - N);
+      return;
+    }
+    const W = 64, H = 48;
+    if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    drawPlace(x, W, H, t, place, dayPart());
+    x.fillStyle = "rgba(0,0,0,.25)"; x.fillRect(W / 2 - 6, H - 7, 12, 1);   // Mochi's shadow
+    if (high) { x.globalAlpha = .08 + .05 * high; x.fillStyle = "#d8e8c8"; x.fillRect(0, 0, W, H); }
+    if (tier === "sick") { x.globalAlpha = .22; x.fillStyle = "#9aa38a"; x.fillRect(0, 0, W, H); }
+    x.globalAlpha = 1;
+    if (tier === "legend") for (let i = 0; i < 7; i++) if ((i + Math.floor(t * 3)) % 3) {
+      const a = (i * 17 + 5) % W, b = (i * 11 + 3) % 30; x.fillStyle = "#ffe45e"; x.fillRect(a, b, 1, 1); x.fillStyle = "#fff6c9"; x.fillRect(a - 1, b, 1, 1); x.fillRect(a + 1, b, 1, 1);
+    }
+  },
+};
 /** Puts the scene behind Mochi on an element. */
 function setPlace(el, place, o) {
   const u = placeURL(place || LOOK_DEFAULT.place, o);
@@ -3175,7 +3267,7 @@ const petAnim = {
       else { this.coolStart = 0; clearInterval(this.coolTimer); this.coolTimer = null; fireFx.stop(); }
     }
     $("pet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, blink, fx);
-    setPlace($("petBox"), PET_LOOK.place, {frame: Math.floor(this.t / 2), high: b.high || 0, tier: b.tier, soft: softColor(PET_LOOK)});
+    liveScene.set({place: MOCHI.places[PET_LOOK.place] ? PET_LOOK.place : LOOK_DEFAULT.place, high: b.high || 0, tier: b.tier, soft: softColor(PET_LOOK)});
     // the body's motion: drunk wins over high, both win over the gentle bob
     const motion = b.drunk ? "drunk" + b.drunk : b.high ? "high" + b.high : "bob";
     if (motion !== this.cls) {
@@ -5748,7 +5840,7 @@ async function render() {
 }
 // ---------------------------------------------------------------- background effects
 // A canvas behind everything (never on top of the cards). Pixels snap to a 4px grid,
-// drawn at ~30 fps, paused while the tab is hidden, one still frame with reduced motion.
+// drawn every frame, paused while the tab is hidden, one still frame with reduced motion.
 // The style is picked in Settings > Look. "Mochi's mood" changes with HP; every other
 // style still listens to HP: more and brighter when Mochi is doing great, fewer and
 // greyer when he's tired or sick.
@@ -5761,7 +5853,7 @@ const MOOD = {
 };
 const TIER_FX = {legend: {k: 1.5, grey: 0}, shiny: {k: 1.2, grey: 0}, okay: {k: 1, grey: 0}, tired: {k: .7, grey: .6}, sick: {k: .5, grey: .85}};
 const R = (a, b) => a + Math.random() * (b - a), pick = arr => arr[Math.floor(Math.random() * arr.length)];
-const snap = v => Math.round(v / 4) * 4;
+const snap = v => Math.round(v);   // 1 px steps: smooth motion, still crisp
 
 // Each style: how many (per px²), its colors, how to start, move and draw one particle.
 const FX = {
@@ -5862,7 +5954,8 @@ const aura = {
     this.raf = 0;
     if (this.style === "none") return;
     if (document.hidden) { document.addEventListener("visibilitychange", () => this.refresh(), {once: true}); return; }
-    if (t - this.last > 33) { this.draw(Math.min((t - this.last) / 1000, .1)); this.last = t; }
+    if (this.last) this.draw(Math.min((t - this.last) / 1000, .1));
+    this.last = t;
     this.raf = requestAnimationFrame(tt => this.loop(tt));
   },
   // the slider (0.5 to 6, 1 = normal) as each effect's own range: pixel rain is already quick, the starfield barely moves,
