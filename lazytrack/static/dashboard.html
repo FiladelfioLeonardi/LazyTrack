@@ -1192,6 +1192,67 @@
   input[type="checkbox"]:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
   :root[data-theme="dark"] input[type="checkbox"]::after { background: var(--ink); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) input[type="checkbox"]::after { background: var(--ink); } }
+  /* ============================================================ 1:1 with the phone sketch (phone-quest.html) */
+  .ico { display: inline-block; vertical-align: middle; flex: none; image-rendering: pixelated; }
+  .tab[aria-current="page"] .ico { background: var(--lilac); box-shadow: 0 0 0 3px var(--lilac); }
+  .view h3 > small, .hcard h3 small { font: 400 11px var(--pixel); text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); }
+  .hcard h3 small.ok { color: var(--good); } .hcard h3 small.no { color: var(--bad); }
+  #home .qn small { display: none; }
+  #home .qrow { padding: 6px 0; }
+  #logbar { position: relative; }
+  #logbar::before { content: "BAG"; }
+  #logbar::after { content: attr(data-q); position: absolute; top: 14px; right: 14px; font: 400 11px var(--pixel); color: var(--ink-2); }
+  #home .logbtn { height: 80px; gap: 6px; text-decoration: none; }
+  #home .logbtn .e { line-height: 0; }
+  #home .logbtn.all { background: var(--soft) !important; }
+  #home .logbtn.all .e { font: 700 14px var(--pixel); line-height: 1; }
+  #home .logmore { display: none; }
+  #home #petcard { background: none !important; box-shadow: none !important; padding: 0 !important; gap: 0 !important; margin: 3px !important; }
+  #home #petcard .pwin #petBox { box-shadow: var(--pxf), var(--pxs) !important; }
+  #home #petBox.scene { aspect-ratio: auto; height: 220px; }
+  #home #petBox.scene > .pet { bottom: var(--feet, 40px); }
+  #home #petBox.scene .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
+  #home #petBox.scene .pet.baby0 { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
+  #home #petBox.scene .pet.baby1 { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
+  .phud .ico { margin: -4px 0; }
+  #homeScreen .segbar { height: 18px; margin: 10px 3px 12px; box-shadow: var(--pxf); border: 0 !important; border-radius: 0 !important; overflow: hidden; display: flex; }
+  #homeScreen .seglegend { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 14px; font-size: 14px; }
+  #homeScreen .seglegend span { display: flex; align-items: center; gap: 6px; min-width: 0; }
+  #homeScreen .seglegend b { margin-left: auto; font: 400 11px var(--pixel); text-transform: uppercase; white-space: nowrap; }
+  #homeScreen .seglegend .sw { width: 6px; height: 6px; border-radius: 0 !important; flex: none; }
+  @media (min-width: 900px) {
+    .wrap, body[data-view="home"] .wrap { max-width: 1280px; padding: 0 0 60px; }
+    .tabs { position: relative; background: var(--card) !important; box-shadow: none !important; border-bottom: 4px solid var(--line);
+      margin: 0 0 22px !important; padding: 8px 20px !important; gap: 6px; }
+    .tab { height: auto; padding: 6px 14px; gap: 8px; font: 400 11px var(--pixel); }
+    .view { padding-left: 24px; padding-right: 24px; }
+    .top { position: absolute; top: 9px; right: 170px; z-index: 9; margin: 0; padding: 0; gap: 8px; }
+    .top .brand { display: none; }
+    .top .tourbtn, .top .daynav { height: 32px; background: none !important; box-shadow: none !important; font: 400 11px var(--pixel); color: var(--ink-2); text-transform: uppercase; }
+    .top .daynav .lbl { font: 400 11px var(--pixel); min-width: 70px; }
+    .top .tourbtn:hover, .top .daynav button:hover { color: var(--ink); }
+    .homegrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+    /* Settings: boxes in two columns like the sketch */
+    #sForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; max-width: none; margin: 0 3px; }
+    #sForm > .savebar { grid-column: 1 / -1; order: 99; }
+    /* Looks: my Mochi in a framed box on the left, category chips and tall tiles on the right */
+    #looks .wrcard { height: auto; min-height: 0; margin: 0 3px; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 20px;
+      background: none; box-shadow: none !important; overflow: visible; align-items: start; }
+    #looks .wrstage { border-right: 0; aspect-ratio: 5 / 4; box-shadow: var(--pxf), var(--pxs); position: sticky; top: 12px; margin: 3px; }
+    #looks .wrstage .pet { grid-template-columns: repeat(16, 8px); grid-auto-rows: 8px; }
+    #looks .wrside { display: block; overflow: visible; background: none; }
+    #looks .wrhead { padding: 0 0 12px; border: 0; } #looks .wrhead h2, #looks .wrhead p, #looks .wrhead .wrback { display: none; }
+    #looks .wrchips { margin-top: 0; }
+    #looks .wrlist { overflow: visible; padding: 0 3px; }
+    #looks .writems { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    #looks .writem { grid-template-columns: 1fr; justify-items: center; text-align: center; padding: 10px 6px 8px; gap: 6px; font-size: 13px; min-height: 118px; }
+    #looks .writem .wrscene { width: 80px; height: 80px; }
+    #looks .writem .wrscene .pet { grid-template-columns: repeat(16, 4px); grid-auto-rows: 4px; }
+    #looks .wrbtm { border: 0; padding: 16px 3px 0; }
+    #home .hleft, #home .hright { display: flex !important; flex-direction: column; gap: 20px; padding-top: 0; }
+    .homegrid .hleft { order: 1; } .homegrid .hmid { order: 2; display: flex; flex-direction: column; gap: 20px; } .homegrid .hright { order: 3; }
+    #home .hcard, #home .hmid > #logbar { margin: 0 3px !important; }
+  }
 </style>
 <script>
 // Color themes. Each one overrides a few tokens, separately for light and dark.
@@ -1421,8 +1482,8 @@ applyTheme();
   <nav class="tabs" aria-label="Sections">
     <a class="tab" data-tab="home" href="#tab=home"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M3 0h1v1h-1zM4 0h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1z"/></svg>Home</a>
     <a class="tab" data-tab="bad" href="#tab=bad"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM7 0h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg>Quests</a>
-    <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M6 0h1v1h-1zM7 0h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg>Stats</a>
     <a class="tab" data-tab="friends" href="#tab=friends"><svg viewBox="0 0 8 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M1 0h1v1h-1zM2 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1z"/></svg>Party<span class="tbadge" id="fBadge" hidden></span></a>
+    <a class="tab" data-tab="monitor" href="#tab=monitor"><svg viewBox="0 0 8 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M6 0h1v1h-1zM7 0h1v1h-1zM6 1h1v1h-1zM7 1h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM7 4h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM7 6h1v1h-1z"/></svg>Stats</a>
     <a class="tab" data-tab="looks" href="#tab=looks"><svg viewBox="0 0 7 6" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM0 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1z"/></svg>Looks</a>
     <a class="tab tabset" data-tab="settings" href="#tab=settings"><svg viewBox="0 0 7 7" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM4 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM1 3h1v1h-1zM5 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM2 6h1v1h-1zM4 6h1v1h-1z"/></svg>Settings</a>
   </nav>
@@ -2257,10 +2318,39 @@ async function removeEvent(id) {
   toast("Removed", null); render();
 }
 
-let showAllLogs = false, showAllRecent = false;
+let showAllLogs = true, showAllRecent = false;   // the bag shows everything, like the sketch
+// Pixel icons from the phone sketch: rows of letters drawn 3x; "k" is the theme's line colour.
+const PIX_PAL = {b: "#4fb6ff", w: "#ffffff", r: "#e34966", g: "#8a8f9c", s: "#c4bfce", y: "#ffd84a", o: "#ff8a3d", p: "#ff8fb1", e: "#3fae69", n: "#c99a6e", v: "#b9a7ff", l: "#5fd47a"};
+const PIX = {drop: ["...k...", "..kbk..", ".kbbbk.", ".kbwbk.", "kbbwbbk", "kbbbbbk", ".kbbbk.", "..kkk.."], bell: ["........", "kk....kk", "kgk..kgk", "kgkkkkgk", "kgk..kgk", "kk....kk", "........"],
+  shoe: ["........", "..kkk...", "..kek...", "..keekk.", ".keeeeek", "kkkkkkkk", ".w.w.w.."], cig: [".....s..", "......s.", ".....s..", "........", "wwwwwnoo", "wwwwwnoo", "........"],
+  can: [".kkkk.", "kssssk", "kvvvvk", "kvwwvk", "kvvvvk", "kvvvvk", "kssssk", ".kkkk."], burger: [".kkkkk.", "knnnnnk", "keeeeek", "krrrrrk", "knnnnnk", ".kkkkk."],
+  beer: [".wwww..", "kyyyykk", "kyyyyk.k", "kyyyykk.", "kyyyyk..", ".kkkk..."], flame: ["...o...", "..oo...", "..oyo..", ".oyyo..", ".oyyyo.", ".oyyyo.", "..ooo.."],
+  leaf: ["...l...", "l..l..l", ".l.l.l.", "..lll..", "lllllll", "..ele..", "...e...", "...e..."],
+  house: ["...k...", "..kvk..", ".kvvvk.", "kvvvvvk", ".kwkwk.", ".kwkwk.", ".kkkkk."], scroll: ["kkkkkk.", "kwwwwk.", "kwkkwk.", "kwwwwk.", "kwkkwk.", "kwwwwkk", ".kkkkkk"],
+  party: [".kk..kk.", "kppkkbbk", "kppkkbbk", ".kk..kk.", "kppkkbbk", "kppkkbbk"], chart: ["......e", "....e.e", "..e.e.e", "e.e.e.e", "e.e.e.e", "kkkkkkk"],
+  gear: ["..k.k..", ".kkkkk.", "kkg.gkk", ".k...k.", "kkg.gkk", ".kkkkk.", "..k.k.."], shirt: ["kk...kk", "kpkkkpk", "kpppppk", ".kpppk.", ".kpppk.", ".kkkkk."]};
+const PIX_FOR = {water: "drop", gym: "bell", walk: "shoe", cigarette: "cig", energy_drink: "can", junk_food: "burger", alcohol: "beer", joint: "leaf"};
+const _pix = new Map();
+function pixIcon(name, sc = 3) {
+  const rows = PIX[name]; if (!rows) return "";
+  const line = css("--line") || "#1d1b20", key = name + line;
+  if (!_pix.has(key)) {
+    const cv = document.createElement("canvas"); cv.width = Math.max(...rows.map(r => r.length)); cv.height = rows.length;
+    const x = cv.getContext("2d");
+    rows.forEach((r, y) => [...r].forEach((ch, i) => { const c = ch === "k" ? line : PIX_PAL[ch]; if (c) { x.fillStyle = c; x.fillRect(i, y, 1, 1); } }));
+    _pix.set(key, [cv.toDataURL(), cv.width, cv.height]);
+  }
+  const [u, w, h] = _pix.get(key);
+  return `<img class="ico" src="${u}" width="${w * sc}" height="${h * sc}" alt="">`;
+}
+/** A habit's icon: the sketch's pixel icon when there is one, else its emoji. */
+const habitIcon = (k, e, sc) => PIX_FOR[k] ? pixIcon(PIX_FOR[k], sc) : esc(e || "");
+const TAB_PIX = {home: "house", bad: "scroll", friends: "party", monitor: "chart", looks: "shirt", settings: "gear"};
+function tabIcons() { document.querySelectorAll(".tab[data-tab]").forEach(t => { const n = TAB_PIX[t.dataset.tab], old = t.querySelector("svg, img.ico"); if (n && old) old.outerHTML = pixIcon(n, 3); }); }
 function drawLogbar() {
   $("logbar").innerHTML = HABITS.map(h =>
-    `<button class="logbtn ${h.bad ? "r" : "g"}" style="background:var(${h.fill})" data-log="${h.k}" ${!h.main && !showAllLogs ? "hidden" : ""}><span class="e" aria-hidden="true">${h.e}</span>${esc(h.one[0].toUpperCase() + h.one.slice(1))}</button>`).join("");
+    `<button class="logbtn ${h.bad ? "r" : "g"}" style="background:var(${h.fill})" data-log="${h.k}" ${!h.main && !showAllLogs ? "hidden" : ""}><span class="e" aria-hidden="true">${habitIcon(h.k, h.e, 4)}</span>${esc(h.one[0].toUpperCase() + h.one.slice(1))}</button>`).join("")
+    + `<a class="logbtn all" href="#tab=bad"><span class="e" aria-hidden="true">···</span>All</a>`;
   $("moreLogs").textContent = showAllLogs ? "Fewer" : "More things to log";
 }
 drawLogbar();
@@ -3044,18 +3134,23 @@ const liveScene = {
   },
   draw(cv, t) {
     const {place, high, tier, soft} = this.o, x = cv.getContext("2d");
+    const box = cv.parentNode, bw = box.clientWidth || 320, bh = box.clientHeight || 240;
+    const feet = px => { if (this.feet !== px) { this.feet = px; box.style.setProperty("--feet", px + "px"); } };
     if (!SMOOTH_PLACES.has(place)) {
       const src = _sceneCv.get(placeURL(place, {frame: Math.floor(t * 1.7), high, tier, soft}));
       if (!src) return;
-      const N = src.width, H = Math.round(N * .75);   // the window is 4:3: keep the bottom of the square scene
+      const N = src.width, H = Math.max(1, Math.min(N, Math.round(N * bh / bw)));   // keep the bottom of the square scene
       if (cv.width !== N || cv.height !== H) { cv.width = N; cv.height = H; }
       x.clearRect(0, 0, N, H); x.drawImage(src, 0, H - N);
+      feet(Math.round(N * .16 * bw / N));
       return;
     }
-    const W = 64, H = 48;
+    // like the sketch: one scene pixel is 5 screen pixels, so the window's size sets how much of the place shows
+    const W = Math.max(16, Math.ceil(bw / 5)), H = Math.max(16, Math.ceil(bh / 5));
     if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+    feet(Math.round(8 * bw / W));
     drawPlace(x, W, H, t, place, dayPart());
-    x.fillStyle = "rgba(0,0,0,.25)"; x.fillRect(W / 2 - 6, H - 7, 12, 1);   // Mochi's shadow
+    x.fillStyle = "rgba(0,0,0,.25)"; x.fillRect(Math.round(W / 2) - 6, H - 7, 12, 1);   // Mochi's shadow
     if (high) { x.globalAlpha = .08 + .05 * high; x.fillStyle = "#d8e8c8"; x.fillRect(0, 0, W, H); }
     if (tier === "sick") { x.globalAlpha = .22; x.fillStyle = "#9aa38a"; x.fillRect(0, 0, W, H); }
     x.globalAlpha = 1;
@@ -3415,7 +3510,7 @@ function renderHome() {
 
   // the same HP inside Mochi's window, game-HUD style, with which Mochi this is and how old
   $("petHud").innerHTML = `<span><b>HP</b><span class="hpbar" role="img" aria-label="${H.hp} out of 100">${Array.from({length: 10}, (_, i) => `<i class="${i < seg ? "on" : ""}"></i>`).join("")}</span>${H.hp}</span>
-    <span>MOCHI #${L.gen || 1} · ${L.age ? `DAY ${L.age}` : "BORN TODAY"}</span>`;
+    <span title="Mochi #${L.gen || 1}">${pixIcon("flame", 3)} ${L.age ? `${L.age} DAY${L.age === 1 ? "" : "S"}` : "BORN TODAY"}</span>`;
 
   // game-style stats vs yesterday at this time. Arrow = what happened (▲ more, ▼ less),
   // color = was it good: more cigs = red ▲, fewer = green ▼; more coding = green ▲, less = red ▼.
@@ -3492,10 +3587,11 @@ const loggedParts = () => (((O.life || {}).today || {}).parts || []).filter(p =>
 
 function homeQuests(tracked, isToday) {
   const q = questRows(tracked, isToday, false);
-  $("homeQuests").innerHTML = `<h3>DAILY QUESTS <small>${q.nDone}/${q.good.length} done</small></h3>${q.good.join("") || `<p class="note">No good habits picked yet. Add some in Settings.</p>`}`;
-  $("homeCurses").innerHTML = `<h3>CURSES <small>stay under</small></h3>${q.bad.join("") || `<p class="note">No bad habits picked.</p>`}`;
-  document.querySelectorAll("#logbar .logbtn").forEach(b => { const st = q.state[b.dataset.log];
+  $("homeQuests").innerHTML = `<h3>DAILY QUESTS <small class="ok">${q.nDone}/${q.good.length} done</small></h3>${q.good.join("") || `<p class="note">No good habits picked yet. Add some in Settings.</p>`}`;
+  $("homeCurses").innerHTML = `<h3>CURSES <small class="no">stay under</small></h3>${q.bad.join("") || `<p class="note">No bad habits picked.</p>`}`;
+  document.querySelectorAll("#logbar .logbtn[data-log]").forEach(b => { const st = q.state[b.dataset.log];
     b.dataset.n = st ? st[0] : String(O.val(O.today, b.dataset.log) || 0); b.classList.toggle("done", !!(st && st[1])); });
+  $("logbar").dataset.q = `TAP TO LOG · ${q.nDone}/${q.good.length} QUESTS`;
 }
 
 /** Quest and curse rows. week: the last 7 days as squares and the goal or limit underneath (the Quests tab); otherwise today's blocks (Home). */
@@ -3508,7 +3604,7 @@ function questRows(tracked, isToday, week7) {
     return `<i class="${m}" title="${esc(labels[i])}: ${fmt(p, val(d, p.k))}"></i>`; }).join("")}</span>`;
   const loggable = new Set(HABITS.map(h => h.k)), state = {}, good = [], bad = [];
   let nDone = 0;
-  const row = (p, sub, blk, right, done) => `<div class="qrow${done ? " done" : ""}"><span class="qe" aria-hidden="true">${p.e}</span>
+  const row = (p, sub, blk, right, done) => `<div class="qrow${done ? " done" : ""}"><span class="qe" aria-hidden="true">${habitIcon(p.k, p.e)}</span>
       <span class="qn">${esc(p.n)}<small>${esc(sub)}</small></span>${blk}<span class="qv">${right}</span>
       <button type="button" class="qplus" data-log="${p.k}" aria-label="Log ${esc((INFO[p.k] || p).one || p.n)}">+</button></div>`;
   for (const p of tracked.filter(p => loggable.has(p.k))) {
@@ -3542,9 +3638,8 @@ function homeScreen() {
   if (!ks.length) return;
   const diff = total - before, cmp = !before && !total ? "" : Math.abs(diff) < 300 ? `about the same as ${O.against}` : `${hm(Math.abs(diff))} ${diff < 0 ? "less" : "more"} than ${O.against}`;
   const col = k => css((INFO[k] || {}).fill || "--blue") || "var(--blue)";
-  box.innerHTML = `<h3>SCREEN TIME <small>${O.is_today ? "today" : esc(dayName(O.day))}</small></h3>
-    <div class="big">${total ? hm(total) : "0m"}</div><p class="note">${esc(cmp)}</p>
-    <div class="segbar">${parts.map(([k, v]) => `<i style="width:${(v / total * 100).toFixed(1)}%;background:${col(k)}" title="${esc(INFO[k].n)}"></i>`).join("")}</div>
+  box.innerHTML = `<h3>SCREEN TIME <small>${O.is_today ? "today" : esc(dayName(O.day))} · ${total ? hm(total) : "0m"}</small></h3>
+    <div class="segbar" title="${esc(cmp)}">${parts.map(([k, v]) => `<i style="width:${(v / total * 100).toFixed(1)}%;background:${col(k)}" title="${esc(INFO[k].n)}"></i>`).join("")}</div>
     <div class="seglegend">${parts.slice(0, 6).map(([k, v]) => `<span><i class="sw" style="background:${col(k)}"></i>${esc(INFO[k].n)}<b>${hm(v)}</b></span>`).join("")}</div>`;
 }
 
@@ -3558,7 +3653,7 @@ const homeFriends = {
     if (!CLOUD.connected) { await refreshCloud().catch(() => {}); }
     if (!CLOUD.connected) {
       cmp.hidden = true;
-      box.innerHTML = `<h3>FRIENDS</h3><p class="note" style="margin:0 0 10px">See your friends' Mochi here, poke them and compare your weeks.</p><a class="btn" href="#tab=friends">Add friends</a>`;
+      box.innerHTML = `<h3>PARTY</h3><p class="note" style="margin:0 0 10px">See your friends' Mochi here, poke them and compare your weeks.</p><a class="btn" href="#tab=friends">Add friends</a>`;
       return;
     }
     if (!this.data || Date.now() - this.at > 60000) {
@@ -3566,10 +3661,10 @@ const homeFriends = {
       if (r && r.ok) { this.data = await r.json(); this.at = Date.now(); }
     }
     const F = (this.data && this.data.friends) || [];
-    if (!F.length) { cmp.hidden = true; box.innerHTML = `<h3>FRIENDS</h3><p class="note" style="margin:0 0 10px">No friends yet. Add one with their username.</p><a class="btn" href="#tab=friends">Add friends</a>`; return; }
+    if (!F.length) { cmp.hidden = true; box.innerHTML = `<h3>PARTY</h3><p class="note" style="margin:0 0 10px">No friends yet. Add one with their username.</p><a class="btn" href="#tab=friends">Add friends</a>`; return; }
     const isOn = friendOn;
     const list = [...F].sort((a, b) => isOn(b) - isOn(a)).slice(0, 6), on = F.filter(isOn).length;
-    box.innerHTML = `<h3>FRIENDS <small>${on} of ${F.length} online</small></h3>` + list.map(p => {
+    box.innerHTML = `<h3>PARTY <small>${on} online</small></h3>` + list.map(p => {
       const c = p.card, fp = (c && c.pet) || {}, stale = c && c.day && c.day !== todayISO(), tier = c ? c.tier : "okay";
       const bg = placeURL(fp.place || LOOK_DEFAULT.place, {tier: stale ? "okay" : tier, soft: softColor(fp)});
       const doing = presence(p).replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
@@ -4123,7 +4218,7 @@ const wardrobe = {
     }
     const cat = WR_CATS.find(c => c[0] === this.tab);
     $("wrHead").innerHTML = `<h2 id="wrTitle">${cat[1]} ${cat[2]}</h2>${WR_HINT[this.tab] ? `<p>${WR_HINT[this.tab]}</p>` : ""}
-      <div class="wrchips">${WR_CATS.map(([k, ic, n]) => `<button type="button" data-wrtab="${k}" aria-pressed="${k === this.tab}">${ic} ${esc(n)}</button>`).join("")}</div>`;
+      <div class="wrchips">${WR_CATS.map(([k, ic, n]) => `<button type="button" data-wrtab="${k}" aria-pressed="${k === this.tab}">${esc(n)}</button>`).join("")}</div>`;
     $("wrBackBtn").hidden = true; $("wrKeys").hidden = true;   // the chips are the way between categories
     // a tile shows your body, skin, eyes and mouth wearing only that piece, so the piece is easy to see
     const L = this.look, only = (slot, k) => ({body: L.body, skin: L.skin, eyes: L.eyes, eyesColor: L.eyesColor, mouth: L.mouth, place: L.place, [slot]: k,
@@ -5700,7 +5795,7 @@ document.addEventListener("click", async e => {
 function saveTheme(change) {
   const p = {...themePrefs(), ...change};
   try { localStorage.setItem("lt-theme", JSON.stringify(p)); } catch (_) {}
-  applyTheme(p);
+  applyTheme(p); tabIcons();
   drawThemePicker();
   if (change.fx) aura.set(aura.tier || "okay", change.fx); else aura.refresh();   // new colors on the new background
 }
@@ -6032,6 +6127,7 @@ const aura = {
 };
 addEventListener("resize", () => { if (aura.cv) { aura.resize(); if (!calm) aura.draw(0); } });
 drawThemePicker();   // needs FX, so it runs after the effects are defined
+tabIcons();
 
 // ---------------------------------------------------------------- welcome, login and setup
 // One overlay with panels side by side: hello -> log in / make account -> setup 1-3 -> done.
@@ -6541,7 +6637,7 @@ async function checkVersion() {
 }
 checkVersion();
 setInterval(checkVersion, 20000);
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); drawThemePicker(); render(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); drawThemePicker(); tabIcons(); render(); });
 </script>
 </body>
 </html>
