@@ -1101,6 +1101,32 @@
     #looks .wrcard { height: calc(100dvh - 200px); min-height: 480px; } }
   /* Party: chat bubbles and the message box get notched frames too */
   .msg, .chatin input { border: 0 !important; box-shadow: var(--pxf); margin: 3px; }
+  /* the tab bar like the sketch: one framed bar, flat tabs, the open tab's icon on a lilac square */
+  .tab { background: none !important; box-shadow: none !important; transform: none !important; outline: 0 !important; color: var(--ink-3); }
+  .tab:hover, .tab[aria-current="page"] { color: var(--ink); }
+  .tab[aria-current="page"] svg { background: var(--lilac); box-shadow: 0 0 0 3px var(--lilac); color: var(--on-fill); }
+  @media (min-width: 821px) {
+    .tabs { gap: 4px; margin: 18px 3px 6px; padding: 6px 10px; background: var(--card); box-shadow: var(--pxf), var(--pxs); }
+    .tab { height: 40px; padding: 0 12px; font: 400 11px var(--pixel); }
+  }
+  @media (max-width: 820px) { .tabs { background: var(--card); } .tab { font: 400 8px var(--pixel); gap: 6px; } }
+  /* Settings: one page of boxes like the sketch (tracking, habits, look, account, app), switches on the right */
+  #setCats { display: none !important; }
+  #sForm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; align-items: start; margin-top: 22px; }
+  @media (max-width: 820px) { #sForm { grid-template-columns: 1fr; gap: 16px; } }
+  #sForm > * { margin-top: 0 !important; min-width: 0; }
+  #sForm > [data-cat="tracking"] { order: 1; } #sForm > [data-mod], #sForm > .savebar { order: 2; } #sForm > [data-cat="habits"] { order: 3; }
+  #sForm > [data-cat="look"] { order: 4; } #sForm > [data-cat="account"] { order: 5; } #sForm > [data-cat="app"] { order: 6; } #sForm > .savebar { grid-column: 1 / -1; }
+  #settings .card > h2:first-child { font: 700 13px var(--pixel); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 8px; }
+  #settings .toggle { justify-content: space-between; padding: 8px 0; border-top: 2px dotted color-mix(in srgb, var(--ink-3) 45%, transparent); font-weight: 600; }
+  #settings .toggle input { order: 2; margin-left: 12px; }
+  /* boxes instead of loose headings */
+  .hcard > ul.plain { margin: 0 -16px -16px; }
+  /* switching tabs: the old page fades down, the new one fades up */
+  @keyframes tabOut { to { opacity: 0; transform: translateY(12px); } }
+  @keyframes tabIn { from { opacity: 0; transform: translateY(12px); } }
+  body.tabout .view { animation: tabOut .14s ease-in forwards; }
+  body.tabin .view { animation: tabIn .26s ease-out; }
   /* every checkbox is a pixel on/off switch */
   input[type="checkbox"] { appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 46px !important; height: 24px !important; margin: 3px 6px 3px 3px;
     background: var(--soft); border: 0 !important; box-shadow: var(--pxf); cursor: pointer; }
@@ -1412,9 +1438,7 @@ applyTheme();
       </div>
     </div>
 
-    <h2 class="sec">Recent logs</h2>
-    <p class="sub">Logged something by mistake? Remove it here.</p>
-    <div class="card"><ul class="plain" id="recent"></ul></div>
+    <section class="card pad hcard" style="margin-top:20px"><h3>RECENT LOGS <small>logged by mistake? remove it</small></h3><ul class="plain" id="recent"></ul></section>
     <div style="margin-top:12px"><button class="btn" id="moreRecent">Show more</button></div>
 
     <h2 class="sec old" id="cHabitsHead">Last two weeks</h2>
@@ -1500,10 +1524,9 @@ applyTheme();
       <div class="pcol pleft">
         <section class="card pad hcard" id="fList"></section>
         <div id="fReq"></div>
-        <h2 class="sec">Add a friend</h2>
-        <p class="sub">Type their Mochi username. They get a request and can accept it.</p>
-        <form class="card pad addf" id="fAdd"><span class="at" aria-hidden="true">@</span><input id="fName" placeholder="username" autocapitalize="none" spellcheck="false" maxlength="20" aria-label="Their username">
-          <button class="btn primary" type="submit">Send request</button><p class="note" id="fAddNote"></p></form>
+        <section class="card pad hcard"><h3>ADD A FRIEND <small>they get a request</small></h3>
+        <form class="addf" id="fAdd"><span class="at" aria-hidden="true">@</span><input id="fName" placeholder="username" autocapitalize="none" spellcheck="false" maxlength="20" aria-label="Their username">
+          <button class="btn primary" type="submit">Send request</button><p class="note" id="fAddNote"></p></form></section>
       </div>
       <div class="pcol">
         <div id="fMain">
@@ -4990,8 +5013,9 @@ function settingsCat(c) {
   if (!SET_CATS.includes(c)) c = "habits";
   try { localStorage.setItem("lt-setcat", c); } catch (_) {}
   document.querySelectorAll("#setCats [data-sc]").forEach(b => b.setAttribute("aria-pressed", b.dataset.sc === c));
-  document.querySelectorAll("#settings [data-cat]").forEach(s => s.classList.toggle("offcat", s.dataset.cat !== c));
-  requestAnimationFrame(placeNotches);
+  // one page now (like the sketch): every section shows, and a link to one (#tab=settings&sc=tracking) scrolls to it
+  document.querySelectorAll("#settings [data-cat]").forEach(s => s.classList.remove("offcat"));
+  if (route().sc) requestAnimationFrame(() => { const el = document.querySelector(`#sForm > [data-cat="${route().sc}"]:not([hidden])`); if (el) el.scrollIntoView({block: "start"}); });
 }
 // the little arrow on top of the sections bar points at the tab it belongs to (Settings / Admin)
 function placeNotches() {
@@ -5759,6 +5783,14 @@ async function render() {
   animNow = animNext; animNext = false;
   const r = route(), tab = currentTab();
   const view = r.view === "detail" && r.k ? "detail" : tab;
+  const was = document.body.dataset.view;
+  if (calm && was !== view && !document.body.classList.contains("welcoming")) {
+    document.body.classList.add("tabout");
+    await new Promise(ok => setTimeout(ok, 140));
+    document.body.classList.remove("tabout");
+    document.body.classList.remove("tabin"); void document.body.offsetWidth; document.body.classList.add("tabin");
+    setTimeout(() => document.body.classList.remove("tabin"), 300);
+  }
   document.body.dataset.view = view;
   document.querySelectorAll(".tab").forEach(t => { if (t.dataset.tab === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   const day = selectedDay();
