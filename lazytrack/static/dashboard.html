@@ -1053,11 +1053,12 @@
   :root[data-theme="dark"] .qplus { background: var(--ink); color: var(--bg); }
   @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qplus { background: var(--ink); color: var(--bg); } }
   /* setup: make your Mochi */
-  .lrows { display: grid; gap: 8px; margin: 18px auto 0; max-width: 340px; }
-  .lrow { display: grid; grid-template-columns: 70px 40px minmax(0, 1fr) 40px; align-items: center; gap: 8px; }
+  /* a fixed width, so the arrows never move when a name is longer or shorter */
+  .lrows { display: grid; gap: 8px; margin: 18px auto 0; width: min(420px, 100%); }
+  .lrow { display: grid; grid-template-columns: 70px 44px minmax(0, 1fr) 44px; align-items: center; gap: 16px; }
   .lrow .ll { font: 400 11px var(--pixel); color: var(--ink-2); text-align: left; }
   .lrow .btn { height: 40px; padding: 0; justify-content: center; font-size: 20px; }
-  .lrow .ln { text-align: center; font-weight: 600; }
+  .lrow .ln { text-align: center; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* the bag: each tile shows today's count, green when that quest is done */
   .logbtn { position: relative; }
   .logbtn[data-n]::after { content: attr(data-n); position: absolute; top: 5px; right: 7px; font: 400 10px var(--pixel); }
@@ -1146,7 +1147,14 @@
   @media (max-width: 820px) { .savebar { bottom: 96px; } .srow .seg label { padding: 6px 8px; font-size: 13px; } }
   #sAccount > h2:first-child { font: 700 14px var(--pixel); text-transform: uppercase; }
   /* Goals: one compact row per habit (name and "you usually" left, the number right, quick picks small underneath) */
-  #sTargets .thelp, #sTargets .tmean { display: none; }
+  #sTargets .thelp { display: none; }
+  #tEdit .trow .tmean { display: none; }
+  #tEdit.tlearn .trow[data-bad="1"] .tline { display: none; }
+  #tEdit.tlearn .trow[data-bad="1"] .tmean { display: block; grid-column: 2 / -1; margin: 4px 0 0; font-size: 12px; color: var(--ink-3); }
+  #tEdit > .srow { border-top: 0; margin-bottom: 6px; }
+  .tdays { display: inline-flex; gap: 4px; margin-left: 6px; vertical-align: middle; } .tdays[hidden] { display: none; }
+  .tdays button { width: 26px; height: 26px; margin: 2px; padding: 0; border: 0; background: var(--soft); color: var(--ink-2); box-shadow: var(--pxf); font: 400 10px var(--pixel); cursor: pointer; }
+  .tdays button[aria-pressed="true"] { background: var(--green); color: #1d1b20; }
   #sTargets .tgroup { font: 400 11px var(--pixel); color: var(--ink-2); margin: 14px 0 2px; }
   #sTargets .tlist { display: block; }
   #sTargets .trow { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 10px 0; margin: 0;
@@ -1160,7 +1168,7 @@
   #sTargets .tmore { grid-column: 2 / -1; } #sTargets .tmore summary { font: 400 10px var(--pixel); color: var(--ink-3); padding-top: 4px; }
   @media (max-width: 560px) { #sTargets .tline { grid-column: 2 / -1; grid-row: auto; margin-top: 6px; } }
   /* the one-time "new look" moment: the old screen bursts into pixels, then a big card */
-  .nlboom { position: fixed; inset: 0; z-index: 60; cursor: wait; image-rendering: pixelated; }   /* catches every click while it plays */
+   /* catches every click while it plays */
   .nlmodal { z-index: 61; }
   .nlcard { width: min(520px, 100%); padding: 28px 26px 24px; background: var(--card); color: var(--ink); box-shadow: var(--pxf), var(--pxs); text-align: center;
     animation: nlIn .45s cubic-bezier(.3, 1.4, .5, 1) both; }
@@ -1378,7 +1386,7 @@ applyTheme();
   <!-- last step for a new account: make your Mochi (or skip and get a random one) -->
   <div class="panel" id="pLook" inert><div class="pbox">
     <h1 class="ptitle si" style="--i:1">Make your <u>Mochi</u>.</h1>
-    <p class="psub si" style="--i:2">Pick a look, or skip and get a random one. You can change it any time by tapping Mochi on Home.</p>
+    <p class="psub si" style="--i:2">Pick a look, or skip and get a random one. You can change it any time in the Looks tab.</p>
     <div class="wpet si" style="--i:3"><div class="pet" id="lPet" role="img" aria-label="Your Mochi"></div></div>
     <div class="lrows si" style="--i:4" id="lRows"></div>
     <div class="pnav si" style="--i:14"><button type="button" class="btn" data-back>Back</button><button type="button" class="btn" id="lRand" aria-label="Random look">🎲</button>
@@ -1903,7 +1911,7 @@ applyTheme();
     <section class="card pad" data-as="studio">
       <h2>🎬 Content studio</h2>
       <p class="sub">A play copy of Home for filming. Everything you tap or edit changes only this copy: nothing is saved, nothing goes to your account or friends, and your real Mochi is not touched. Reload the page or press Stop to go back.</p>
-      <div class="actions"><button type="button" class="btn primary" id="stuToggle">▶ Start demo mode</button><a class="btn" href="#tab=home">Open Home</a><a class="btn" href="#tab=monitor">Open Screen time</a><button type="button" class="btn" id="stuBoom">💥 New-look explosion</button></div>
+      <div class="actions"><button type="button" class="btn primary" id="stuToggle">▶ Start demo mode</button><a class="btn" href="#tab=home">Open Home</a><a class="btn" href="#tab=monitor">Open Screen time</a></div>
       <div id="stuBody" hidden>
         <div class="label" style="margin-top:18px">HP (Mochi's health)</div>
         <div class="actions" style="align-items:center"><input id="stuHP" type="number" min="0" max="100" step="1" style="width:90px">
@@ -2343,6 +2351,10 @@ function pixIcon(name, sc = 3) {
   const [u, w, h] = _pix.get(key);
   return `<img class="ico" src="${u}" width="${w * sc}" height="${h * sc}" alt="">`;
 }
+const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const dayList = ds => (ds || []).map(i => WEEKDAYS[i]).join(", ");
+/** Monday = 0, for an ISO day like "2026-10-23" (or today). */
+const weekdayOf = iso => { const d = iso ? new Date(iso + "T12:00:00") : new Date(); return (d.getDay() + 6) % 7; };
 /** A habit's icon: the sketch's pixel icon when there is one, else its emoji. */
 const habitIcon = (k, e, sc) => PIX_FOR[k] ? pixIcon(PIX_FOR[k], sc) : esc(e || "");
 const TAB_PIX = {home: "house", bad: "scroll", friends: "party", monitor: "chart", looks: "shirt", settings: "gear"};
@@ -3610,10 +3622,12 @@ function questRows(tracked, isToday, week7) {
   for (const p of tracked.filter(p => loggable.has(p.k))) {
     const v = val(t, p.k);
     if (!p.bad) {
+      // on set weekdays (gym Mon, Wed, Fri): Home only lists it on those days
+      if (p.per === "days" && !week7 && !(p.days || []).includes(weekdayOf(O.day))) continue;
       const week = p.per === "week", goal = p.goal || 1, done = week ? (isToday ? p.week : v) : v, ok = done >= goal;
       if (ok) nDone++;
       state[p.k] = [ok ? "✓" : `${fmt(p, done)}/${fmt(p, goal)}`, ok];
-      good.push(row(p, week7 ? `Goal ${fmt(p, goal)} a ${week ? "week" : "day"}` : ok ? "Quest clear!" : `${fmt(p, goal - done)} to go${week ? " this week" : " today"}`,
+      good.push(row(p, week7 ? (p.per === "days" ? `Goal ${fmt(p, goal)} on ${dayList(p.days)}` : `Goal ${fmt(p, goal)} a ${week ? "week" : "day"}`) : ok ? "Quest clear!" : `${fmt(p, goal - done)} to go${week ? " this week" : " today"}`,
         week7 ? squares(p) : blocks(done, goal, "--green"), ok ? `<b class="qclear">CLEAR!</b>` : `${fmt(p, done)}/${fmt(p, goal)}`, ok));
     } else if (p.target == null) {
       state[p.k] = [fmt(p, v), false];
@@ -5078,9 +5092,8 @@ document.addEventListener("click", async e => {
 
 // ---------------------------------------------------------------- targets: what decides Mochi's HP
 const targets = {
-  // one plain sentence per habit: "Keep it under [ 3 ] a day" / "Do it at least [ 3 ] times a week",
-  // quick picks from your own history, and what that means for Mochi. Size, weekly tightening and
-  // "counts for HP" live under "More options".
+  // one plain sentence per habit: "Keep it under [ 3 ] a day" / "Do it at least [ 3 ] times a week".
+  // One "Let Mochi learn" switch for every limit: on, Mochi sets them and lowers them each week; off, you set them.
   html(l) {
     const parts = Object.fromEntries((l.today.parts || []).map(p => [p.k, p]));
     const sug = l.suggestions || {};
@@ -5089,31 +5102,26 @@ const targets = {
       const usual = sg.avg != null ? (min ? hm(sg.avg * 60) : Math.round(sg.avg * 10) / 10) : null;
       const val = p.bad ? r.target : (r.goal ?? 1);
       const stepper = cls => `<span class="step"><button type="button" data-tstep="-${st}" aria-label="Less">−</button><input type="number" class="${cls}" min="${p.bad ? 0 : 1}" step="${st}" value="${val ?? ""}" placeholder="?" aria-label="${esc(p.n)}"><button type="button" data-tstep="${st}" aria-label="More">+</button></span>`;
-      const picks = p.bad
-        ? [...(sg.avg != null ? [["Like usual", Math.round(sg.avg)], ["A bit less", Math.floor(sg.avg * 0.8)], ["Half", Math.floor(sg.avg / 2)]] : []), ["None", 0], ["Let Mochi learn it", ""]]
-        : [[min ? "15 min" : "1", min ? 15 : 1], [min ? "30 min" : "2", min ? 30 : 2], [min ? "1 hour" : "3", min ? 60 : 3]];
-      const seen = new Set(), uniq = picks.filter(([, v]) => { const key = String(v); if (seen.has(key)) return false; seen.add(key); return true; });
       const unit = min ? "min" : p.bad ? "" : "times";
       const line = p.bad
         ? `No more than ${stepper("tt")} ${unit} a day`
-        : `Do it at least ${stepper("tg")} ${unit} <select class="tp" aria-label="Per"><option value="day" ${r.per !== "week" ? "selected" : ""}>a day</option><option value="week" ${r.per === "week" ? "selected" : ""}>a week</option></select>`;
-      const size = `<label>How much it matters <select class="ts">${["small", "medium", "big"].map(z =>
-        `<option value="${z}" ${r.size === z ? "selected" : ""}>${z} (${p.bad ? "−" : "+"}${SIZE_HP[z]} HP each)</option>`).join("")}</select></label>`;
-      const on = p.k in {coding: 1, commits: 1, youtube: 1, social: 1, streaming: 1, gaming: 1, browsing: 1, screen: 1}
-        ? `<label><input type="checkbox" class="ton" ${r.on !== false ? "checked" : ""}> Counts for Mochi's HP</label>` : "";
-      const auto = p.bad ? `<label><input type="checkbox" class="ta" ${r.auto !== false ? "checked" : ""}> Make it a little harder each week I make it</label>` : "";
-      return `<div class="trow ${r.on === false ? "isoff" : ""}" data-tk="${esc(k)}" data-bad="${p.bad ? 1 : 0}" data-min="${min ? 1 : 0}" data-one="${esc(p.one || (INFO[k] || {}).one || p.n.toLowerCase())}">
-        <span class="te" aria-hidden="true">${esc(p.e || "")}</span><span class="tn">${esc(p.n)}</span>
+        : `Do it at least ${stepper("tg")} ${unit} <select class="tp" aria-label="Per"><option value="day" ${!r.per || r.per === "day" ? "selected" : ""}>a day</option><option value="week" ${r.per === "week" ? "selected" : ""}>a week</option><option value="days" ${r.per === "days" ? "selected" : ""}>on days</option></select>
+          <span class="tdays" ${r.per === "days" ? "" : "hidden"}>${WEEKDAYS.map((d, i) => `<button type="button" data-tday="${i}" aria-pressed="${(r.days || [0, 2, 4]).includes(i)}" aria-label="${d}">${d[0]}</button>`).join("")}</span>`;
+      const fill = sg.target != null ? sg.target : sg.avg != null ? Math.round(sg.avg) : "";   // what "set it myself" starts from
+      return `<div class="trow ${r.on === false ? "isoff" : ""}" data-tk="${esc(k)}" data-bad="${p.bad ? 1 : 0}" data-min="${min ? 1 : 0}" data-one="${esc(p.one || (INFO[k] || {}).one || p.n.toLowerCase())}"
+        data-size="${esc(r.size || "medium")}" data-on="${r.on === false ? 0 : 1}" data-fill="${fill}">
+        <span class="te" aria-hidden="true">${habitIcon(k, p.e)}</span><span class="tn">${esc(p.n)}</span>
         <span class="tusual">${usual != null ? `you usually: ${!p.bad && r.per === "week" && !min ? `${Math.round(sg.avg * 70) / 10} a week` : `${usual}${min ? "" : " a day"}`}` : "no history yet"}</span>
         <div class="tline">${line}</div>
-        <p class="tmean"></p>
-        <details class="tmore"><summary>Suggestions and options</summary>
-          <div class="tpicks">${uniq.map(([n, v]) => `<button type="button" data-tpick="${v}" aria-pressed="${String(val ?? "") === String(v)}">${esc(n)}${p.bad && v !== "" && n !== "None" ? ` (${min ? hm(v * 60) : v})` : ""}</button>`).join("")}</div>
-          <div class="tc">${size}${auto}${on}</div></details></div>`;
+        <p class="tmean"></p></div>`;
     };
     const rs = l.rules || {}, keys = Object.keys(rs);
     const bad = keys.filter(k => (parts[k] || {}).bad), good = keys.filter(k => parts[k] && !parts[k].bad);
-    const out = (bad.length || good.length ? `<div class="thelp"><div>💚 Beat your goal: Mochi gains HP</div><div>💔 Go over your limit: Mochi loses HP</div></div>` : "")
+    const learn = bad.length > 0 && bad.every(k => rs[k].auto !== false);
+    $("tEdit").classList.toggle("tlearn", learn);
+    const out = (bad.length ? `<label class="srow"><span>Let Mochi learn<small>Mochi sets every limit from your normal and lowers it a little each week you make it. Off: you set them.</small></span>
+        <input type="checkbox" id="tLearn" ${learn ? "checked" : ""}></label>` : "")
+      + (bad.length || good.length ? `<div class="thelp"><div>💚 Beat your goal: Mochi gains HP</div><div>💔 Go over your limit: Mochi loses HP</div></div>` : "")
       + (bad.length ? `<div class="tgroup">BAD HABITS: YOUR DAILY LIMIT</div><div class="tlist">${bad.map(k => row(k, rs[k])).join("")}</div>` : "")
       + (good.length ? `<div class="tgroup">GOOD HABITS: YOUR GOAL</div><div class="tlist">${good.map(k => row(k, rs[k])).join("")}</div>` : "")
       || `<p class="note">Nothing tracked yet. Add habits first.</p>`;
@@ -5124,18 +5132,25 @@ const targets = {
   explain(row) {
     const q = c => row.querySelector(c), bad = row.dataset.bad === "1", min = row.dataset.min === "1", one = row.dataset.one;
     const inp = q(".tt") || q(".tg"), v = inp.value, amount = n => min ? hm(n * 60) : `${n} ${bad ? (n === 1 ? one : one + "s") : n === 1 ? "time" : "times"}`;
-    q(".tmean").textContent = bad
+    const learning = bad && $("tEdit").classList.contains("tlearn");
+    q(".tmean").textContent = learning
+      ? (v === "" ? "Mochi is learning your normal. It sets a fair limit after a week." : `Mochi's limit: up to ${amount(+v)} a day, a little lower each week you make it.`)
+      : bad
       ? (v === "" ? "Mochi watches your first week, then sets a fair limit for you." : +v === 0 ? `Any ${one} takes HP. A day without one heals Mochi.` : `Up to ${amount(+v)} is fine. ${min ? "Less" : "Fewer"} heals Mochi, more hurts him.`)
+      : q(".tp") && q(".tp").value === "days"
+      ? `${amount(+v || 1)} on ${dayList([...row.querySelectorAll('[data-tday][aria-pressed="true"]')].map(b => +b.dataset.tday)) || "no days yet"} heals Mochi.`
       : `${amount(+v || 1)} ${q(".tp") && q(".tp").value === "week" ? "a week" : "a day"} or more heals Mochi. Less than that, he gets a little tired.`;
     row.querySelectorAll("[data-tpick]").forEach(b => b.setAttribute("aria-pressed", b.dataset.tpick === v));
   },
   read(box) {
     const out = {};
     box.querySelectorAll(".trow").forEach(row => {
-      const q = c => row.querySelector(c), r = {size: q(".ts").value};
-      if (q(".tt")) { r.target = q(".tt").value === "" ? null : +q(".tt").value; r.auto = q(".ta").checked; }
-      if (q(".tg")) { r.goal = +q(".tg").value || 1; r.per = q(".tp").value; }
-      if (q(".ton")) r.on = q(".ton").checked;
+      const q = c => row.querySelector(c), r = {size: row.dataset.size, on: row.dataset.on === "1"};
+      if (q(".tt")) { r.target = q(".tt").value === "" ? null : +q(".tt").value; r.auto = box.classList.contains("tlearn"); }
+      if (q(".tg")) {
+        r.goal = +q(".tg").value || 1; r.per = q(".tp").value;
+        if (r.per === "days") r.days = [...row.querySelectorAll('[data-tday][aria-pressed="true"]')].map(b => +b.dataset.tday);
+      }
       out[row.dataset.tk] = r;
     });
     return out;
@@ -5154,6 +5169,18 @@ document.addEventListener("click", e => {
   targets.explain(row);
 });
 document.addEventListener("input", e => { const r = e.target.closest && e.target.closest(".trow[data-tk]"); if (r) targets.explain(r); });
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-tday]"); if (!b) return;
+  b.setAttribute("aria-pressed", b.getAttribute("aria-pressed") !== "true");
+  targets.explain(b.closest(".trow"));
+});
+document.addEventListener("change", e => {
+  if (e.target.matches && e.target.matches(".trow .tp")) { const d = e.target.closest(".trow").querySelector(".tdays"); if (d) d.hidden = e.target.value !== "days"; }
+  if (e.target.id !== "tLearn") return;
+  const box = $("tEdit"), on = e.target.checked;
+  box.classList.toggle("tlearn", on);
+  box.querySelectorAll('.trow[data-bad="1"]').forEach(row => { const i = row.querySelector(".tt"); if (!on && i.value === "" && row.dataset.fill !== "") i.value = row.dataset.fill; targets.explain(row); });
+});
 document.addEventListener("change", e => { const r = e.target.closest && e.target.closest(".trow[data-tk]"); if (r) targets.explain(r); });
 document.addEventListener("click", async e => {
   if (!e.target.closest("#tSave")) return;
@@ -5630,7 +5657,6 @@ document.addEventListener("click", async e => {
 });
 document.addEventListener("click", e => {
   if (e.target.id === "stuToggle") admin.toggleStudio();
-  if (e.target.id === "stuBoom") { go({tab: "home"}); setTimeout(() => newLook.explode(), 700); }   // replay it for filming; marks nothing
   if (!DEMO.on) return;
   const hp = e.target.closest("[data-stuhp]"); if (hp) { DEMO.hp(+hp.dataset.stuhp); admin.drawStudio(); }
   const lg = e.target.closest("[data-stulog]");
@@ -6174,9 +6200,8 @@ const flow = {
   },
 };
 
-// ---------------------------------------------------------------- the pixel redesign, once: the old look explodes
-// People who used Mochi before the redesign see the old lavender look (drawn over the real layout) burst into pixels,
-// then a big "new look" card. Once per device; never for a brand-new Mochi (it never saw the old look).
+// ---------------------------------------------------------------- the pixel redesign, once: a "new look" card
+// People who used Mochi before the redesign get a big "new look" card. Once per device; never for a brand-new Mochi.
 const newLook = {
   KEY: "lt-newlook-1", tries: 0,
   seen() { try { return localStorage.getItem(this.KEY) === "1"; } catch (_) { return true; } },
@@ -6184,77 +6209,11 @@ const newLook = {
     if (this.seen() || !AUTH.logged_in) return;
     if (!O || !O.life) { if (this.tries++ < 20) setTimeout(() => this.maybe(), 300); return; }
     const L = O.life;
-    if (!L.age && (L.gen || 1) === 1 && (L.log || []).length < 2) { this.mark(); return; }   // brand new: nothing old to explode
+    if (!L.age && (L.gen || 1) === 1 && (L.log || []).length < 2) { this.mark(); return; }   // brand new: never saw the old look
     this.mark();
-    if (calm) this.explode(); else this.announce();
+    this.announce();
   },
   mark() { try { localStorage.setItem(this.KEY, "1"); } catch (_) {} },
-  // the old look: a screenshot of the old Home (sample data, light or dark like the page), scaled to cover the window
-  oldScreen(w, h) {
-    const dark = document.documentElement.dataset.theme === "dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches);
-    return new Promise((ok, fail) => {
-      const img = new Image();
-      img.onerror = fail;
-      img.onload = () => {
-        const c = document.createElement("canvas"); c.width = w; c.height = h;
-        const k = Math.max(w / img.width, h / img.height);
-        c.getContext("2d").drawImage(img, (w - img.width * k) / 2, 0, img.width * k, img.height * k);
-        ok(c);
-      };
-      img.src = `/oldlook-${dark ? "dark" : "light"}.png`;
-    });
-  },
-  // 2.4 s of rumble that keeps getting worse (cracks spreading from the middle, flickers), a white flash, then the blast.
-  // Nothing on the page can be clicked or typed into until the card shows.
-  async explode() {
-    const w = innerWidth, h = innerHeight, T = 16;
-    let old; try { old = await this.oldScreen(w, h); } catch (_) { return this.announce(); }
-    const ox = old.getContext("2d");
-    const cv = document.createElement("canvas"); cv.className = "nlboom"; cv.width = w; cv.height = h;
-    document.body.appendChild(cv);
-    const block = e => { e.preventDefault(); e.stopPropagation(); };
-    for (const k of ["keydown", "wheel", "touchmove"]) addEventListener(k, block, {capture: true, passive: false});
-    const x = cv.getContext("2d"), cx = w / 2, cy = h * .45, RUMBLE = 2.4, FLASH = .12, DUR = 1.6;
-    // cracks: jagged lines out from the middle, drawn longer as the rumble grows
-    const cracks = Array.from({length: 9}, (_, i) => { const a0 = i / 9 * Math.PI * 2 + Math.random() * .5, pts = [[cx, cy]];
-      let px = cx, py = cy, a = a0; for (let n = 0; n < 14; n++) { a += (Math.random() - .5) * .9; px += Math.cos(a) * R(30, 70); py += Math.sin(a) * R(30, 70); pts.push([px, py]); } return pts; });
-    const drawCracks = (c, f) => { c.strokeStyle = "#1d1b20"; c.lineWidth = 4; c.lineCap = "square";
-      for (const pts of cracks) { const n = Math.max(1, Math.floor(pts.length * f)); c.beginPath(); c.moveTo(snap(pts[0][0]), snap(pts[0][1]));
-        for (let i = 1; i < n; i++) c.lineTo(snap(pts[i][0]), snap(pts[i][1])); c.stroke(); } };
-    const tiles = [];
-    for (let ty = 0; ty < h; ty += T) for (let tx = 0; tx < w; tx += T) {
-      const dx = tx + T / 2 - cx, dy = ty + T / 2 - cy, d = Math.hypot(dx, dy) || 1, f = 600 + Math.random() * 900;
-      tiles.push({sx: tx, sy: ty, vx: dx / d * f * (.6 + Math.random()), vy: dy / d * f * (.6 + Math.random()) - 350 * Math.random(),
-        vr: (Math.random() - .5) * 14, delay: d / Math.hypot(cx, cy) * .2});   // the middle goes first, like a blast
-    }
-    let blasted = false;
-    const t0 = performance.now();
-    const step = now => {
-      const t = (now - t0) / 1000;
-      x.clearRect(0, 0, w, h);
-      if (t < RUMBLE) {
-        const k = t / RUMBLE, amp = 2 + 22 * k * k;
-        x.save(); x.translate(snap((Math.random() - .5) * amp), snap((Math.random() - .5) * amp)); x.drawImage(old, 0, 0); drawCracks(x, k); x.restore();
-        if (Math.random() < .08 + .25 * k) { x.fillStyle = `rgba(255,255,255,${.1 + .3 * k})`; x.fillRect(0, 0, w, h); }   // flicker
-        requestAnimationFrame(step); return;
-      }
-      if (!blasted) { blasted = true; drawCracks(ox, 1); sfx.play("req"); }
-      if (t < RUMBLE + FLASH) { x.fillStyle = "#fff"; x.fillRect(0, 0, w, h); requestAnimationFrame(step); return; }
-      const e = t - RUMBLE - FLASH;
-      for (const p of tiles) {
-        const k = Math.max(0, e - p.delay); if (!k) { x.drawImage(old, p.sx, p.sy, T, T, p.sx, p.sy, T, T); continue; }
-        const px = p.sx + p.vx * k, py = p.sy + p.vy * k + 1000 * k * k, a = Math.max(0, 1 - k / DUR);
-        if (!a || py > h + 40) continue;
-        x.globalAlpha = a; x.save(); x.translate(px + T / 2, py + T / 2); x.rotate(p.vr * k); x.drawImage(old, p.sx, p.sy, T, T, -T / 2, -T / 2, T, T); x.restore();
-      }
-      x.globalAlpha = 1;
-      if (e < DUR + .2) { requestAnimationFrame(step); return; }
-      cv.remove();
-      for (const k of ["keydown", "wheel", "touchmove"]) removeEventListener(k, block, {capture: true});
-      this.announce();
-    };
-    requestAnimationFrame(step);
-  },
   announce() {
     const m = document.createElement("div");
     m.className = "qmodal nlmodal"; m.setAttribute("role", "dialog"); m.setAttribute("aria-modal", "true"); m.setAttribute("aria-labelledby", "nlTitle");

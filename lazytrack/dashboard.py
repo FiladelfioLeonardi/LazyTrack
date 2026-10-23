@@ -83,8 +83,8 @@ def make_handler(cfg: dict):
         def do_GET(self):
             u = urlparse(self.path)
             qs = parse_qs(u.query)
-            if u.path in ("/icon.png", "/oldlook-light.png", "/oldlook-dark.png"):   # oldlook: the pre-pixel Home, for the new-look explosion
-                return self._send(200, (HTML.parent / u.path[1:]).read_bytes(), "image/png")
+            if u.path == "/icon.png":
+                return self._send(200, (HTML.parent / "icon.png").read_bytes(), "image/png")
             if u.path in ("/", "/index.html"):   # the page itself shows the login screen
                 return self._send(200, HTML.read_bytes(), "text/html; charset=utf-8")
             if u.path == "/api/ping":

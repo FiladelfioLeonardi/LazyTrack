@@ -22,7 +22,7 @@ How it works
   count; then the target becomes your average of those days.
 
 Stored in the kv table: "life" (the pet's state + a log of settled days) and "rules"
-(target/goal, per day/week, size, auto, on) per tracked thing.
+(target/goal, per day/week/days + which weekdays, size, auto, on) per tracked thing.
 """
 from __future__ import annotations
 
@@ -170,8 +170,14 @@ def save_rules(body: dict) -> Dict[str, dict]:
         else:
             if "goal" in v:
                 r["goal"] = max(1, min(100000, _num(v["goal"], r.get("goal") or 1)))
-            if v.get("per") in ("day", "week"):
+            if v.get("per") in ("day", "week", "days"):
                 r["per"] = v["per"]
+            if isinstance(v.get("days"), list):   # per "days": which weekdays, Monday = 0
+                days = sorted({int(x) for x in v["days"] if isinstance(x, (int, float)) and 0 <= x <= 6})
+                if days:
+                    r["days"] = days
+            if r.get("per") == "days" and not r.get("days"):
+                r["per"] = "week"
         r["set_by_you"] = True
     db.kv_set("rules", json.dumps(cur))
     db.kv_set("rules_confirmed", "1")
@@ -206,7 +212,9 @@ def score(t: dict, r: dict, v: float, week: float) -> dict:
             nxt = max(-1.5 * W, -0.5 * W * ((v + (15 if t["unit"] == "min" else 1)) / (15 if t["unit"] == "min" else 1))) - d
         return {"d": d, "next": nxt}
     goal = r.get("goal") or 1
-    need = goal if r.get("per") == "week" else goal * 7
+    per = r.get("per")
+    # on set weekdays (gym Mon, Wed, Fri): scored like a weekly goal of that many, so a swapped day still counts
+    need = goal if per == "week" else goal * len(r.get("days") or [0, 2, 4]) if per == "days" else goal * 7
     ratio = week / need
     d = W * (min(ratio, 1.25) - 0.4)
     one = 15 if t["unit"] == "min" else 1
@@ -228,7 +236,7 @@ def day_score(d: date, rs: Optional[dict] = None, until: Optional[datetime] = No
         sc = score(t, r, v, wk)
         total += sc["d"]
         parts.append({"k": t["k"], "n": t["n"], "e": t["e"], "bad": t["bad"], "unit": t["unit"], "v": round(v, 1), "week": round(wk, 1),
-                      "target": r.get("target"), "goal": r.get("goal"), "per": r.get("per"), "size": r.get("size"),
+                      "target": r.get("target"), "goal": r.get("goal"), "per": r.get("per"), "days": r.get("days"), "size": r.get("size"),
                       **{k: (round(x, 1) if isinstance(x, float) else x) for k, x in sc.items()}})
     data = _has_data(today)
     raw = total + REGEN if data else REGEN
