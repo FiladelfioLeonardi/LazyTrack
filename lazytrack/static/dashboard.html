@@ -2871,7 +2871,7 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   }
   // breathing out: everything above the feet (rows 14-15) sinks one pixel; stopping higher painted over 2-row mouths
   if (fx.breath) { for (let y = 13; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
-  return petImg(g);
+  return fx.grid ? g : petImg(g);   // grid: the plain colors, for the egg
 }
 // Mochi as one pixelated picture spanning the cell grid: 256 separate cells showed thin seams on scaled screens
 // (Windows at 125/150%, zoomed pages), like squares on him.
@@ -4835,27 +4835,16 @@ function deviceSprite(look, mood, tier) {
   mood = ["meh", "smoky", "sleepy"].includes(mood) ? mood : "happy";   // the egg shows the high/drunk/cough faces itself
   const key = JSON.stringify([look, mood, tier]);
   if (spriteCache.key === key) return spriteCache.val;
-  const box = document.createElement("div");
-  box.style.cssText = "position:absolute;left:-9999px;top:0";
-  box.className = "pet";
-  document.body.appendChild(box);
-  const pal = [], frame = (blink, fx = {}) => {
-    box.innerHTML = mochiCells(look, mood, tier, blink, {...fx, noZ: true});
-    return [...box.children].map(i => {
-      const c = getComputedStyle(i).backgroundColor;
-      let rgb = null, m = c.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/);
-      if (m) { if (m[4] !== undefined && +m[4] < .5) return "."; rgb = [+m[1], +m[2], +m[3]]; }
-      else if ((m = c.match(/color\(srgb\s+([\d.e-]+)\s+([\d.e-]+)\s+([\d.e-]+)(?:\s*\/\s*([\d.]+))?/))) {   // what color-mix() gives back
-        if (m[4] !== undefined && +m[4] < .5) return ".";
-        rgb = [m[1], m[2], m[3]].map(v => Math.max(0, Math.min(255, +v * 255)));
-      }
-      if (!rgb) return ".";
-      const hex = "#" + rgb.map(v => Math.round(v).toString(16).padStart(2, "0")).join("");
-      let k = pal.indexOf(hex);
-      if (k < 0) { if (pal.length >= 36) return "."; pal.push(hex); k = pal.length - 1; }
-      return k.toString(36);
-    }).join("");
-  };
+  const pal = [], frame = (blink, fx = {}) => mochiCells(look, mood, tier, blink, {...fx, noZ: true, grid: true}).flat().map(c => {
+    if (!c) return ".";
+    const el = document.createElement("i"); el.style.color = pxColor(c);   // any form (#abc, rgba) to rgb()
+    const m = el.style.color.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?/);
+    if (!m || (m[4] !== undefined && +m[4] < .5)) return ".";
+    const hex = "#" + [m[1], m[2], m[3]].map(v => Math.round(+v).toString(16).padStart(2, "0")).join("");
+    let k = pal.indexOf(hex);
+    if (k < 0) { if (pal.length >= 36) return "."; pal.push(hex); k = pal.length - 1; }
+    return k.toString(36);
+  }).join("");
   let val = null;
   // n normal, b blinking, h high, d1-d3 tipsy/drunk/wasted, c coughing: the egg picks the one that fits right now
   try {
@@ -4863,7 +4852,6 @@ function deviceSprite(look, mood, tier) {
     val = n.length === 256 ? {w: 16, p: pal, n, b, h: frame(false, {high: 2}), d1: frame(false, {drunk: 1}), d2: frame(false, {drunk: 2}),
                               d3: frame(false, {drunk: 3}), c: frame(false, {cough: true})} : null;
   } catch (_) {}
-  box.remove();
   spriteCache.key = key; spriteCache.val = val;
   return val;
 }
