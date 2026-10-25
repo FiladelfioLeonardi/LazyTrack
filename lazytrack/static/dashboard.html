@@ -2640,12 +2640,12 @@ Object.assign(MOCHI.eyes, {
   angry: {n: "Angry", y: 5, rows: ["...k........k...", "....kk....kk....", ".....k....k....."]},
   teary: {n: "Teary", rows: [".....k....k.....", ".....k....k.....", ".....u.........."]},
   cash: {n: "Cash", rows: ["....ggg..ggg....", "....gGg..gGg...."]},
-  cyclops: {n: "Cyclops", y: 5, rows: ["......kkkk......", ".....kwwkkk.....", "......kkkk......"]},
+  cyclops: {n: "Cyclops", y: 5, iris: "m", rows: ["......kkkk......", ".....kwwmmk.....", "......kkkk......"]},
   ko: {n: "K.O.", rows: ["....k.k..k.k....", ".....k....k.....", "....k.k..k.k...."]},
   crying: {n: "Crying", rows: ["....kkk..kkk....", ".....u....u.....", ".....u....u....."]},
   squint: {n: "Squint", rows: ["....k......k....", ".....k....k.....", "....k......k...."]},
-  side: {n: "Side-eye", rows: ["....kkk..kkk....", "....wwk..wwk...."]},
-  lizard: {n: "Lizard", rows: ["....yky..yky....", "....yky..yky...."]},
+  side: {n: "Side-eye", iris: "m", rows: ["....kkk..kkk....", "....wwm..wwm...."]},
+  lizard: {n: "Lizard", iris: "y", rows: ["....yky..yky....", "....yky..yky...."]},
 });
 MOCHI.mouthItems = {   // rows 9-10
   smile: {n: "Smile", rows: ["......k..k......", ".......kk......."]},
@@ -2814,9 +2814,9 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   else if (drunk === 1) { eyes = FX_FACE.tipsyEyes; }
   else if (sick) eyes = ["....zz....zz....", ".....k....k....."];
   else { eyes = pick("eyes").rows; eyeY = pick("eyes").y ?? 6;
-    // recolored below; the shine (w) and tears (u) stay, and black (k) stays a pupil when the eye has its own color (lizard)
-    const keep = /[^.kKwu]/i.test(eyes.join("")) ? /[kKwu]/ : /[wu]/;
-    if (isHex(L.eyesColor)) eyes = eyes.map(r => [...r].map(ch => ch === "." || keep.test(ch) ? ch : ch === ch.toUpperCase() ? "\u0001" : "\u0002").join(""));
+    // only eyes with an iris (its letter in .iris) take a color; the outline, shine and slit stay
+    const iris = pick("eyes").iris;
+    if (iris && isHex(L.eyesColor)) eyes = eyes.map(r => r.replaceAll(iris, "\u0002"));   // recolored below
   }
   if (!fx.cough) {
     if (high) mouth = FX_FACE.highMouth;
@@ -2825,7 +2825,7 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   if (!fx.cough && !blink) eyes = shift(eyes, fx.dx || 0);
   if (fx.up && !fx.cough && !blink && pick("hat").rows.length < 6) eyeY -= 1;   // a hat brim would cover raised eyes
   put(drunk ? ["..PPP......PPP.."] : high ? ["...rc......cr..."] : ["...cc......cc..."], 8);   // flushed cheeks when drunk
-  if (isHex(L.eyesColor)) { col["\u0002"] = L.eyesColor; col["\u0001"] = shade(L.eyesColor); }
+  if (isHex(L.eyesColor)) col["\u0002"] = L.eyesColor;
   put(eyes, eyeY);
   if (blink || mood === "sleepy") {   // eyes shut: the body's little shine next to them would read as one eye open
     for (const y of [eyeY, eyeY + 1]) for (let x = 0; x < 16; x++) if (y >= 0 && y < 16 && body[y][x] === "w" && g[y][x] === col.w) g[y][x] = col.b;
@@ -4238,7 +4238,7 @@ plusCard.load();
 const WR_CATS = [["looks", "✨", "Ready-made looks"], ["girl", "🎀", "Girl styles"], ["body", "🫧", "Body"], ["skin", "🎨", "Color"], ["eyes", "👀", "Eyes"], ["mouth", "👄", "Mouth"],
                  ["hat", "🎩", "Head"], ["glasses", "🕶️", "Glasses"], ["neck", "📿", "Neck"], ["outfit", "👕", "Outfit"], ["held", "✋", "Holding"], ["place", "🏞️", "Place"], ["plus", "⭐", "Plus"]];
 const WR_HINT = {plus: "New pieces for Mochi Plus. Thanks for keeping Mochi going ♥", looks: "Whole outfits in one tap. You can change any part after.", girl: "Girl characters, hair, dresses, bags and more. Pick any piece, or a whole look.", body: "Mochi's shape.", skin: "Mochi's color, or pick any color.",
-  eyes: "Pick the eyes, then any color for them.", mouth: "Moods still change it now and then.", hat: "Sits on top without squashing Mochi. Any color.",
+  eyes: "Side-eye, Cyclops and Lizard can take any color.", mouth: "Moods still change it now and then.", hat: "Sits on top without squashing Mochi. Any color.",
   glasses: "", neck: "", outfit: "", held: "Something to hold.", place: "Where Mochi lives. Friends see it too."};
 const WR_COLORS = ["#1d1b20", "#ffffff", "#8a8f9c", "#e0303a", "#ff8fb1", "#f2b705", "#3fae69", "#7ad3ff", "#2a78d6", "#6250d6", "#c99a6e"];
 const WRCARD = document.querySelector(".wrcard");
@@ -4333,13 +4333,13 @@ const wardrobe = {
   // the color row: body color, eyes and head only
   colorNow() {
     if (this.tab === "skin") return skinColor(this.look).startsWith("#") ? skinColor(this.look) : null;
-    if (this.tab === "eyes") return isHex(this.look.eyesColor) ? this.look.eyesColor : "#1d1b20";
+    if (this.tab === "eyes") { const iris = MOCHI.eyes[this.look.eyes]?.iris; return iris ? (isHex(this.look.eyesColor) ? this.look.eyesColor : MOCHI_COL[iris]) : null; }
     const it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
     return it && it.tint ? (isHex(this.look[this.tab + "Color"]) ? this.look[this.tab + "Color"] : it.tint) : null;
   },
   drawColors() {
     const box = $("wrColors"), it = MOCHI[SLOTS[this.tab]]?.[this.look[this.tab]];
-    const show = this.tab === "skin" || this.tab === "eyes" || (this.tab === "hat" && it && it.tint);
+    const show = this.tab === "skin" || (this.tab === "eyes" && it && it.iris) || (this.tab === "hat" && it && it.tint);
     box.hidden = !show;
     if (!show) return;
     const now = (this.colorNow() || "").toLowerCase();
