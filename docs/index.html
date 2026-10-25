@@ -105,6 +105,7 @@
   .soon h3 { margin: 0 0 4px; font-size: 20px; }
   .note { margin-top: 16px; padding: 14px 18px; border: 3px dashed var(--line); border-radius: 14px; background: var(--soft); color: var(--ink-2); font-size: 15px; }
 
+  [hidden] { display: none !important; }
   .plans { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; align-items: start; }
   @media (max-width: 960px) { .plans { grid-template-columns: 1fr; max-width: 520px; } }
   .plan.founder { background: linear-gradient(160deg, #fff6d6, #ffd6e6); color: #1d1b20; }
@@ -190,11 +191,12 @@
 </style>
 </head>
 <body>
-<a class="soonbar" href="#egg"><b>COMING NEXT</b>📱 the Mochi phone app &amp; 🥚 Mochi Egg, a pocket handheld · <u>get notified</u></a>
+<a class="soonbar" href="#founder" data-pay="founder" hidden><b>ONLY 500</b>🥚 Founder pack: Mochi Plus forever, $29 once · <u>see it</u></a>
+<a class="soonbar" href="#egg" data-nopay="founder"><b>COMING NEXT</b>📱 the Mochi phone app &amp; 🥚 Mochi Egg, a pocket handheld · <u>get notified</u></a>
 <header class="top" id="top">
   <div class="wrap">
     <a class="brand" href="#"><img src="icon.png" alt="">MOCHI</a>
-    <nav class="links" aria-label="Sections"><a href="#loop">How it works</a><a href="#camera">Camera</a><a href="#egg">The egg</a><a href="#download">Download</a><a href="#faq">FAQ</a></nav>
+    <nav class="links" aria-label="Sections"><a href="#loop">How it works</a><a href="#camera">Camera</a><a href="#egg">The egg</a><a href="#download">Download</a><a href="#founder" data-pay="founder" hidden>Founder</a><a href="#faq">FAQ</a></nav>
     <a class="btn primary small" href="#download">Get Mochi</a>
   </div>
 </header>
@@ -215,6 +217,10 @@
         <form class="join" data-wants="app"><input type="email" name="email" required placeholder="your email" aria-label="Your email"><button class="btn primary" type="submit">Email me the link</button></form>
         <div class="msg" role="status"></div>
         <button type="button" class="btn small" id="shareBtn" style="margin-top:6px">Send it to myself</button>
+      </div>
+      <div class="ctas" data-pay="founder egg" hidden style="margin-top:12px">
+        <a class="btn" href="#founder" data-pay="founder" hidden>🥚 Become a Founder · $29</a>
+        <a class="btn" href="#egg" data-pay="egg" hidden>Reserve a Mochi Egg · $5</a>
       </div>
       <div class="trust"><span>Free for Mac + Windows, no ads</span><span>No logging screen time by hand</span><span>Your data stays on your computer</span></div>
       <div class="next" aria-label="Coming next">
@@ -338,8 +344,29 @@
         <form class="join" data-wants="both"><input type="email" name="email" required placeholder="you@example.com" aria-label="Your email"><button class="btn primary" type="submit">Notify me</button></form>
         <div class="msg" role="status"></div>
         <p class="fine" style="margin-top:2px">One email when the phone app is out, and one when the Kickstarter goes live, with the early-bird price. Nothing else.</p>
+        <div data-pay="egg" hidden style="margin-top:18px">
+          <a class="btn primary" data-buy="egg" href="#egg">🥚 Reserve one · $5, refundable</a>
+          <p class="fine">Get the Kickstarter link 24 hours early and the lowest early-bird price. Want your $5 back? Email me, any time, and it's refunded.</p>
+        </div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="founder" data-pay="founder" hidden>
+  <div class="wrap">
+    <h2 class="sec">Mochi is free. Forever. No ads.</h2>
+    <p class="sub">I'm one student building Mochi alone. If it helps you scroll less, you can help keep it alive.</p>
+    <div class="card plan founder" style="max-width:520px">
+      <span class="tag">ONLY 500</span>
+      <h3>🥚 FOUNDER PACK</h3>
+      <div class="price">$29 <small>once</small></div>
+      <p class="slots">STUDENTS: $19 WITH CODE STUDENT</p>
+      <ul><li>Every ⭐ Plus look, now and forever</li><li>A Founder badge your friends see</li><li>Your name in the credits</li><li>First in line for the Mochi Egg</li><li><b>&amp; much more</b>: extras only Founders get, as Mochi grows</li></ul>
+      <a class="btn" data-buy="founder" href="#founder">Become a Founder</a>
+      <p style="margin:12px 0 0;font-size:14px">Only 500, and only until 31 January 2027. Buy it on your phone now; the key arrives by email and works once Mochi is on your computer. 14-day refund.</p>
+    </div>
+    <p class="offers-note">Nothing you use today will ever cost money. And you'll never have to pay to save your Mochi.</p>
   </div>
 </section>
 
@@ -353,6 +380,8 @@
     <details class="card"><summary>Where does my data go?</summary><p>Your tracking data stays on your computer. Only what you choose to share with friends (like your Mochi's look and the numbers you picked) goes to the friends server. More in the <a href="privacy.html">privacy policy</a>.</p></details>
     <details class="card"><summary>Does it watch my screen?</summary><p>It only notices which app or website is in front, never what's on it. The optional smoking detector is explained in <a href="#camera">The camera, honestly</a>: it runs only on your computer, only if you turn it on.</p></details>
     <details class="card"><summary>Can Mochi die?</summary><p>His hearts drop on bad days, and yes, he can run out. Then a baby hatches and you start a new generation. Good days and your friends keep him going.</p></details>
+    <details class="card" data-pay="founder" hidden><summary>What's the Founder pack?</summary><p>A one-time $29 ($19 for students with the code STUDENT) for Plus forever: every ⭐ look that exists now and every one that comes later, a Founder badge, your name in the credits and Founder-only extras as Mochi grows. You get a license key by email; in Mochi open Settings → Account, paste it and press Unlock. Only 500 are sold, and only until 31 January 2027. 14-day refund, no questions asked.</p></details>
+    <details class="card" data-pay="egg" hidden><summary>How does the $5 Egg reservation work?</summary><p>You pay $5 now and get the Kickstarter link 24 hours before everyone else, with the lowest early-bird price. It's not the Egg itself, just your place in line. Email me any time and the $5 is refunded.</p></details>
     <details class="card"><summary>When can I get the egg?</summary><p>The Kickstarter launches once the egg is ready. Join the waitlist above and you'll get one email when it goes live.</p></details>
     <details class="card"><summary>Who makes Mochi?</summary><p>One student, in Germany, with a lot of love for old handheld pets. Questions or ideas: <a href="mailto:Fefo.leo51@gmail.com">Fefo.leo51@gmail.com</a>.</p></details>
   </div>
@@ -410,6 +439,14 @@ document.getElementById("shareBtn").addEventListener("click", async () => {
 });
 const hdr = document.getElementById("top");
 addEventListener("scroll", () => hdr.classList.toggle("scrolled", scrollY > 8), {passive: true});
+
+// paid offers: paste the live checkout links here; empty = that offer stays hidden everywhere on the page
+const PAY = {founder: "", egg: ""};
+const tag = (new URLSearchParams(location.search).get("s") || "").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+const tagged = (k, u) => !tag ? u : u + (u.includes("?") ? "&" : "?") + (k === "egg" ? "client_reference_id=" : "checkout[custom][s]=") + tag;   // which video sold it
+document.querySelectorAll("[data-pay]").forEach(el => el.hidden = !el.dataset.pay.split(" ").some(k => PAY[k]));
+document.querySelectorAll("[data-nopay]").forEach(el => el.hidden = !!PAY[el.dataset.nopay]);
+document.querySelectorAll("[data-buy]").forEach(a => { const u = PAY[a.dataset.buy]; if (u) { a.href = tagged(a.dataset.buy, u); a.target = "_blank"; a.rel = "noopener"; } });
 
 // email sign-ups: stored on Mochi's friends server (anyone can add one, nobody can read the list from outside)
 const SUPA = "https://zmrzumltciteeznzjwaw.supabase.co", KEY = "sb_publishable_mmX_kRPufTOQk1M4fmjjFg_HenbqicQ";
