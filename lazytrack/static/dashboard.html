@@ -2814,7 +2814,9 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
   else if (drunk === 1) { eyes = FX_FACE.tipsyEyes; }
   else if (sick) eyes = ["....zz....zz....", ".....k....k....."];
   else { eyes = pick("eyes").rows; eyeY = pick("eyes").y ?? 6;
-    if (isHex(L.eyesColor)) eyes = eyes.map(r => r.replace(/[A-Z]/g, "\u0001").replace(/[a-z]/g, "\u0002"));   // recolored below
+    // recolored below; the shine (w) and tears (u) stay, and black (k) stays a pupil when the eye has its own color (lizard)
+    const keep = /[^.kKwu]/i.test(eyes.join("")) ? /[kKwu]/ : /[wu]/;
+    if (isHex(L.eyesColor)) eyes = eyes.map(r => [...r].map(ch => ch === "." || keep.test(ch) ? ch : ch === ch.toUpperCase() ? "\u0001" : "\u0002").join(""));
   }
   if (!fx.cough) {
     if (high) mouth = FX_FACE.highMouth;
