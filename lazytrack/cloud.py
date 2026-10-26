@@ -448,7 +448,8 @@ def unread_detail() -> dict:
     tok, me = _token(), state()["uid"]
     msgs = _http("GET", f"/rest/v1/messages?receiver=eq.{me}&read_at=is.null&select=id", token=tok) or []
     reqs = _http("GET", f"/rest/v1/friendships?addressee=eq.{me}&status=eq.pending&select=id", token=tok) or []
-    return {"count": len(msgs) + len(reqs), "messages": len(msgs), "requests": len(reqs), "pokes": new_pokes()}
+    return {"count": len(msgs) + len(reqs), "messages": len(msgs), "requests": len(reqs), "pokes": new_pokes(),
+            "last": max((m["id"] for m in msgs), default=0)}   # newest unread: a new message even if you read another meanwhile
 
 
 def _uuid(s: str) -> str:
@@ -762,7 +763,9 @@ def new_pokes() -> list:
 
 
 # ---------------------------------------------------------------- your egg, from the computer / phone (supabase/egg_status.sql)
-EGG_CMDS = {"sing", "find", "sync"}
+EGG_TESTS = {"dead", "lowhp", "sad", "legend", "drunk", "high", "cough", "sleepy", "end",   # looks shown on the egg for 30 s, nothing saved
+             "gym", "curls", "press", "squats", "rope", "pull", "bench", "rest"}             # the workout, 30 s
+EGG_CMDS = {"sing", "find", "sync"} | {"test:" + t for t in EGG_TESTS}
 
 
 def egg_status() -> dict:

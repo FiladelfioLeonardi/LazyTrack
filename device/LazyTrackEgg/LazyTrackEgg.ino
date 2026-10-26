@@ -29,6 +29,7 @@
 #include <Arduino_GFX_Library.h>
 #include <NimBLEDevice.h>   // Library Manager: "NimBLE-Arduino" (Bluetooth: the egg goes online through your phone)
 #include "secrets.h"
+#include "workout.h"   // the workout's frames, made from the app's by gen_workout.js
 
 // ---------------------------------------------------------------- your hardware
 // The chip on the back of the screen board: ST7789 (most 2.0") or ILI9341 (most 2.4" / 2.8")
@@ -44,11 +45,13 @@
 #define PIN_CS 15    // CS
 #define PIN_DC 2     // DC / RS / A0
 #define PIN_RST 4    // RST / RES
-#define PIN_BL -1    // BL / LED (backlight) pin, or -1 when it's wired straight to 3.3V (then C only blanks the screen)
+#define PIN_BL 12    // BL / LED (backlight) pin (12 must be LOW at boot: fine, the screen's LED pin pulls it low), or -1 when it's wired straight to 3.3V (then C only blanks the screen)
+#define PIN_POT 34   // brightness knob: 10k pot, middle leg here, outer legs to 3V3 and GND (-1 = no knob, full brightness)
 #define BTN_A 32     // buttons: one leg to the pin, the other to GND (no resistors needed)
 #define BTN_B 33
 #define BTN_C 25
 #define PIN_BUZZ 26  // passive buzzer: + to this pin, - to GND
+uint8_t blLevel = 255;   // backlight brightness, set by the knob
 // Touch (the screen's T_ pins, an XPT2046 chip). Its own pins, so it never fights the screen for the wires.
 // Set T_IRQ to -1 if the touch pins aren't connected.
 #define T_CLK 14
@@ -81,7 +84,8 @@ volatile int pokeReq = -1;             // the screen asks the network task to po
 volatile bool undoReq = false;         // ...or to take back the last log
 volatile bool friendsDone = false;     // the friend list was loaded once (the Friends screen says "loading" until then)
 volatile uint8_t eggCmd = 0;           // from LazyTrack on your computer / phone: 1 = sing, 2 = find my egg
-#define FW_VERSION "2026.10.18"
+#define FW_VERSION "2026.10.25"
+String eggTest = "";                    // a test look from LazyTrack ("dead", "lowhp", "gym", ...), waiting for the screen
 String resetWhy = "";                  // why the egg (re)started: shown on Info, so a crash or power dip is easy to spot
 // What the egg was doing, kept through a restart (this memory survives a reset, not a power cut): if it ever
 // freezes or crashes, the next start says what it was busy with.
@@ -173,6 +177,10 @@ struct Card {
   char fn[257], fb[257];  // normal frame, blinking frame
   char fh[257], fd[3][257], fc[257];   // high, tipsy/drunk/wasted, coughing (same look, those faces)
   bool fxFrames = false;
+  char fg[8][257];        // the workout's faces and the lying pose (WK_FACES after "n" in the app); see the workout below
+  bool wkFrames = false;
+  uint32_t gymSeen = 0;   // the last gym log a set played for
+  uint32_t gymAt = 0;     // at the gym since (s; the phone saw you arrive, or "I'm at the gym" in the app), 0 = not there
   int sceneN = 0;         // Mochi's place, the same picture as in the app (sceneN x sceneN pixels)
   uint16_t scenePal[64];
   char scene[56 * 56 + 1];
@@ -244,21 +252,15 @@ void tuneYum() { beep(1047, 60); beep(1319, 60); beep(1047, 60); beep(1568, 140)
 #define N_C6 1047
 #define N_D6 1175
 #define N_E6 1319
-#define N_G4 392
-#define N_A4 440
 static const Note SONG_MOCHI[] = {   // Mochi's song: bouncy, a bit proud of himself
   {N_G5, 130}, {N_E5, 130}, {N_G5, 130}, {N_C6, 260}, {N_B5, 130}, {N_A5, 130}, {N_G5, 260}, {0, 130},
   {N_E5, 130}, {N_F5, 130}, {N_G5, 130}, {N_A5, 130}, {N_G5, 130}, {N_E5, 130}, {N_D5, 260}, {0, 130},
   {N_C5, 130}, {N_E5, 130}, {N_G5, 130}, {N_C6, 130}, {N_E6, 130}, {N_D6, 130}, {N_C6, 390}};
-static const Note SONG_LULLABY[] = {   // falling asleep: slow and soft
-  {N_E5, 380}, {N_G5, 380}, {N_E5, 380}, {N_D5, 760}, {0, 120}, {N_C5, 380}, {N_D5, 380}, {N_E5, 380}, {N_G4, 760}, {0, 120},
-  {N_A4, 380}, {N_C5, 380}, {N_E5, 380}, {N_D5, 570}, {N_C5, 900}};
 static const Note SONG_FIND[] = {   // "find my egg": loud chirps for ~8 s (any button stops it)
   {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420},
   {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420},
   {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420},
   {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_E6, 110}, {0, 60}, {N_E6, 110}, {0, 420}, {N_C6, 90}, {N_E6, 90}, {N_G5, 90}, {N_C6, 300}};
-static const Note SONG_WAKE[] = {{N_C5, 90}, {N_G5, 90}, {N_C6, 90}, {0, 60}, {N_E6, 220}};   // good morning!
 const Note *songNotes = nullptr;
 int songLen = 0, songAt = 0;
 uint32_t songNext = 0, songStart = 0;
@@ -621,7 +623,10 @@ time_t parseIso(const char *s);
 long dayNow();
 int minuteNow();
 
+uint32_t testUntil = 0;   // a test look is on the screen until then; your real card comes back after
+
 bool parseCard(const String &body) {
+  if (testUntil) return true;   // keep the test look; the real card is synced again when it ends
   JsonDocument filter;
   JsonObject f = filter[0]["card"].to<JsonObject>();
   for (const char *k : {"hp", "tier", "tierName", "name", "gen", "age", "best", "deaths", "fx", "now", "sprite", "scene", "offline", "built", "mood", "tzo", "asleep", "plan"}) f[k] = true;
@@ -645,6 +650,10 @@ bool parseCard(const String &body) {
   card.drunk = c["fx"]["drunk"] | 0;
   card.high = c["fx"]["high"] | 0;
   card.coughy = c["fx"]["coughy"] | 0;
+  uint32_t gym = c["fx"]["gym"].as<double>();   // a gym session logged in the app in the last 10 minutes: one set
+  if (!first && gym > card.gymSeen && time(nullptr) - (time_t)gym < 600) wkSet(gym);
+  card.gymSeen = max(card.gymSeen, gym);
+  card.gymAt = c["fx"]["gym_at"].as<double>();
   card.nowWhat = c["now"]["what"] | "";
   card.nowSince = c["now"]["since"] | 0;
   card.nowLabel = c["now"]["label"] | "";
@@ -672,6 +681,9 @@ bool parseCard(const String &body) {
     auto take = [&](const char *key, char *dst) { const char *v = sp[key]; strncpy(dst, (v && strlen(v) == 256) ? v : n, 256); dst[256] = 0; return v != nullptr; };
     card.fxFrames = take("h", card.fh);
     take("d1", card.fd[0]); take("d2", card.fd[1]); take("d3", card.fd[2]); take("c", card.fc);
+    static const char *GK[8] = {"gsq", "gdet", "ghp", "ghap", "gshut", "gpant", "gln", "gle"};
+    card.wkFrames = true;
+    for (int i = 0; i < 8; i++) card.wkFrames &= take(GK[i], card.fg[i]);   // an older LazyTrack sends none
     card.sprite = true;
   }
   JsonObject sc = c["scene"];
@@ -761,6 +773,11 @@ String agoText(time_t t) {
 // ---------------------------------------------------------------- what's on top of Home for a moment
 String msgTitle, msgSub;
 uint32_t msgUntil = 0, petUntil = 0, shakeUntil = 0;
+// a workout playing (see the workout below): since wkStart (millis), until wkUntil (0 = while you're at the gym);
+// wkPin: only that exercise (a test look), -1 = all of them in the app's order (wkSeed)
+bool wkOn = false;
+uint32_t wkStart = 0, wkUntil = 0, wkSeed = 0, eggGymAt = 0;   // eggGymAt: AT THE GYM in LOG here
+int8_t wkPin = -1;
 void drawFrame();
 
 void showMsg(const String &title, const String &sub, uint32_t ms) {
@@ -879,6 +896,7 @@ void reactTo(const String &k) {
   if (k == "joint") card.high = min(3, card.high + 1);
   else if (k == "alcohol") card.drunk = max(1, card.drunk);
   else if (k == "cigarette" || k == "vape") card.coughy = max(1, card.coughy);
+  else if (k == "gym") { wkSet(time(nullptr)); card.gymSeen = max(card.gymSeen, (uint32_t)time(nullptr)); }   // the card brings this log back: not twice
 }
 
 void doLog(int i) {   // from the screen: queued, the network task sends it right away (the screen never waits for the server)
@@ -891,6 +909,21 @@ void doLog(int i) {   // from the screen: queued, the network task sends it righ
   reactTo(h.k);
   h.bad ? tuneBad() : tuneGood();
   showMsg(h.bad ? "LOGGED" : "NICE!", "1 " + h.n + "   C = undo", 5000);
+}
+
+// "AT THE GYM": the last row in LOG when you track the gym. Mochi works out here on the egg until DONE AT GYM
+// (or 4 hours); the app's "I'm at the gym" and the phone do the same from their side.
+bool tracksGym() { for (int i = 0; i < nhabits; i++) if (habits[i].k == "gym") return true; return false; }
+int logRows() { return nhabits + (tracksGym() ? 1 : 0); }
+bool eggAtGym() { return eggGymAt && clockOk() && time(nullptr) - eggGymAt < 4 * 3600; }
+void toggleGym() {
+  if (!clockOk()) { showMsg("NO CLOCK YET", "wait for WiFi or the phone", 3000); return; }
+  bool on = !eggAtGym();
+  eggGymAt = on ? time(nullptr) : 0;
+  if (!on && wkOn && !wkUntil) wkEnd();
+  tuneGood();
+  view = V_HOME; drawFrame();
+  showMsg(on ? "LET'S GO!" : "GOOD WORK!", on ? "Mochi works out with you" : "workout done", 3000);
 }
 
 bool canUndo() { return lastLog.length() && millis() < msgUntil; }
@@ -1010,7 +1043,7 @@ void checkPokes() {
   String who = nameOf(sender);
   if (!who.length()) { loadFriends(); who = nameOf(sender); }
   if (!who.length()) who = "A friend";
-  if (!screenOn) { screenOn = true; if (PIN_BL >= 0) digitalWrite(PIN_BL, HIGH); lcd->displayOn(); }
+  if (!screenOn) { screenOn = true; if (PIN_BL >= 0) ledcWrite(PIN_BL, blLevel); lcd->displayOn(); }
   if (kind == "love") { petUntil = millis() + 3000; showMsg(who.substring(0, 14), "sent Mochi love <3", 6000); tuneLove(); }
   else if (kind == "wave") { shakeUntil = millis() + 1500; showMsg(who.substring(0, 14), "waved at you!", 6000); tunePoke(); }
   else { shakeUntil = millis() + 2000; showMsg(who.substring(0, 14), a.size() > 1 ? "poked you " + String(a.size()) + " times!" : "poked you!", 6000); tunePoke(); }
@@ -1156,7 +1189,7 @@ void drawNotes(uint32_t t) {
 // ---------------------------------------------------------------- "deal with it": the legendary cool move
 // Out of nowhere: shades drop onto Mochi's face, a glint runs across them while fire and explosions go off
 // behind him, he smirks (toothpick), nods twice, and the shades fly off. Same timeline as the app.
-uint32_t coolStart = 0, nextCool = 0;
+uint32_t coolStart = 0;
 CoolF coolFrame(uint32_t t) {
   static const int G[6] = {3, 4, 5, 10, 11, 12};
   if (t < 350) return {true, -3 + (int)(t / 70) * 2, -1, false, false};
@@ -1209,12 +1242,23 @@ const char *framePx(bool blink, bool coughing) {
   return px;
 }
 
+// breathing, like the app: a small squish (3% wider, 4.5% shorter, feet stay put) that eases in, holds and eases out
+// over 3.6 s. Drawn by stretching the 16x16 picture on screen, so it moves a screen pixel at a time and no row vanishes.
+float breathNow() {
+  uint32_t p = millis() % 3600;
+  return p < 1620 ? (1 - cosf(p / 1620.0f * PI)) / 2 : p < 1980 ? 1 : (1 + cosf((p - 1980) / 1620.0f * PI)) / 2;
+}
+int breathH() { return wkOn ? 16 * SCALE : lroundf(16 * SCALE * (1 - .045f * breathNow())); }   // Mochi's height on screen right now
+
 void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) {
   if (view != V_HOME && !anyView) return;
   bool petting = millis() < petUntil;
   static uint16_t cell[16][16];
+  if (wkOn) { wkDraw(); return; }
   mochiNow(cell, framePx(blink, coughing), CoolF{false, 0, -1, false, false});
   int ox = PX - SX + dx, oy = PY - SY;
+  int bh = breathH(), bw = 16 * SCALE + (16 * SCALE - bh) * 2 / 3;   // squish: shorter and a bit wider
+  int bx = ox - (bw - 16 * SCALE) / 2, top = oy + 16 * SCALE - bh;
   static const char *H = ".X.X.XXXXXXXXXX.XXX...X..";   // 5x5 heart (petting: little hearts floating up on both sides)
   uint32_t left = petting ? petUntil - millis() : 0;
   for (int y0 = 0; y0 < SH; y0 += STAGE_ROWS) {   // strip by strip: a small buffer, still no flicker
@@ -1223,13 +1267,10 @@ void drawStage(int dx, bool blink, bool coughing = false, bool anyView = false) 
       int yy = y0 + y;
       uint16_t *row = stage + y * SW;
       for (int x = 0; x < SW; x++) row[x] = bgAt(SX + x, SY + yy);
-      int cy = (yy - oy) / SCALE;
-      if (yy >= oy && cy < 16)
-        for (int cx = 0; cx < 16; cx++) {
-          uint16_t col = cell[cy][cx];
-          if (!col) continue;
-          for (int x = 0; x < SCALE; x++) { int xx = ox + cx * SCALE + x; if (xx >= 0 && xx < SW) row[xx] = col; }
-        }
+      if (yy >= top && yy < top + bh) {
+        const uint16_t *src = cell[(yy - top) * 16 / bh];
+        for (int xx = max(0, bx); xx < min(SW, bx + bw); xx++) { uint16_t col = src[(xx - bx) * 16 / bw]; if (col) row[xx] = col; }
+      }
       if (petting)
         for (int k = 0; k < 3; k++) {
           int life = (int)((1800 - left + k * 600) % 1800);
@@ -1315,6 +1356,116 @@ void playCool() {
   memset(fireHeat, 0, sizeof fireHeat);
   coolStart = millis();
 }
+
+// ---------------------------------------------------------------- workout: Mochi working out at the gym
+// The same as the app (WK in dashboard.html; the frames are in workout.h, made from it by gen_workout.js). While
+// you're at the gym (the phone saw you arrive, "I'm at the gym" in the app, or AT THE GYM in LOG here) Mochi does a
+// 45 s set of one exercise, rests 12 s, then the next, in the same order as the app. A gym log otherwise: one set.
+// He's drawn in a 24x24 "gym picture" at 5x: his usual 16x16 at the bottom middle, room around him for the gear,
+// standing on the same ground line. The app sends his faces for it (card.fg).
+static const int WKZ = 5, WKX = 120 - 12 * WKZ, WKY = FEET + 2 - 24 * WKZ;
+
+const WkF *wkLoop(const WkF *a, int n, uint32_t t) {
+  uint32_t len = 0;
+  for (int i = 0; i < n; i++) len += a[i].ms;
+  t %= len;
+  for (int i = 0; i < n; i++) { if (t < a[i].ms) return &a[i]; t -= a[i].ms; }
+  return a;
+}
+
+const WkF *wkFrame() {   // what he's doing right now (the app's wkAt)
+  uint32_t t = millis() - wkStart, shakeLen = 0;
+  for (int i = 0; i < WK_SHAKEN; i++) shakeLen += WK_SHAKE[i].ms;
+  if (wkPin == WK_NEX) { uint32_t v = t % (shakeLen + 4 * 3040); return v < shakeLen ? wkLoop(WK_SHAKE, WK_SHAKEN, v) : wkLoop(WK_RESTF, WK_RESTN, v - shakeLen); }
+  if (wkPin >= 0) return wkLoop(WK_EX[wkPin], WK_EXN[wkPin], t);
+  uint32_t cyc = WK_SET + WK_REST, i = t / cyc, u = t % cyc;
+  uint8_t o[WK_NEX];
+  for (int k = 0; k < WK_NEX; k++) o[k] = k;
+  uint32_t r = wkSeed + (i / WK_NEX) * 7919u;   // a new shuffle for every round of all of them
+  for (int k = WK_NEX - 1; k > 0; k--) { r = r * 1103515245u + 12345u; int j = (r >> 16) % (k + 1); uint8_t x = o[k]; o[k] = o[j]; o[j] = x; }
+  int ex = o[i % WK_NEX];
+  if (u < WK_SET) return wkLoop(WK_EX[ex], WK_EXN[ex], u);
+  uint32_t v = u - WK_SET;   // every other rest starts with a protein shake
+  return (i & 1) && v < shakeLen ? wkLoop(WK_SHAKE, WK_SHAKEN, v) : wkLoop(WK_RESTF, WK_RESTN, v);
+}
+
+uint16_t wkColor(char ch, uint16_t body, uint16_t shade) {
+  switch (ch) {
+    case 'o': case 'k': return INK;            case 'l': return rgb(0x2b2733);  case 'L': return rgb(0x4f4860);
+    case 's': return rgb(0xdfe3ea);            case 'S': return rgb(0x8a8f9c);  case 'r': return rgb(0xe0303a);
+    case 'R': return rgb(0x9b1c24);            case 'y': return rgb(0xffe45e);  case 'u': return rgb(0x7ad3ff);
+    case 'U': return rgb(0x2a78d6);            case 'w': return 0xFFFF;         case 'N': return rgb(0x8a5a36);
+    case 'n': return rgb(0xc99a6e);            case 'c': return rgb(0xff8fb1);  case 'b': return body;
+    case 'B': return shade;
+  }
+  return 0;
+}
+
+void wkCells(uint16_t g[24][24], const WkF &f) {   // the app's wkImg
+  memset(g, 0, sizeof(uint16_t) * 24 * 24);
+  const char *px = f.face == 0 ? card.fn : card.fg[f.face - 1];
+  for (int y = 0; y < 16; y++) {
+    // squat: rows of his middle fold away (the ones from row 12 down), feet a step wider
+    int sy = y < f.sq ? -1 : y < 12 + f.sq ? y - f.sq : y;
+    int gy = 8 + y - f.dy;
+    if (sy < 0 || gy < 0 || gy > 23) continue;
+    for (int x = 0; x < 16; x++) {
+      int sx = f.sq && y >= 14 ? (x < 8 ? x + 1 : x - 1) : x;
+      char ch = sx >= 0 && sx < 16 ? px[sy * 16 + sx] : '.';
+      if (ch != '.') g[gy][x + 4] = cellColor(ch, true);
+    }
+  }
+  const char *ln = card.fg[7 - 1];
+  uint16_t body = cellColor(ln[8 * 16 + 10], true), shade = cellColor(ln[10 * 16 + 5], true);   // his color, from the lying pose
+  uint8_t sets[3] = {f.back, f.over0, f.over1};
+  for (int k = 0; k < 3; k++) {
+    if (sets[k] == 255) continue;
+    const WkSet &st = WK_SETS[sets[k]];
+    for (int i = 0; i < st.n; i++) for (int x = 0; x < 24; x++) {
+      char ch = st.rows[i].r[x];
+      uint16_t &c = g[st.rows[i].y][x];
+      if (ch != '.' && (k > 0 || !c)) c = wkColor(ch, body, shade);   // behind him: only where he isn't
+    }
+  }
+}
+
+void wkDraw() {
+  if (view != V_HOME || !screenOn) return;
+  static uint16_t g[24][24];
+  wkCells(g, *wkFrame());
+  for (int y0 = 0; y0 < 24 * WKZ; y0 += STAGE_ROWS) {   // strip by strip, like drawStage
+    int h = min(STAGE_ROWS, 24 * WKZ - y0);
+    for (int y = 0; y < h; y++) {
+      int yy = y0 + y;
+      uint16_t *row = stage + y * 24 * WKZ;
+      for (int x = 0; x < 24 * WKZ; x++) { uint16_t c = g[yy / WKZ][x / WKZ]; row[x] = c ? c : bgAt(WKX + x, WKY + yy); }
+    }
+    gfx->draw16bitRGBBitmap(WKX, WKY + y0, stage, 24 * WKZ, h);
+  }
+}
+
+void wkEnd() {
+  wkOn = false; wkUntil = 0; wkPin = -1;
+  if (view == V_HOME && screenOn) drawFrame();
+}
+
+void wkSet(uint32_t seed) {   // one set (a gym log): unless he's already working out for the whole gym visit
+  if (!card.wkFrames || (wkOn && !wkUntil)) return;
+  wkOn = true; wkPin = -1; wkSeed = seed; wkStart = millis(); wkUntil = millis() + WK_SET;
+  if (view == V_HOME && screenOn) drawFrame();
+}
+
+void wkCheck() {   // every loop: at the gym (the app's card or AT THE GYM here, up to 4 hours) = working out
+  if (wkOn && wkUntil && millis() > wkUntil) wkEnd();
+  if (!clockOk() || !card.wkFrames) return;
+  uint32_t now = time(nullptr);
+  uint32_t at = card.gymAt && now - card.gymAt < 4 * 3600 ? card.gymAt : eggGymAt && now - eggGymAt < 4 * 3600 ? eggGymAt : 0;
+  if (at && !wkUntil && (!wkOn || wkSeed != at)) {
+    wkOn = true; wkPin = -1; wkSeed = at; wkStart = millis() - (now - at) * 1000;   // in step with the app
+    if (view == V_HOME && screenOn) drawFrame();
+  } else if (!at && wkOn && !wkUntil) wkEnd();
+}
+
 
 bool stale() {   // LazyTrack closed or the computer asleep: what it last sent isn't true anymore
   time_t t = time(nullptr);
@@ -1749,16 +1900,21 @@ void drawScreen() {  // the background and everything on it; Mochi itself comes 
       themeHints("A BACK");
       return;
     }
-    int rows = 9, first = logSel >= rows ? logSel - rows + 1 : 0;
-    for (int i = first; i < nhabits && i < first + rows; i++) {
+    int rows = 9, first = logSel >= rows ? logSel - rows + 1 : 0, n = logRows();
+    for (int i = first; i < n && i < first + rows; i++) {
       int y = 54 + (i - first) * 26;
       bool sel = i == logSel;
       pill(12, y, 216, 22, sel);
+      if (i == nhabits) {   // the last row: Mochi works out until you're done (see the workout)
+        dotAt(25, y + 11, YELLOW);
+        text(37, y + 4, eggAtGym() ? "DONE AT GYM" : "AT THE GYM", 2, sel ? INK : CARD);
+        continue;
+      }
       dotAt(25, y + 11, habits[i].bad ? RED : GREEN);
-      String n = habits[i].n; n.setCharAt(0, toupper(n[0]));
-      text(37, y + 4, n.substring(0, 15), 2, sel ? INK : CARD);
+      String nm = habits[i].n; nm.setCharAt(0, toupper(nm[0]));
+      text(37, y + 4, nm.substring(0, 15), 2, sel ? INK : CARD);
     }
-    if (nhabits > first + rows) text(214, 292, "v", 1, TSUB);
+    if (n > first + rows) text(214, 292, "v", 1, TSUB);
     themeHints("C NEXT  B LOG IT  A BACK");
     return;
   }
@@ -1856,13 +2012,62 @@ int pressed() {  // the next press waiting (0-2), or -1
 void setScreen(bool on) {
   screenOn = on;
   if (PIN_BL >= 0) {   // backlight on a pin: really off
-    digitalWrite(PIN_BL, on ? HIGH : LOW);
+    ledcWrite(PIN_BL, on ? blLevel : 0);
     on ? lcd->displayOn() : lcd->displayOff();
   } else if (!on) {
     // backlight wired to 3.3V: the light can't go off, and "display off" shows white on these screens,
     // so it goes black instead (move the screen's LED wire to a GPIO and set PIN_BL for a real off)
     lcd->fillScreen(0x0000);
   }
+}
+
+// the knob: read ~20x a second; low end gets the fine steps (that's where a camera needs it)
+void knobTick() {
+  static uint32_t at = 0;
+  if (PIN_POT < 0 || PIN_BL < 0 || millis() - at < 50) return;
+  at = millis();
+  long raw = analogRead(PIN_POT);
+  int v = 4 + raw * raw / 66800;   // 4..255, never fully dark
+  if (v == blLevel || (abs(v - blLevel) < 3 && v != 255 && v != 4)) return;   // ignore the ADC's jitter
+  blLevel = v;
+  if (screenOn) ledcWrite(PIN_BL, blLevel);
+}
+
+// ---- test looks from LazyTrack: only on this screen for 30 s, nothing is saved or sent back
+Card realCard;
+void testTick() {
+  if (testUntil && (millis() > testUntil || eggTest == "end")) {
+    testUntil = 0; eggTest = ""; card = realCard; msgUntil = 0; netKick = true; needRedraw = true;
+    return;
+  }
+  if (!eggTest.length() || eggTest == "end" || !card.ok) { eggTest = ""; return; }
+  String t = eggTest; eggTest = "";
+  // the workout: "gym" = the whole thing, the others loop one exercise (WK_EX order; "rest" = rests + shake), for 30 s
+  static const char *WKT[8] = {"curls", "press", "squats", "rope", "pull", "bench", "rest", "gym"};
+  for (int k = 0; k < 8; k++) if (t == WKT[k]) {
+    if (!screenOn) setScreen(true);
+    coolStart = 0; view = V_HOME; msgUntil = 0;
+    if (!card.wkFrames) { drawFrame(); showMsg("NO GYM PICS", "update LazyTrack, then sync", 4000); return; }
+    wkOn = true; wkPin = k < 7 ? (k == 6 ? WK_NEX : k) : -1; wkSeed = random(1 << 30); wkStart = millis(); wkUntil = millis() + 30000;
+    drawFrame();
+    return;
+  }
+  if (!testUntil) realCard = card;
+  else card = realCard;   // a new test while one runs: start from the real Mochi again
+  testUntil = millis() + 30000;
+  if (!screenOn) setScreen(true);
+  coolStart = 0; view = V_HOME; msgUntil = 0;
+  auto tier = [](int hp, const char *k, const char *n) { card.hp = hp; card.tier = k; card.tierName = n; };
+  if (t == "dead") { tier(0, "sick", "CRITICAL"); showMsg("R.I.P. " + card.name.substring(0, 8), "TEST: Mochi died", 30000); tuneDown(); }
+  else if (t == "lowhp") { tier(10, "sick", "CRITICAL"); tuneDown(); }
+  else if (t == "sad") { tier(35, "tired", "TIRED"); tuneDown(); }
+  else if (t == "legend") { tier(95, "legend", "LEGENDARY"); tuneUp(); }
+  else if (t == "drunk") card.drunk = 2;
+  else if (t == "high") card.high = 2;
+  else if (t == "cough") card.coughy = 2;
+  else if (t == "sleepy") { card.hasAsleep = true; card.asleepNow = true; }
+  else { testUntil = 0; card = realCard; return; }   // a test this egg doesn't know yet
+  drawFrame();
 }
 
 // ---------------------------------------------------------------- main
@@ -1894,7 +2099,7 @@ void setup() {
   httpLock = xSemaphoreCreateRecursiveMutex();
   LOCK();   // setup draws; loop() takes it from here
   for (auto &b : btns) { pinMode(b.pin, INPUT_PULLUP); attachInterruptArg(digitalPinToInterrupt(b.pin), btnEdge, &b, CHANGE); }
-  if (PIN_BL >= 0) { pinMode(PIN_BL, OUTPUT); digitalWrite(PIN_BL, HIGH); }
+  if (PIN_BL >= 0) { ledcAttach(PIN_BL, 20000, 8); ledcWrite(PIN_BL, blLevel); }   // 20 kHz: no flicker bands on camera
   // 27 MHz like TFT_eSPI: fast enough, and steady over jumper wires (faster can give a white screen)
   if (!lcd->begin(SPI_HZ)) Serial.println("screen didn't start: check the wiring and the chip setting");
   Serial.printf("LazyTrack Egg: screen %s on CS %d DC %d RST %d SCK %d MOSI %d\n",
@@ -2050,6 +2255,7 @@ void eggCommands() {   // "make him sing", "find my egg", "sync now" from LazyTr
     if (cmd == "sing") eggCmd |= 1;
     else if (cmd == "find") eggCmd |= 2;
     else if (cmd == "sync") netKick = true;
+    else if (cmd.startsWith("test:")) eggTest = cmd.substring(5);
   }
   String r;
   api("DELETE", "/rest/v1/egg_commands?id=in.(" + ids + ")", "", r, "return=minimal");
@@ -2191,8 +2397,8 @@ void act(int b) {   // b: 0 = next / menu, 1 = OK / pet, 2 = back / screen off (
       } else transition(V_INFO, true);
       break;
     case V_LOG:
-      if (b == 0 && nhabits) { logSel = (logSel + 1) % nhabits; drawFrame(); }
-      else if (b == 1 && nhabits) doLog(logSel);
+      if (b == 0 && nhabits) { logSel = (logSel + 1) % logRows(); drawFrame(); }
+      else if (b == 1 && nhabits) { if (logSel == nhabits) toggleGym(); else doLog(logSel); }
       else if (b == 2) transition(V_MENU, false);
       break;
     case V_FRIENDS:
@@ -2336,7 +2542,7 @@ void onTap(int x, int y) {
     case V_LOG: {
       if (top || !nhabits) { act(2); return; }
       int first = logSel >= 9 ? logSel - 8 : 0, i = first + (y - 52) / 26;
-      if (y > 290 || i >= nhabits) return;
+      if (y > 290 || i >= logRows()) return;
       if (i == logSel) act(1); else { logSel = i; tuneClick(); drawFrame(); }
       return;
     }
@@ -2414,6 +2620,8 @@ void uiLoop() {
   static int lastMin = -1;   // the clock on Home (and "playing for 25m") move on every minute
   if (clockOk() && minuteNow() != lastMin) { if (lastMin >= 0 && view == V_HOME && screenOn) needRedraw = true; lastMin = minuteNow(); }
   songTick();
+  testTick();
+  knobTick();
   bleCheck();
   int b = pressed();
   if (b >= 0) onButton(b);
@@ -2423,11 +2631,6 @@ void uiLoop() {
 
   // ~8 fps, standing on the ground: blinks, wobbles when drunk, sways when high, shakes when coughing.
   // Only redrawn when something changes, so the screen stays calm.
-  // the legendary cool move: out of nowhere, every 15-30 minutes when Mochi is Legendary
-  if (card.tier == "legend" && !coolStart && screenOn && view == V_HOME && !asleep()) {
-    if (!nextCool) nextCool = millis() + (15 + random(16)) * 60000UL;
-    else if (millis() > nextCool) { nextCool = 0; playCool(); }
-  }
   if (coolStart) {
     static uint32_t coolTick = 0;
     if (view != V_HOME || !screenOn) { coolStart = 0; }
@@ -2439,6 +2642,12 @@ void uiLoop() {
     }
     return;   // nothing else draws while it plays
   }
+  wkCheck();
+  if (wkOn) {   // working out: a new picture whenever the frame changes (the rest of the loop still runs)
+    static const WkF *lastWf = nullptr;
+    const WkF *f = wkFrame();
+    if (f != lastWf && view == V_HOME && screenOn && !singing()) { lastWf = f; wkDraw(); }
+  }
   static uint32_t zTick = 0;
   if (screenOn && view == V_HOME && millis() > msgUntil && asleep() && !singing() && millis() - zTick > 90) { zTick = millis(); drawZs(zTick); }
   static uint32_t nTick = 0;   // singing: notes float up
@@ -2446,20 +2655,8 @@ void uiLoop() {
   static bool wasSinging = false;
   if (wasSinging && !singing() && screenOn && view == V_HOME) drawFrame();   // song over: clear the notes
   wasSinging = singing();
-  // now and then he just sings a little (awake, you're looking at him): every 1-3 hours
-  static uint32_t nextSong = 0;
-  if (!nextSong) nextSong = millis() + (60 + random(121)) * 60000UL;
-  if (millis() > nextSong) {
-    nextSong = 0;
-    if (screenOn && view == V_HOME && !asleep() && !coolStart && !singing()) SING(SONG_MOCHI);
-  }
-  // falling asleep: a lullaby; waking up: a little good-morning jingle
-  static int sleptBefore = -1;
-  int sleepsNow = asleep();
-  if (card.ok && sleptBefore >= 0 && sleepsNow != sleptBefore && screenOn && !singing()) { if (sleepsNow) SING(SONG_LULLABY); else SING(SONG_WAKE); }
-  if (card.ok) sleptBefore = sleepsNow;
   static int lastDx = 99; static bool lastBlink = false;
-  if (screenOn && view == 0 && millis() - tick > 120) {
+  if (screenOn && view == 0 && !wkOn && millis() - tick > 120) {
     tick = millis();
     uint32_t t = millis();
     if (t > nextBlink) { blinkEnd = t + 160; nextBlink = t + 3500 + random(2500); }
@@ -2473,6 +2670,8 @@ void uiLoop() {
     bool cough = card.coughy && (t / 300) % (14 - card.coughy * 3) == 0;
     static bool lastCough = false;
     bool hearts = t < petUntil + 150;
-    if (dx != lastDx || blink != lastBlink || cough != lastCough || hearts) { drawStage(dx, blink, cough); lastDx = dx; lastBlink = blink; lastCough = cough; }
+    static int lastBh = 0;
+    int bh = breathH();
+    if (dx != lastDx || blink != lastBlink || cough != lastCough || hearts || bh != lastBh) { drawStage(dx, blink, cough); lastDx = dx; lastBlink = blink; lastCough = cough; lastBh = bh; }
   }
 }

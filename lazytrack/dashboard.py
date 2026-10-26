@@ -181,6 +181,7 @@ def make_handler(cfg: dict):
                     "life_day": life.logged_day(sel.isoformat()) if sel != date.today() else None,
                     "recent_events": [dict(r) for r in db.conn().execute(
                         "SELECT id, ts, device, kind, source FROM events ORDER BY ts DESC LIMIT 15")],
+                    "gym_at": int(float(db.kv_get("gym_at") or 0)),   # at the gym since (0 = not there): Mochi works out
                     "now": time.time(),
                 })
             return self._send(404, {"error": "not found"})
@@ -221,6 +222,13 @@ def make_handler(cfg: dict):
                     return self._send(400, {"error": str(e)})
             if u.path.startswith("/api/cloud/"):
                 return self._cloud_post(u.path, b)
+            if u.path == "/api/notify":
+                # a friend wrote / poked while the window is hidden: the page can't make sound then, the computer can
+                if not self._local():
+                    return self._send(403, {"error": "Only on the computer itself."})
+                system.notify("Mochi", str(b.get("msg", ""))[:200], sound=False)
+                system.chime()
+                return self._send(200, {"ok": True})
             if u.path == "/api/lab/system-popup":
                 # the admin Test lab: the real Mac/Windows question, with your real "last cigarette" line; logs nothing
                 if not self._local():
@@ -312,6 +320,10 @@ def make_handler(cfg: dict):
                                    note=str(b.get("note", ""))[:200],
                                    ts=float(b["ts"]) if b.get("ts") else None)
                 return self._send(200, {"ok": True, "id": eid})
+            if u.path == "/api/gym":
+                # {"at": true|false}: you got to the gym (the phone saw you arrive, or "I'm at the gym") or left
+                db.kv_set("gym_at", int(time.time()) if b.get("at") else 0)
+                return self._send(200, {"ok": True})
             if u.path == "/api/event/delete":
                 return self._send(200, {"ok": db.delete_event(int(b.get("id", 0)))})
             if u.path == "/api/metric":

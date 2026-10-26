@@ -109,6 +109,9 @@
   .eggrows > div:last-child { border-bottom: 0; padding-bottom: 0; }
   .eggrows span:first-child { color: var(--ink-2); } .eggrows b { text-align: right; overflow-wrap: anywhere; }
   .eggbtns { display: flex; gap: 10px; flex-wrap: wrap; }
+  .eggtests { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .eggtests span { width: 100%; font-size: 12px; opacity: .7; }
+  .eggtests .btn { padding: 4px 9px; font-size: 12px; }
   .eggcard { border: 3px solid var(--line); border-radius: 18px; padding: 14px; display: grid; gap: 10px; background: var(--soft); }
   .eggcard h3 { font: 700 14px var(--pixel); margin: 0; }
   .eggtog { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-weight: 800; font-size: 17px; }
@@ -253,8 +256,11 @@
   #pet, .pet.bob { will-change: transform; }   /* animate as one picture, so no thin lines show between the pixels */
   .petbox.scene { width: 168px; height: 168px; } .petbox.scene .pet { grid-template-columns: repeat(16, 5px); grid-auto-rows: 5px; }
   .fcard .fpet.scene { width: 88px; height: 88px; } .fcard .fpet.scene .pet { grid-template-columns: repeat(16, 3px); grid-auto-rows: 3px; }
-  /* Mochi stands still on its feet; on Home it breathes in whole pixels (see petAnim). Only the welcome screen floats. */
+  /* Mochi stands still on its feet; on Home it breathes: a small squish (shorter and wider, feet stay put) the screen
+     draws smoothly, so no pixel row ever jumps or vanishes. Only the welcome screen floats. */
   .pet.bob { animation: none; }
+  .petbox .pet.bob:not(.hop):not(.coughing):not(.wk) { animation: breathe 3.6s ease-in-out infinite; }   /* a poke (#petcard.poked) still wins */
+  @keyframes breathe { 45%, 55% { transform: scale(1.03, .955); } }
   @keyframes bob { 50% { transform: translateY(-4px); } }
   /* Mochi's states: swaying when high, wobbling when drunk, shaking on a cough, a little hop when idle */
   .pet.high1 { animation: haze 4.5s ease-in-out infinite; } .pet.high2 { animation: haze 3.6s ease-in-out infinite; }
@@ -751,6 +757,8 @@
   #settings [data-cat].offcat { display: none; }
   @media (max-width: 560px) { .setcats { flex-wrap: nowrap; overflow-x: auto; } .setcats::before, .setcats::after { display: none; } .setcats button { flex: none; font-size: 14px; padding: 7px 11px; } }
   #settings h2 { font-family: var(--pixel); font-size: 15px; margin: 0 0 4px; }
+  #settings h2.scat { font-size: 28px; margin: 14px 0 -4px; grid-column: 1 / -1; }
+  #settings h2.scat:first-child { margin-top: 0; }
 
   /* ------------------------------------------------------------ toast + offline */
   .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom)); transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
@@ -991,6 +999,7 @@
   #home h2.quickh, #home h2.quickh + .sub { display: none; }
   #petcard .pettop { display: flex; flex-direction: column; flex-wrap: nowrap !important; align-items: stretch; gap: 14px; }
   .pwin { position: relative; flex: none; }
+  .gymbtn { margin-top: 8px; font-size: 12px; padding: 4px 10px; }
   #petBox.scene { width: 100%; height: auto; aspect-ratio: 4 / 3; border: 0; box-shadow: var(--pxf);
     background-size: 100% auto !important; background-position: center bottom !important; }
   /* the scenes are square with the ground 16% from the bottom; on a 4:3 window that is 21.33% of the height */
@@ -1552,7 +1561,7 @@ addEventListener("resize", fitPage);
     <section class="card petcard" id="petcard">
       <div class="pettop">
         <div class="pwin"><div class="petbox" id="petBox"><canvas class="petfx" id="petFx" width="21" height="21" aria-hidden="true"></canvas><div class="pet" id="pet" role="img" aria-label="Your pet"></div></div><div class="phud" id="petHud"></div></div>
-        <div class="petside"><div class="petwho" id="petWho" hidden></div><div class="statsheet" id="statsheet" aria-label="Today's stats"></div></div>
+        <div class="petside"><div class="petwho" id="petWho" hidden></div><div class="statsheet" id="statsheet" aria-label="Today's stats"></div><button type="button" class="btn gymbtn" id="gymBtn" hidden></button></div>
       </div>
       <div class="saywrap" id="sayWrap">
       <div class="speech" id="petSpeech">
@@ -1984,6 +1993,11 @@ addEventListener("resize", fitPage);
         <div class="petbox scene" id="labBox"><div class="pet" id="labPet"></div></div>
         <div class="labctl" id="labCtl"></div>
       </div>
+      <div class="label" style="margin-top:14px">WORKOUT <span class="note" id="labWkNow"></span></div>
+      <p class="note" style="margin-bottom:6px">Plays right here in the Mochi above. "Whole workout" is what Home shows while you're at the gym (sets sped up to 12 s here); the others loop one exercise.</p>
+      <div class="labbtns">
+        <button type="button" class="btn" data-lab="wk">▶ Whole workout</button><button type="button" class="btn" data-lab="wk:curls">Curls</button><button type="button" class="btn" data-lab="wk:press">Overhead press</button><button type="button" class="btn" data-lab="wk:squats">Squats</button><button type="button" class="btn" data-lab="wk:rope">Jump rope</button><button type="button" class="btn" data-lab="wk:pullup">Pull-up</button><button type="button" class="btn" data-lab="wk:bench">Bench press</button><button type="button" class="btn" data-lab="wk:rest">Rest + shake</button><button type="button" class="btn" data-lab="wkstop">■ Stop</button>
+      </div>
       <label class="labflag"><input type="checkbox" id="labHome"> Show this Mochi on Home too (until you turn it off or restart)</label>
       <div class="label" style="margin-top:18px">TEMPORARY HP</div>
       <p class="note" style="margin-bottom:8px">Changes only what this local app displays. It is not saved to your Mochi, is not synced, and clears when Mochi restarts.</p>
@@ -2024,6 +2038,7 @@ addEventListener("resize", fitPage);
     </nav>
     <form id="sForm" autocomplete="off" novalidate>
       <!-- like the sketch: short boxes, one line per setting, the control on the right; the long how-to text is folded away -->
+      <h2 class="scat" data-cat="tracking">📷 Tracking</h2>
       <section class="card pad hcard" data-cat="tracking">
         <h3>TRACKING <small>stays on this computer</small></h3>
         <label class="srow"><span>Count me as away after<small>Minutes with no mouse or keys. Videos and calls still count.</small></span>
@@ -2087,6 +2102,7 @@ addEventListener("resize", fitPage);
         <span class="note" id="sNote"></span>
       </div>
 
+      <h2 class="scat" data-cat="look">🎨 Look</h2>
       <section class="card pad hcard" data-cat="look">
         <h3>LOOK <small>changes right away</small></h3>
         <div class="srow"><span>Light or dark</span><div class="seg" role="radiogroup" aria-label="Light or dark">
@@ -2103,6 +2119,7 @@ addEventListener("resize", fitPage);
           <label><input type="radio" name="ui_sound" value="on"> On</label>
           <label><input type="radio" name="ui_sound" value="off"> Off</label>
         </div></div>
+        <label class="srow"><span>Volume<small id="sfxVolTxt">100%</small></span><input type="range" id="sfxVol" min="0" max="2" step="0.1" aria-describedby="sfxVolTxt"></label>
         <div class="srow col"><span>Color theme</span><div class="themes" id="themes" role="radiogroup" aria-label="Color theme"></div></div>
         <div class="srow col"><span>Background effect<small>Brighter when you're doing great.</small></span><div class="fxs" id="fxs" role="radiogroup" aria-label="Background effect"></div></div>
         <label class="srow"><span>Effect speed<small id="fxSpeedTxt">Normal</small></span><input type="range" id="fxSpeed" min="0.5" max="6" step="0.25" aria-describedby="fxSpeedTxt"></label>
@@ -2110,11 +2127,13 @@ addEventListener("resize", fitPage);
           <div class="actions"><button type="button" class="btn" data-sfx="msg">▶ Message</button><button type="button" class="btn" data-sfx="req">▶ Friend request</button></div></details>
       </section>
 
+      <h2 class="scat" data-cat="account">👤 Account</h2>
       <section class="card pad" id="sAccount" data-cat="account"></section>
       <section class="card pad hcard" id="sPlus" data-cat="account" hidden>
         <h3>⭐ MOCHI PLUS</h3>
         <div id="plusBox"><p class="note">Loading…</p></div>
       </section>
+      <h2 class="scat" data-cat="app">⚙️ App</h2>
       <section class="card pad hcard inapp" data-cat="app" hidden>
         <h3>IPHONE APP</h3>
         <div class="cambtns"><a class="btn primary" href="lazytrack-app://setup">📱 Phone settings</a><a class="btn" href="lazytrack-app://food">🍔 Food scanner</a></div>
@@ -2822,6 +2841,8 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
     if (high) mouth = FX_FACE.highMouth;
     if (drunk >= 2) mouth = FX_FACE.drunkMouth;
   }
+  if (fx.eyes) { eyes = fx.eyes; eyeY = fx.eyeY ?? 6; }   // a workout face
+  if (fx.mouth) mouth = fx.mouth;
   if (!fx.cough && !blink) eyes = shift(eyes, fx.dx || 0);
   if (fx.up && !fx.cough && !blink && pick("hat").rows.length < 6) eyeY -= 1;   // a hat brim would cover raised eyes
   put(drunk ? ["..PPP......PPP.."] : high ? ["...rc......cr..."] : ["...cc......cc..."], 8);   // flushed cheeks when drunk
@@ -2872,6 +2893,8 @@ function mochiCells(look, mood = "happy", tier = "okay", blink = false, fx = {})
     for (const gx of fx.glint || []) if (fx.shades + 1 >= 0 && fx.shades + 1 < 16) g[fx.shades + 1][gx] = "#ffffff";
   }
   // breathing out: everything above the feet (rows 14-15) sinks one pixel; stopping higher painted over 2-row mouths
+  // workout: on the bench Mochi is redrawn lying on his back (see WK)
+  if (fx.gym) { if (fx.gym.lie) for (const r of g) r.fill(null); for (const rows of fx.gym.over || []) put(rows); }
   if (fx.breath) { for (let y = 13; y > 0; y--) g[y] = g[y - 1]; g[0] = Array(16).fill(null); }
   return fx.grid ? g : petImg(g);   // grid: the plain colors, for the egg
 }
@@ -2900,6 +2923,8 @@ function petImg(g) {
     if (_petImgs.size > 300) _petImgs.clear();
     _petImgs.set(key, url);
   }
+  // the workout's 24x24 gym picture: still sized by his 16x16 cells, reaching 4 cells out to each side and 8 above
+  if (g[0].length === 24) return `<img class="petpx" src="${url}" alt="" style="grid-column:1/-1;grid-row:1/span 16;width:150%;height:150%;margin:-50% 0 0 -25%">`;
   return `<img class="petpx" src="${url}" alt="" style="grid-column:1/-1;grid-row:1/span ${g.length}">`;
 }
 
@@ -3293,6 +3318,9 @@ let LAB_PET = null;   // the Test lab's "show this Mochi on Home"
  * Each is 0-3. They wear off: weed within an hour of the last joint, drinks after about 5 hours.
  * Looking at an older day shows how that day ended.
  */
+// when you got to the gym (seconds), while you're there: the phone saw you arrive, or "I'm at the gym"; 0 = not there.
+// Gone after 4 hours, in case leaving never came through.
+const atGym = O => O && O.gym_at && Date.now() / 1000 - O.gym_at < 4 * 3600 ? O.gym_at : 0;
 function petState(O) {
   const t = O.today, n = k => (t.events || {})[k] || 0, now = Date.now() / 1000;
   const last = k => (O.recent_events || []).filter(e => e.kind === k).map(e => e.ts).sort((a, b) => b - a)[0];
@@ -3307,7 +3335,7 @@ function petState(O) {
   }
   const hc = O.is_today ? since("cigarette") : null;
   const coughy = !cigs ? 0 : cigs >= 10 ? 3 : cigs >= 6 ? 2 : hc != null && hc < 0.25 ? 1 : cigs >= 4 ? 1 : 0;
-  return {high, drunk, coughy, lastCig: last("cigarette") || 0};
+  return {high, drunk, coughy, lastCig: last("cigarette") || 0, lastGym: last("gym") || 0, gymAt: atGym(O)};
 }
 
 /**
@@ -3333,6 +3361,126 @@ function coolFrame(t) {
   if (t < 4520) return {shades: 5, smirk: true};
   if (t < 4730) return {shades: [4, 1, -2][Math.min(2, Math.floor((t - 4520) / 70))], smirk: true};
   return null;
+}
+const GYM_FACE = {
+  eyes: {sq: ["....k......k....", ".....k....k.....", "....k......k...."], det: ["....kk....kk....", ".....k....k....."],
+         hap: ["................", "....k.k..k.k...."], shut: ["................", "....kk....kk...."]},
+  mouths: {pro: ["......kkkk......", ".......rr......."], grit: ["......kkkk......", "......k..k......"], pant: [".......kk.......", ".......kk......."], none: []},
+};
+// ---------------------------------------------------------------- workout: Mochi working out at the gym
+// While you're at the gym Mochi trains for real: a ~45 s set of one exercise, a ~12 s rest (panting, sometimes a
+// protein shake), then the next one, in random order, until you leave. He does it in a 24x24 "gym picture": his
+// usual 16x16 at the bottom middle (columns 4-19, rows 8-23) with room around him for the gear.
+// A frame: {ms, f: face (WK_FACES), dy: rows up, sq: rows squatted down, back: gear behind him, over: gear in front}.
+// Gear rows are 24 characters, "." = nothing; colors are MOCHI_COL's, "b"/"B" = Mochi's own color.
+// The egg plays the same frames (device/LazyTrackEgg: WK tables, generated from this).
+const WK_FACES = ["n", "sq", "det", "hp", "hap", "shut", "pant", "ln", "le"];   // ln/le: lying on his back (bench)
+const WK = (() => {
+  const S = {};   // named gear pieces: [[row, 24 chars], ...]
+  const at = (x, s) => ".".repeat(x) + s + ".".repeat(24 - x - s.length);
+  const def = (name, rows) => (S[name] = rows, name);
+  const col = (x, y0, y1, ch = "o") => { const r = []; for (let y = y0; y <= y1; y++) r.push([y, at(x, ch)]); return r; };
+  const sweat = (y, x) => def(`sw${y}_${x}`, [[y, at(x, "u")]]);
+  // curls: a dumbbell in each hand (seen end-on, a round weight right by his side), one arm curls it from the hip
+  // up to the shoulder, then the other
+  const db = (side, top) => {
+    const x = side ? 18 : 2;
+    return def(`db${side}_${top}`, [[top, at(x, ".ll.")], [top + 1, at(x, "lssl")], [top + 2, at(x, "lssl")], [top + 3, at(x, ".ll.")],
+      [top + 1, at(side ? 18 : 5, "o")], [top + 2, at(side ? 18 : 5, "o")]]);
+  };
+  const curl = side => [[320, "det", 18], [200, "det", 16], [260, "sq", 13], [240, "sq", 13], [220, "det", 16], [320, "det", 18]]
+    .map(([ms, f, top]) => ({ms, f, over: [db(side, top), db(1 - side, 18)]}));
+  // a barbell held in both hands: plates out to the sides, the bar in front of him (resting on his head) or behind
+  // him (passing his head), hands on it and arms down to his shoulders (row 14 + how far he squatted)
+  const bar = (y, front, sq = 0) => {
+    const name = `bar${y}${front ? "f" : "b"}`;
+    def(name + "_bar", [[y + 1, at(3, "s".repeat(18))]]);
+    return def(name, [[y, at(1, "ll" + ".".repeat(18) + "ll")], [y + 1, at(1, "llS" + ".".repeat(16) + "Sll")],
+      [y + 2, at(1, "ll" + ".".repeat(18) + "ll")], [y + 1, at(5, "o" + ".".repeat(12) + "o")],
+      ...col(5, y + 2, 14 + sq), ...col(18, y + 2, 14 + sq)]);
+  };
+  const lift = (y, sq = 0) => { const front = y >= 11 + sq, n = bar(y, front, sq);
+    return front ? {over: [n + "_bar", n]} : {back: [n + "_bar"], over: [n]}; };
+  // overhead press: from resting on his head to straight up
+  const press = [[400, "det", 11], [220, "det", 7], [260, "sq", 3], [300, "sq", 3], [250, "det", 7], [350, "det", 11]]
+    .map(([ms, f, y]) => ({ms, f, ...lift(y)}));
+  // squats: the bar on his head and shoulders, he sinks down (two rows of his middle fold away, feet wider) and back up
+  const squat = [[350, "det", 0], [250, "det", 1], [300, "sq", 2], [300, "sq", 2], [250, "det", 1], [350, "det", 0]]
+    .map(([ms, f, sq]) => ({ms, f, sq, ...lift(11 + sq, sq)}));
+  // jump rope: over his head, in front of his shins, under his feet (he's in the air), behind him
+  const hands = dy => def(`rh${dy}`, [[18 - dy, at(5, "o" + ".".repeat(12) + "o")]]);
+  const rope = [
+    {ms: 150, f: "det", over: [hands(0), def("ropeUp", [[6, at(6, "r".repeat(12))], ...col(5, 7, 17, "r"), ...col(18, 7, 17, "r")])]},
+    {ms: 120, f: "det", over: [hands(0), def("ropeFront", [[21, at(6, "r".repeat(12))], ...col(5, 19, 20, "r"), ...col(18, 19, 20, "r")])]},
+    {ms: 170, f: "hap", dy: 2, over: [hands(2), def("ropeUnder", [[23, at(6, "r".repeat(12))], ...col(5, 17, 22, "r"), ...col(18, 17, 22, "r")])]},
+    {ms: 120, f: "det", back: [def("ropeBack", [[11, at(6, "r".repeat(12))]])], over: [hands(0), def("ropeBackSides", [...col(5, 12, 17, "r"), ...col(18, 12, 17, "r")])]},
+  ];
+  // pull-up: a rig with posts on both sides, he hangs from the bar and pulls himself up until his head reaches it
+  def("rig", [[2, at(1, "S" + "s".repeat(20) + "S")], ...col(1, 3, 22, "S"), ...col(22, 3, 22, "S"), [23, "SSS" + ".".repeat(18) + "SSS"]]);
+  const arms = dy => def(`pa${dy}`, [[2, at(5, "o" + ".".repeat(12) + "o")], ...col(5, 3, 13 - dy), ...col(18, 3, 13 - dy)]);
+  const pull = [[400, "n", 1], [200, "det", 3], [200, "sq", 5], [350, "sq", 6], [200, "det", 5], [200, "det", 3], [300, "n", 1]]
+    .map(([ms, f, dy]) => ({ms, f, dy, over: ["rig", arms(dy)]}));
+  // bench press: lying on a bench, the barbell seen from the side (one round plate), pushed up and lowered
+  def("bench", [[19, at(3, "N".repeat(18))], [20, at(3, "n".repeat(18))], ...col(5, 21, 22, "S"), ...col(18, 21, 22, "S"),
+    [23, at(4, "SSS" + ".".repeat(10) + "SSS")]]);
+  const plate = top => def(`bp${top}`, [[top, at(10, ".lll.")], [top + 1, at(10, "lllll")], [top + 2, at(10, "llsll")],
+    [top + 3, at(10, "lllll")], [top + 4, at(10, ".lll.")], ...Array.from({length: 14 - top - 4}, (_, i) => [top + 5 + i, at(11, "bob")])]);
+  const bench = [[450, "ln", 9], [200, "le", 7], [300, "le", 4], [300, "ln", 4], [250, "ln", 7], [300, "ln", 9]]
+    .map(([ms, f, top]) => ({ms, f, over: ["bench", plate(top)]}));
+  // rest: panting with sweat running down; protein shake breaks: the shaker from his side up to his mouth
+  def("shaker", [[13, at(19, ".S.")], [14, at(19, "www")], ...[15, 16, 17, 18].map(y => [y, at(19, "uuu")]), [19, at(19, "UUU")], [17, at(18, "o")]]);
+  def("sip", [[13, at(14, ".S.")], [14, at(14, "www")], ...[15, 16, 17].map(y => [y, at(14, "uuu")]), [18, at(14, "UUU")]]);
+  const rest = [0, 1, 2, 3, 4, 5, 6, 7].map(i => ({ms: 380, f: i % 2 ? "pant" : "hap", over: [sweat(10 + i, 5), sweat(10 + (i + 4) % 8, 18)]}));
+  const shake = [{ms: 700, f: "pant", over: ["shaker"]}, {ms: 1600, f: "shut", over: ["sip"]}, {ms: 900, f: "hp", over: ["shaker"]}];
+  return {S, ex: {curls: [...curl(0), ...curl(1)], press, squats: squat, rope, pullup: pull, bench}, rest, shake};
+})();
+const WK_SET = 45000, WK_REST = 12000;   // ms: one set, the rest after it
+// Mochi's face for each WK_FACES name, as mochiCells options (unset eyes/mouth keep his own)
+const WK_FACE_FX = {
+  n: {}, sq: {eye: "sq", eyeY: 5, mouth: "grit"}, det: {eye: "det", mouth: "pro"}, hp: {eye: "hap", mouth: "pro"}, hap: {eye: "hap"},
+  shut: {eye: "shut", mouth: "none"}, pant: {eye: "hap", mouth: "pant"},
+  ln: {lie: {8: "....k..k........", 9: "...c.kk.c......."}}, le: {lie: {8: "...kk..kk.......", 9: "...c.kk.c......."}},
+};
+const WK_LYING = {7: "....oooooooo....", 8: "...obbbbbbbbo...", 9: "..obbbbbbbbbboo.", 10: "..oBBBBBBBBBBobo"};
+const wkFx = f => { const v = WK_FACE_FX[f];
+  return v.lie ? {gym: {lie: true, over: [WK_LYING, v.lie]}} : {eyes: GYM_FACE.eyes[v.eye], eyeY: v.eyeY, mouth: GYM_FACE.mouths[v.mouth]}; };
+const wkLoop = (frs, t) => { t %= frs.reduce((a, f) => a + f.ms, 0); for (const f of frs) { if (t < f.ms) return f; t -= f.ms; } return frs[0]; };
+/**
+ * What Mochi does t ms into a workout: {name, rest, fr}. The order of the exercises is shuffled from the seed (the
+ * time you got to the gym), so the app and the egg show the same thing. pin: only that exercise ("rest": the rests).
+ */
+function wkAt(t, seed, pin) {
+  const names = Object.keys(WK.ex), cyc = WK_SET + WK_REST, i = Math.floor(t / cyc), u = t % cyc;
+  const shakeLen = WK.shake.reduce((a, f) => a + f.ms, 0);
+  if (pin === "rest") { const v = t % (shakeLen + 4 * 3040); return {name: "rest", rest: true, fr: v < shakeLen ? wkLoop(WK.shake, v) : wkLoop(WK.rest, v - shakeLen)}; }
+  if (pin) return {name: pin, rest: false, fr: wkLoop(WK.ex[pin], t)};
+  const o = names.slice();   // a new shuffle for every round of all six
+  let r = (seed + Math.floor(i / o.length) * 7919) >>> 0;
+  for (let k = o.length - 1; k > 0; k--) { r = (Math.imul(r, 1103515245) + 12345) >>> 0; const j = (r >>> 16) % (k + 1); [o[k], o[j]] = [o[j], o[k]]; }
+  const name = o[i % o.length];
+  if (u < WK_SET) return {name, rest: false, fr: wkLoop(WK.ex[name], u)};
+  const v = u - WK_SET;   // every other rest starts with a protein shake
+  return {name, rest: true, fr: i % 2 && v < shakeLen ? wkLoop(WK.shake, v) : wkLoop(WK.rest, v)};
+}
+/** One workout frame as Mochi's picture: his look in the 24x24 gym picture (see WK). */
+const _wk = {key: "", sp: null, col: null};
+function wkImg(look, mood, tier, fr) {
+  const key = JSON.stringify([look, mood, tier]);
+  if (_wk.key !== key) {
+    _wk.sp = Object.fromEntries(WK_FACES.map(f => [f, mochiCells(look, mood, tier, false, {...wkFx(f), noZ: true, grid: true})]));
+    _wk.col = {...MOCHI_COL, b: _wk.sp.ln[8][10], B: _wk.sp.ln[10][5]};   // his color, from the lying pose
+    _wk.key = key;
+  }
+  const g = Array.from({length: 24}, () => Array(24).fill(null)), m = _wk.sp[fr.f].map(r => r.slice());
+  if (fr.sq) {   // squat: rows of his middle fold away, feet a step wider
+    m.splice(12, fr.sq); for (let i = 0; i < fr.sq; i++) m.unshift(Array(16).fill(null));
+    for (const y of [14, 15]) { const r = m[y]; m[y] = r.map((_, x) => x < 8 ? r[x + 1] ?? null : r[x - 1] ?? null); }
+  }
+  m.forEach((r, y) => r.forEach((c, x) => { const gy = 8 + y - (fr.dy || 0); if (c && gy >= 0 && gy < 24) g[gy][x + 4] = c; }));
+  const put = (names, behind) => { for (const n of names || []) for (const [y, r] of WK.S[n]) for (let x = 0; x < 24; x++)
+    if (r[x] !== "." && (!behind || !g[y][x])) g[y][x] = _wk.col[r[x]]; };
+  put(fr.back, true); put(fr.over, false);
+  return petImg(g);
 }
 // pixel fire (the classic "Doom fire": heat rises row by row, cooling and drifting at random) + explosions
 const FIRE_PAL = [[40,6,10],[56,8,10],[72,10,10],[88,12,10],[104,14,10],[120,17,11],[136,21,12],[152,24,13],[168,27,14],[183,32,15],[193,41,16],[203,51,18],[213,60,19],[224,69,20],[229,80,22],[234,91,24],[238,103,27],[243,114,29],[246,126,31],[248,137,33],[251,149,36],[253,160,38],[255,171,41],[255,182,50],[255,192,59],[255,202,69],[255,212,78],[255,220,95],[255,227,116],[255,234,137],[255,241,157],[255,246,177],[255,248,197],[255,250,216],[255,253,236],[255,255,255]];
@@ -3394,7 +3542,7 @@ const fireFx = {
 
 const petAnim = {
   base: {mood: "happy", tier: "okay"}, t: 0, timer: null, seenCig: null,
-  idle: null, idleEnd: 0, nextIdle: 0, coughEnd: 0, nextCough: 0, cls: "", coolStart: 0, coolTimer: null, nextCool: 0,
+  idle: null, idleEnd: 0, nextIdle: 0, coughEnd: 0, nextCough: 0, cls: "", coolStart: 0, coolTimer: null, seenGym: null, wk: null, wkTimer: null,
   playCool() {   // "deal with it"
     if (this.coolStart) return;
     this.coolStart = Date.now(); this.idle = null;
@@ -3403,8 +3551,18 @@ const petAnim = {
     setTimeout(() => fireFx.start(), 650);                     // fire + explosions when the glint hits
     setTimeout(() => sfx.play("cool"), 640);
   },
+  // a workout: {t0: ms it started, seed: the exercise order, until: ms it ends (0 = while you're at the gym)}
+  startWk(w) { this.wk = w; this.idle = null; clearInterval(this.wkTimer); this.wkTimer = setInterval(() => this.render(), 60); this.render(); },
+  stopWk() { this.wk = null; clearInterval(this.wkTimer); this.wkTimer = null; $("pet").classList.remove("wk"); this.render(); },
   set(base) {
     const b = this.base = base;
+    // at the gym: Mochi works out until you leave. A gym log otherwise (a tap, the phone after you left): one set.
+    if (calm && b.gymAt) { if (!this.wk || this.wk.seed !== b.gymAt) this.startWk({t0: b.gymAt * 1000, seed: b.gymAt, until: 0}); }
+    else if (this.wk && !this.wk.until) this.stopWk();
+    if (calm && !b.gymAt && this.seenGym != null && b.lastGym > this.seenGym && Date.now() / 1000 - b.lastGym < 600)
+      this.startWk({t0: Date.now(), seed: b.lastGym, until: Date.now() + WK_SET});
+    this.seenGym = b.lastGym || 0;
+    gymButton(b.gymAt);
     // a cigarette that just got logged (by a tap or the camera): cough right away
     if (this.seenCig != null && b.lastCig > this.seenCig && Date.now() / 1000 - b.lastCig < 600) this.cough();
     this.seenCig = b.lastCig || 0;
@@ -3418,13 +3576,8 @@ const petAnim = {
     const now = Date.now(), b = this.base;
     this.t++;
     if (this.idle && now > this.idleEnd) this.idle = null;
-    // legendary Mochi pulls the cool move out of nowhere, every 15-30 minutes
-    if (b.tier === "legend" && !this.coolStart) {
-      if (!this.nextCool) this.nextCool = now + (15 + Math.random() * 15) * 60000;
-      else if (now > this.nextCool && !this.idle) { this.nextCool = 0; this.playCool(); }
-    }
     // idle moves, only when nothing else is going on
-    if (!this.idle && now > this.nextIdle) {
+    if (!this.idle && !this.wk && now > this.nextIdle) {
       const busy = b.drunk >= 2 || b.high >= 2 || b.mood === "sleepy";
       const moves = busy ? ["blink", "blink"] : ["blink", "blink", "blink", "left", "right", "up", "lookaround", "hop"];
       const m = moves[Math.floor(Math.random() * moves.length)];
@@ -3456,14 +3609,15 @@ const petAnim = {
     else if (this.idle === "up") up = true;
     else if (this.idle === "lookaround") dx = [-1, -1, 0, 1, 1][Math.floor((now - this.idleStart) / 520) % 5];
     if ((b.drunk || b.high) && !this.idle) dx = Math.floor(this.t / 6) % 3 - 1;   // can't keep the eyes still
-    let breath = calm && !coughing && this.idle !== "hop" && Math.floor(now / 1700) % 2 === 1;
-    const fx = {high: b.high || 0, drunk: b.drunk || 0, cough: coughing, dx, up, frame: Math.floor(this.t / 2), breath};
+    const fx = {high: b.high || 0, drunk: b.drunk || 0, cough: coughing, dx, up, frame: Math.floor(this.t / 2)};   // breathing: CSS (.pet.bob)
     if (this.coolStart) {
       const cf = coolFrame(now - this.coolStart);
       if (cf) { Object.assign(fx, {shades: cf.shades, glint: cf.glint, smirk: cf.smirk, breath: !!cf.nod, dx: 0, up: false, cough: false}); blink = false; }
       else { this.coolStart = 0; clearInterval(this.coolTimer); this.coolTimer = null; fireFx.stop(); }
     }
-    $("pet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, blink, fx);
+    if (this.wk && this.wk.until && now > this.wk.until) { this.wk = null; clearInterval(this.wkTimer); this.wkTimer = null; }
+    $("pet").classList.toggle("wk", !!this.wk);
+    $("pet").innerHTML = this.wk ? wkImg(PET_LOOK, b.mood, b.tier, wkAt(now - this.wk.t0, this.wk.seed).fr) : mochiCells(PET_LOOK, b.mood, b.tier, blink, fx);
     liveScene.set({place: MOCHI.places[PET_LOOK.place] ? PET_LOOK.place : LOOK_DEFAULT.place, high: b.high || 0, tier: b.tier, soft: softColor(PET_LOOK)});
     // the body's motion: drunk wins over high, both win over the gentle bob
     const motion = b.drunk ? "drunk" + b.drunk : b.high ? "high" + b.high : "bob";
@@ -3474,6 +3628,19 @@ const petAnim = {
     }
   },
 };
+
+// "I'm at the gym" on Home: Mochi works out until you tap it again (or the phone sees you leave)
+function gymButton(at) {
+  const btn = $("gymBtn"); if (!btn) return;
+  btn.hidden = !HABITS.some(h => h.k === "gym");
+  btn.textContent = at ? `🏋️ Working out · ${Math.max(1, Math.round((Date.now() / 1000 - at) / 60))} min · Done` : "🏋️ I'm at the gym";
+  btn.dataset.at = at ? "1" : "";
+}
+document.addEventListener("click", async e => {
+  if (!e.target.closest("#gymBtn")) return;
+  try { await post("/api/gym", {at: !$("gymBtn").dataset.at}); } catch (_) {}
+  loadOverview();
+});
 
 // ---------------------------------------------------------------- shared pieces
 function rowHTML(k, value, cmp, extraLabel) {
@@ -4578,6 +4745,10 @@ async function refreshCloud() {
 // The egg checks in about once a minute (supabase/egg_status.sql); the panel mirrors its screen, says how it's
 // connected, and sends it "make him sing", "find my egg" and "sync now". Inside the iPhone app it also holds
 // the phone's Bluetooth link (keep the egg online, pairing), through the app (window.webkit.messageHandlers.egg).
+const EGG_TESTS = [["dead", "💀 Dead"], ["lowhp", "💔 Low HP"], ["sad", "😢 Sad"], ["legend", "⭐ Legendary"], ["drunk", "🍺 Drunk"],
+  ["high", "🌿 High"], ["cough", "😷 Coughing"], ["sleepy", "😴 Sleepy"], ["gym", "🏋️ Workout"],
+  ["curls", "💪 Curls"], ["press", "🙌 Press"], ["squats", "🦵 Squats"], ["rope", "🪢 Jump rope"], ["pull", "🧗 Pull-up"],
+  ["bench", "🛏️ Bench"], ["rest", "🥤 Rest + shake"], ["end", "↩ Back to real"]];
 const eggPanel = {
   st: null, native: null, open: false, timer: 0, lastFetch: 0,
   inApp: () => !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.egg),
@@ -4657,7 +4828,8 @@ const eggPanel = {
     else if (!e) body = `<p class="note">No egg has checked in yet. Two things make it show up here: run <code>supabase/egg_status.sql</code> in Supabase once, and upload the latest egg code. Then it checks in within a minute.</p>`;
     else body = `<div class="eggmain"><div class="eggshell" id="eggShell" aria-label="What your egg shows"><canvas id="eggCv" width="240" height="320"></canvas>
         <span class="bt" style="left:43px"></span><span class="bt" style="left:68px"></span><span class="bt" style="left:93px"></span></div>${this.rows()}</div>
-      <div class="eggbtns"><button type="button" class="btn primary" data-eggcmd="sing">🎵 Make him sing</button><button type="button" class="btn" data-eggcmd="find">📣 Find my egg</button><button type="button" class="btn" data-eggcmd="sync">🔄 Sync now</button></div>`;
+      <div class="eggbtns"><button type="button" class="btn primary" data-eggcmd="sing">🎵 Make him sing</button><button type="button" class="btn" data-eggcmd="find">📣 Find my egg</button><button type="button" class="btn" data-eggcmd="sync">🔄 Sync now</button></div>
+      <div class="eggtests"><span>Test on the egg (30 s, nothing saved)</span>${EGG_TESTS.map(([k, l]) => `<button type="button" class="btn" data-eggcmd="test:${k}">${l}</button>`).join("")}</div>`;
     let bt = "";
     if (n) bt = `<div class="eggcard">
         <label class="eggtog">Keep my egg online <input type="checkbox" class="eggsw" id="eggLinkOn" ${n.enabled ? "checked" : ""}></label>
@@ -4711,6 +4883,11 @@ const eggPanel = {
   async cmd(c, b) {
     b.disabled = true;
     try {
+      if (c.startsWith("test:")) {   // always through the server: the egg's Bluetooth link doesn't take tests
+        const r = await post("/api/cloud/egg/cmd", {cmd: c}), j = await r.json().catch(() => ({}));
+        toast(!r.ok ? j.error || "Couldn't reach your egg." : c === "test:end" ? "↩ Your egg goes back to the real Mochi" : "🧪 Your egg shows it in a few seconds, for 30 s", null);
+        return;
+      }
       if (await this.viaPhone(c)) {
         toast(c === "sing" ? "🎵 Mochi sings" : c === "find" ? "📣 Your egg is chirping: follow the sound" : "🔄 Your egg is syncing", null);
       } else {
@@ -4758,7 +4935,8 @@ const sfx = {
     try { this.ac = this.ac || new (window.AudioContext || window.webkitAudioContext)(); if (this.ac.state === "suspended") this.ac.resume(); } catch (_) {}
     return this.ac;
   },
-  on() { return (themePrefs().sound || "on") !== "off"; },
+  on() { return (themePrefs().sound || "on") !== "off" && this.vol() > 0; },
+  vol() { const v = themePrefs().volume; return v == null ? 1 : Math.min(2, Math.max(0, +v || 0)); },   // Settings > Look > Volume, 0–200%
   notes: {   // [frequency Hz, start s, length s]
     msg: {wave: "square", vol: .06, n: [[988, 0, .07], [1319, .08, .12]]},                      // bloop-bleep
     req: {wave: "triangle", vol: .16, n: [[523, 0, .09], [659, .09, .09], [784, .18, .09], [1047, .27, .2]]},   // ta-da
@@ -4776,17 +4954,26 @@ const sfx = {
       const o = ac.createOscillator(), g = ac.createGain();
       o.type = s.wave; o.frequency.value = f;
       g.gain.setValueAtTime(0, t0 + at);
-      g.gain.linearRampToValueAtTime(s.vol, t0 + at + .01);
+      g.gain.linearRampToValueAtTime(Math.max(.0001, s.vol * this.vol()), t0 + at + .01);
       g.gain.exponentialRampToValueAtTime(.0001, t0 + at + len);
       o.connect(g).connect(ac.destination);
       o.start(t0 + at); o.stop(t0 + at + len + .02);
     }
   },
 };
-// browsers only let a page make sound after you've clicked something once
-["pointerdown", "keydown"].forEach(ev => addEventListener(ev, () => sfx.ctx(), {once: true}));
+// browsers only let a page make sound after a click; every click also wakes it after sleep or a hidden window
+["pointerdown", "keydown"].forEach(ev => addEventListener(ev, () => sfx.ctx()));
+/** A friend wrote / asked / poked: Mochi's sound while you're in the window, else a real notification with the
+ *  computer's sound (a hidden or unfocused window often can't play sound, so the ping got lost before). */
+function ping(kind, text, showToast = true) {
+  if (showToast) toast(text, null);
+  if (!sfx.on()) return;
+  const ac = sfx.ctx();
+  if (document.hasFocus() && ac && ac.state === "running") sfx.play(kind);
+  else post("/api/notify", {msg: text}).catch(() => {});
+}
 
-let seenUnread = null;   // {messages, requests} from the last check; null = first check (no sound for old ones)
+let seenUnread = null;   // {last, requests} from the last check; null = first check (no sound for old ones)
 async function updateBadge() {
   if (!CLOUD.connected) { $("fBadge").hidden = true; seenUnread = null; return; }
   try {
@@ -4795,16 +4982,15 @@ async function updateBadge() {
     $("fBadge").hidden = !n; $("fBadge").textContent = n > 9 ? "9+" : n;
     if (seenUnread) {
       const inFriends = document.body.dataset.view === "friends";
-      if ((u.requests || 0) > seenUnread.requests) { sfx.play("req"); if (!inFriends) toast("👋 New friend request", null); }
-      else if ((u.messages || 0) > seenUnread.messages) { sfx.play("msg"); if (!inFriends) toast("💬 New message from a friend", null); }
+      if ((u.requests || 0) > seenUnread.requests) ping("req", "👋 New friend request", !inFriends);
+      else if ((u.last || 0) > seenUnread.last) ping("msg", "💬 New message from a friend", !inFriends);
     }
     for (const pk of u.pokes || []) {   // a friend poked / sent love / waved: always shown, once
-      sfx.play("poke");
-      toast(pk.kind === "love" ? `💖 ${pk.from} sent your Mochi love` : pk.kind === "wave" ? `👋 ${pk.from} waved at you` : `👉 ${pk.from} poked you`, null);
+      ping("poke", pk.kind === "love" ? `💖 ${pk.from} sent your Mochi love` : pk.kind === "wave" ? `👋 ${pk.from} waved at you` : `👉 ${pk.from} poked you`);
       const card = document.getElementById("petcard");
       if (card) { card.classList.remove("poked"); void card.offsetWidth; card.classList.add("poked"); }
     }
-    seenUnread = {messages: u.messages || 0, requests: u.requests || 0};
+    seenUnread = {last: Math.max(u.last || 0, seenUnread ? seenUnread.last : 0), requests: u.requests || 0};
   } catch (_) {}
 }
 // check every 15 seconds, also while Mochi is in the background, so the sound still plays
@@ -4821,7 +5007,7 @@ function buildCard() {
           palette: themePrefs().palette || "lavender", day: O.day, pet: PET_LOOK,
           // how Mochi is doing right now (drunk, high, coughing) so friends see it too; "built" = when
           mood: (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy",
-          fx: (({high, drunk, coughy}) => ({high, drunk, coughy}))(petState(O)), built: Math.round(Date.now() / 1000),
+          fx: (({high, drunk, coughy, lastGym, gymAt}) => ({high, drunk, coughy, gym: lastGym, gym_at: gymAt}))(petState(O)), built: Math.round(Date.now() / 1000),
           share_now: !shareKeys().includes("!now"), share_detail: !shareKeys().includes("!detail"),
           tzo: -new Date().getTimezoneOffset(),   // minutes from UTC: the egg knows when it's night for you
           sprite: deviceSprite(PET_LOOK, (document.getElementById("petcard") || {dataset: {}}).dataset.mood || "happy", O.health.tier),
@@ -4855,6 +5041,8 @@ function deviceSprite(look, mood, tier) {
     const n = frame(false), b = frame(true);
     val = n.length === 256 ? {w: 16, p: pal, n, b, h: frame(false, {high: 2}), d1: frame(false, {drunk: 1}), d2: frame(false, {drunk: 2}),
                               d3: frame(false, {drunk: 3}), c: frame(false, {cough: true})} : null;
+    // the workout faces and the lying pose ("g" + WK_FACES name); the egg adds the gear and the moves
+    if (val) for (const f of WK_FACES.slice(1)) val["g" + f] = frame(false, wkFx(f));
   } catch (_) {}
   spriteCache.key = key; spriteCache.val = val;
   return val;
@@ -5632,14 +5820,21 @@ const admin = {
       const b = this.labState(), n = ++this.labN, now = Date.now();
       const coughing = b.coughy && n % Math.max(4, 16 - b.coughy * 4) < 2;
       const dx = b.drunk || b.high ? Math.floor(n / 6) % 3 - 1 : 0;
-      $("labPet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, n % 14 === 0, {high: b.high, drunk: b.drunk, cough: coughing, dx, frame: Math.floor(n / 2), breath: calm && Math.floor(now / 1700) % 2 === 1});
+      if (!this.labWk) $("labPet").innerHTML = mochiCells(PET_LOOK, b.mood, b.tier, n % 14 === 0, {high: b.high, drunk: b.drunk, cough: coughing, dx, frame: Math.floor(n / 2)});
       setPlace($("labBox"), b.place || PET_LOOK.place, {frame: Math.floor(n / 2), high: b.high, tier: b.tier, soft: softColor(PET_LOOK)});
       const motion = b.drunk ? "drunk" + b.drunk : b.high ? "high" + b.high : "bob";
-      $("labPet").className = "pet" + (calm ? " " + motion : "");
+      $("labPet").className = "pet" + (calm ? " " + motion : "") + (this.labWk ? " wk" : "");
     };
-    draw(); this.labT = setInterval(draw, 300);
+    const drawWk = () => {   // the workout, at its own pace; whole workouts with 12 s sets so you see them all quickly
+      const w = this.labWk; if (!w || document.hidden) return;
+      const t = Date.now() - w.t0, u = t % 15000, quick = w.pin ? t : Math.floor(t / 15000) * (WK_SET + WK_REST) + (u < 12000 ? u : WK_SET + u - 12000);
+      const at = wkAt(quick, w.seed, w.pin), b = this.labState();
+      $("labPet").innerHTML = wkImg(PET_LOOK, b.mood, b.tier, at.fr);
+      $("labWkNow").textContent = "· " + (at.rest ? "resting" : {curls: "curls", press: "overhead press", squats: "squats", rope: "jump rope", pullup: "pull-ups", bench: "bench press"}[at.name]);
+    };
+    draw(); this.labT = setInterval(draw, 300); this.labWkT = setInterval(drawWk, 60);
   },
-  stopLab() { clearInterval(this.labT); this.labT = null; },
+  stopLab() { clearInterval(this.labT); clearInterval(this.labWkT); this.labT = this.labWkT = null; this.labWk = null; },
   async toggleStudio() {
     if (DEMO.on) DEMO.stop(); else await DEMO.start();
     this.drawStudio(); render();
@@ -5700,6 +5895,8 @@ const admin = {
     if (a === "idea") ideaBox.open();
     if (a === "nmsg") { sfx.play("msg", true); toast("💬 New message from a friend", null); }
     if (a === "cool") { if (currentTab() !== "home") go({tab: "home"}); setTimeout(() => petAnim.playCool(), currentTab() === "home" ? 50 : 700); }
+    if (a === "wkstop") { this.labWk = null; $("labWkNow").textContent = ""; }
+    else if (a.startsWith("wk")) this.labWk = {t0: Date.now(), seed: Date.now() >>> 0, pin: a.split(":")[1]};   // "wk" = the whole workout, "wk:rope" = that one
     if (a === "npoke") {
       sfx.play("poke", true); toast("👉 Test Friend poked you", null);
       const card = document.getElementById("petcard");
@@ -5913,11 +6110,14 @@ function drawThemePicker() {
   document.querySelectorAll('[name="ui_mode"]').forEach(el => { el.checked = el.value === (p.mode || "auto"); });
   document.querySelectorAll('[name="ui_motion"]').forEach(el => { el.checked = el.value === (p.motion || "on"); });
   document.querySelectorAll('[name="ui_sound"]').forEach(el => { el.checked = el.value === (p.sound || "on"); });
+  $("sfxVol").value = sfx.vol(); $("sfxVolTxt").textContent = Math.round(sfx.vol() * 100) + "%";
   $("fxSpeed").value = p.fxSpeed || 1; $("fxSpeedTxt").textContent = speedName(+p.fxSpeed || 1);
   const fx = FX[p.fx] ? p.fx : "mood";
   $("fxs").innerHTML = Object.entries(FX).map(([k, f]) => `<button type="button" class="fxb" role="radio" aria-checked="${k === fx}" data-fx="${k}">
       <span class="fxn">${esc(f.name)}</span><span class="fxd">${esc(f.desc)}</span></button>`).join("");
 }
+$("sfxVol").addEventListener("input", e => { $("sfxVolTxt").textContent = Math.round(e.target.value * 100) + "%"; });
+$("sfxVol").addEventListener("change", e => { saveTheme({volume: +e.target.value}); sfx.play("msg", true); });
 $("fxSpeed").addEventListener("input", e => { const v = +e.target.value; aura.speed = v; $("fxSpeedTxt").textContent = speedName(v); });
 $("fxSpeed").addEventListener("change", e => { const p = {...themePrefs(), fxSpeed: +e.target.value}; try { localStorage.setItem("lt-theme", JSON.stringify(p)); } catch (_) {} });
 $("fxs").addEventListener("click", e => { const b = e.target.closest(".fxb"); if (b) saveTheme({fx: b.dataset.fx}); });

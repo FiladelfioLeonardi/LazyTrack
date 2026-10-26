@@ -31,6 +31,9 @@ create table if not exists public.egg_commands (
   cmd text not null check (cmd in ('sing', 'find', 'sync')),
   created_at timestamptz not null default now()
 );
+-- test looks ("test:dead", "test:sad"...): the egg shows them for 30 s, nothing is saved
+alter table public.egg_commands drop constraint if exists egg_commands_cmd_check;
+alter table public.egg_commands add constraint egg_commands_cmd_check check (cmd in ('sing', 'find', 'sync') or cmd ~ '^test:[a-z]{1,12}$');
 create index if not exists egg_commands_user on public.egg_commands (user_id, id);
 alter table public.egg_commands enable row level security;
 drop policy if exists "own egg commands read" on public.egg_commands;

@@ -1,7 +1,8 @@
 import CoreLocation
 import Foundation
 
-/// Logs a gym visit automatically when you spend 30+ minutes inside the gym geofence.
+/// Logs a gym visit automatically when you spend 30+ minutes inside the gym geofence, and tells the Mac when you
+/// arrive and leave (Mochi works out while you are there).
 /// iOS wakes the app for region enter/exit even when it's closed (needs "Always" location).
 final class GymManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     static let shared = GymManager()
@@ -93,10 +94,12 @@ final class GymManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         guard region.identifier == "gym" else { return }
         UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: "gymEnteredAt")
+        Task { await Outbox.shared.atGym(true) }   // Mochi starts working out
     }
 
     func locationManager(_ manager: CLLocationManager, didExitRegion region: CLRegion) {
         guard region.identifier == "gym" else { return }
+        Task { await Outbox.shared.atGym(false) }  // ...and stops
         let t = UserDefaults.standard.double(forKey: "gymEnteredAt")
         UserDefaults.standard.removeObject(forKey: "gymEnteredAt")
         guard t > 0 else { return }

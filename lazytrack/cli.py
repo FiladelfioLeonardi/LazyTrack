@@ -1,4 +1,4 @@
-"""lazytrack command line: run | check | camtest | dashboard | summary | sync | log"""
+"""lazytrack command line: run | check | camtest | dashboard | summary | sync | log | egg"""
 from __future__ import annotations
 
 import argparse
@@ -206,6 +206,44 @@ def cmd_log(cfg: dict, args) -> None:
     print(f"logged {args.kind}")
 
 
+def cmd_egg(cfg: dict, args) -> None:
+    """`egg flash`: compile and upload the egg firmware over USB. `egg test gym`, `egg sing`...: send it a command."""
+    if args.what == "flash":
+        return _egg_flash(args.arg)
+    from . import cloud
+    cmd = f"test:{args.arg}" if args.what == "test" else args.what
+    if cmd not in cloud.EGG_CMDS:
+        tests = sorted(t for t in cloud.EGG_TESTS)
+        sys.exit(f"unknown: {cmd}\n  ./lt egg sing | find | sync | flash [port]\n  ./lt egg test <{' | '.join(tests)}>")
+    try:
+        cloud.egg_command(cmd)
+    except cloud.CloudError as e:
+        sys.exit(str(e))
+    print(f"sent {cmd}: the egg picks it up within ~12 s")
+
+
+EGG_FQBN = "esp32:esp32:esp32:PartitionScheme=min_spiffs"   # the firmware is ~1.6 MB: too big for the default 1.2 MB app partition
+
+
+def _egg_flash(port: str | None) -> None:
+    import glob
+    import shutil
+    import subprocess
+    from pathlib import Path
+    sketch = Path(__file__).resolve().parent.parent / "device" / "LazyTrackEgg"
+    cli = shutil.which("arduino-cli") or "/Applications/Arduino IDE.app/Contents/Resources/app/lib/backend/resources/arduino-cli"
+    if not os.path.exists(cli):
+        sys.exit("arduino-cli not found: install the Arduino IDE (or arduino-cli)")
+    if not (sketch / "secrets.h").exists():
+        sys.exit(f"missing {sketch / 'secrets.h'}: copy secrets.example.h and fill in your WiFi and account")
+    ports = [port] if port else glob.glob("/dev/cu.usbserial-*") + glob.glob("/dev/cu.SLAB_USBtoUART*") + glob.glob("/dev/cu.wchusbserial*")
+    if not ports:
+        sys.exit("no egg on USB: plug it in (a data cable, not a charge-only one)")
+    print(f"compiling and uploading to {ports[0]}...")
+    r = subprocess.run([cli, "compile", "--fqbn", EGG_FQBN, "--upload", "--port", ports[0], str(sketch)])
+    sys.exit(r.returncode)
+
+
 def _tailscale_exes():
     import shutil
     return [e for e in [shutil.which("tailscale"), "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
@@ -346,6 +384,9 @@ def main() -> None:
     lg = sub.add_parser("log", help="log an event, e.g. `lazytrack log gym`")
     lg.add_argument("kind")
     lg.add_argument("--note")
+    eg = sub.add_parser("egg", help="your Mochi Egg: `egg flash`, `egg test gym`, `egg sing`")
+    eg.add_argument("what", help="flash | test | sing | find | sync")
+    eg.add_argument("arg", nargs="?", help="flash: the USB port (found by itself); test: the look, e.g. gym, bench, curls, dead")
     args = p.parse_args()
 
     if sys.stderr is None and args.cmd == "run":   # pythonw on Windows (no console): keep the log run-hidden.bat used to write
@@ -358,4 +399,4 @@ def main() -> None:
         print(f"config: {config.CONFIG_PATH}")
         return
     {"run": cmd_run, "check": cmd_check, "camtest": cmd_camtest, "dashboard": cmd_dashboard,
-     "summary": cmd_summary, "sync": cmd_sync, "log": cmd_log, "phone": cmd_phone, "collect": cmd_collect, "train": cmd_train, "window": cmd_window}[args.cmd](cfg, args)
+     "summary": cmd_summary, "sync": cmd_sync, "log": cmd_log, "phone": cmd_phone, "collect": cmd_collect, "train": cmd_train, "window": cmd_window, "egg": cmd_egg}[args.cmd](cfg, args)

@@ -1,0 +1,2 @@
+# Arduino IDE / arduino-cli pick this board on their own. Minimal SPIFFS: the firmware is ~1.6 MB, too big for the default partition.
+default_fqbn: esp32:esp32:esp32:PartitionScheme=min_spiffs

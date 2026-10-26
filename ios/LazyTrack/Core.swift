@@ -139,6 +139,10 @@ actor Outbox {
                                   "note": note, "ts": Date().timeIntervalSince1970])
     }
 
+    func atGym(_ at: Bool) async {   // you got to the gym / left it: Mochi works out meanwhile
+        await send("/api/gym", ["at": at])
+    }
+
     func logActivity(app: String, start: Date, end: Date) async {
         await send("/api/activity", ["device": Settings.deviceName, "app": app, "category": "auto",
                                      "start": start.timeIntervalSince1970, "end": end.timeIntervalSince1970])
